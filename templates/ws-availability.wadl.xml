@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application>
+    <doc title="RESIF availability web service 1.0"/>
+    <resources base="http://ws.resif.fr/fdsnws/availability/1">
+        <resource path="/">
+            <method name="GET">
+                <response>
+                    <representation mediaType="text/html"/>
+                </response>
+            </method>
+        </resource>
+        <resource path="version">
+            <method name="GET">
+                <response>
+                    <representation mediaType="text/plain"/>
+                </response>
+            </method>
+        </resource>
+        <resource path="application.wadl">
+            <method name="GET" id="application.wadl">
+                <response>
+                    <representation mediaType="application/xml"/>
+                </response>
+            </method>
+        </resource>
+        <resource path="query">
+            <method href="#query"/>
+        </resource>
+        <resource path="extent">
+            <method href="#extent"/>
+        </resource>
+    </resources>
+
+    <method name="GET" id="query">
+        <request>
+            <param name="network" style="query" type="xsd:string"/>
+            <param name="station" style="query" type="xsd:string"/>
+            <param name="location" style="query" type="xsd:string"/>
+            <param name="channel" style="query" type="xsd:string"/>
+            <param name="starttime" style="query" required="true" type="xsd:string"/>
+            <param name="endtime" style="query" required="true" type="xsd:string"/>
+            <param name="net" style="query" type="xsd:string"/>
+            <param name="sta" style="query" type="xsd:string"/>
+            <param name="loc" style="query" type="xsd:string"/>
+            <param name="cha" style="query" type="xsd:string"/>
+            <param name="start" style="query" type="xsd:string"/>
+            <param name="end" style="query" type="xsd:string"/>
+            <param name="quality" style="query" type="xsd:string"/>
+            <param name="merge" style="query" type="xsd:string">
+                <option value="quality"/>
+                <option value="samplerate"/>
+                <option value="overlap"/>
+            </param>
+            <param name="format" style="query" type="xsd:string">
+                <option value="geocsv"/>
+                <option value="text"/>
+                <option value="json"/>
+                <option value="request"/>
+                <option value="sync"/>
+                <option value="zip"/>
+            </param>
+            <param name="orderby" style="query" type="xsd:string">
+                <option value="nslc_time_quality_samplerate"/>
+                <option value="latestupdate"/>
+                <option value="latestupdate_desc"/>
+            </param>
+            <param name="limit" style="query" type="xsd:string"/>
+            <param name="includerestricted" style="query" type="xsd:string"/>
+            <param name="nodata" style="query" type="xsd:string"/>
+            <param name="mergegaps" style="query" type="xsd:string"/>
+            <param name="show" style="query" type="xsd:string">
+                <option value="latestupdate"/>
+            </param>
+        </request>
+
+        <response status="200 202 400 408 413 404 500 503">
+            <representation mediaType="text/plain"/>
+            <representation mediaType="text/csv"/>
+            <representation mediaType="application/json"/>
+        </response>
+    </method>
+
+    <method name="POST" id="postQuery">
+        <request>
+            <representation mediaType="application/x-www-form-urlencoded"/>
+        </request>
+        <response>
+            <representation mediaType="text/plain"/>
+            <representation mediaType="text/csv"/>
+            <representation mediaType="application/json"/>
+        </response>
+    </method>
+
+    <method name="GET" id="extent">
+        <request>
+            <param name="network" style="query" type="xsd:string"/>
+            <param name="station" style="query" type="xsd:string"/>
+            <param name="location" style="query" type="xsd:string"/>
+            <param name="channel" style="query" type="xsd:string"/>
+            <param name="starttime" style="query" required="true" type="xsd:string"/>
+            <param name="endtime" style="query" required="true" type="xsd:string"/>
+            <param name="net" style="query" type="xsd:string"/>
+            <param name="sta" style="query" type="xsd:string"/>
+            <param name="loc" style="query" type="xsd:string"/>
+            <param name="cha" style="query" type="xsd:string"/>
+            <param name="start" style="query" type="xsd:string"/>
+            <param name="end" style="query" type="xsd:string"/>
+            <param name="quality" style="query" type="xsd:string"/>
+            <param name="merge" style="query" type="xsd:string">
+                <option value="quality"/>
+                <option value="samplerate"/>
+                <option value="overlap"/>
+            </param>
+            <param name="format" style="query" type="xsd:string">
+                <option value="geocsv"/>
+                <option value="text"/>
+                <option value="json"/>
+                <option value="request"/>
+                <option value="sync"/>
+                <option value="zip"/>
+            </param>
+            <param name="orderby" style="query" type="xsd:string">
+                <option value="nslc_time_quality_samplerate"/>
+                <option value="timespancount"/>
+                <option value="timespancount_desc"/>
+                <option value="latestupdate"/>
+                <option value="latestupdate_desc"/>
+            </param>
+            <param name="limit" style="query" type="xsd:string"/>
+            <param name="includerestricted" style="query" type="xsd:string"/>
+            <param name="nodata" style="query" type="xsd:string"/>
+        </request>
+
+        <response status="200 202 400 408 413 404 500 503">
+            <representation mediaType="text/plain"/>
+            <representation mediaType="text/csv"/>
+            <representation mediaType="application/json"/>
+        </response>
+
+    <method name="POST" id="postExtent">
+        <request>
+            <representation mediaType="application/x-www-form-urlencoded"/>
+        </request>
+        <response>
+            <representation mediaType="text/plain"/>
+            <representation mediaType="text/csv"/>
+            <representation mediaType="application/json"/>
+        </response>
+    </method>
+
+
+    </method>
+
+</application>

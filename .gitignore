@@ -1,0 +1,3 @@
+**/logs
+**/__pycache__
+database_config.ini

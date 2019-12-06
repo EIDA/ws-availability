@@ -1,0 +1,13 @@
+stages:
+  - deploy
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+deploy test:
+  stage: deploy
+  tags:
+    - deploy-ws-docker
+  script:
+    - rsync -a --exclude .git* $CI_PROJECT_DIR /srv/deploy/
+    - sudo docker restart ws-availability

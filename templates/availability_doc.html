@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>RESIF: RESIFWS: Availability Docs: v 1.0</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+<link rel="stylesheet" href="../static/pandoc.css"/>
+<a href="local=en"> <img src="../static/images/en.png" alt="Français - Anglais"> </a>
+</head>
+<body>
+<p style="text-align:center;"> <img src="../static/images/logoresif.png" alt="logoresif"></p>
+<p style="text-align:center;"> <font color="#e36928"><strong>Réseau Sismologique et Géodesique Français</strong></font></p>
+<h1 id="webservice-fdsn-availability">Webservice FDSN availability</h1>
+<h2 id="description">Description</h2>
+<p>Ce webservice donne la disponibilité des enregistrements sismiques du centre d’archivage du réseau RESIF. Il fournit des informations sous forme de plages temporelles détaillées.</p>
+<p>Il y a deux méthodes de requêtes pour ce service :</p>
+<p>/extent</p>
+<p>Produit une liste des plages temporelles disponibles selon les canaux (network, station, location, channel, quality) et l’intervalle de temps demandés.</p>
+<p>/query</p>
+<p>Produit une liste des plages temporelles continues disponibles selon les canaux (network, station, location, channel, quality) et l’intervalle de temps demandés.</p>
+<h2 id="formats-de-sorties-disponibles">Formats de sorties disponibles</h2>
+<ul>
+<li>text</li>
+<li>json</li>
+<li>geocsv</li>
+</ul>
+<h2 id="utilisation-de-la-requête">Utilisation de la requête</h2>
+<p>Les paramètres de la requête sont joints par une esperluette “&amp;”, sans espace (voir les exemples de requêtes). Les valeurs par défaut sont indiquées en majuscules. Au moins une station ou un réseau doit être précisé.</p>
+<h1 id="extent-usage">/extent usage</h1>
+<pre><code>/extent? [channel-options] [date-range-options] [merge-options] [sort-options] [format-options]
+
+où :
+
+channel-options      ::  [net=&lt;network&gt;] &amp; [sta=&lt;station&gt;] &amp; [loc=&lt;location&gt;] &amp; [cha=&lt;channel&gt;] &amp; [quality=&lt;quality&gt;]
+date-range-options   ::  [starttime=&lt;date|duration&gt;] &amp; [endtime=&lt;date|duration&gt;]
+merge-options        ::  [merge=&lt;quality|samplerate|overlap&gt;]
+sort-options         ::  [orderby=&lt;NSLC_TIME_QUALITY_SAMPLERATE|timespancount|timespancount_desc|latestupdate|latestupdate_desc&gt;]
+display-options      ::  [includerestricted=&lt;true|FALSE&gt;] &amp; [limit=&lt;number&gt;]
+format-options       ::  [format=&lt;TEXT|geocsv|json|request|sync|zip&gt;]</code></pre>
+<h1 id="query-usage">/query usage</h1>
+<pre><code>/query? [channel-options] [date-range-options] [merge-options] [sort-options] [display-options] [format-options]
+
+où :
+
+channel-options      ::  [net=&lt;network&gt;] &amp; [sta=&lt;station&gt;] &amp; [loc=&lt;location&gt;] &amp; [cha=&lt;channel&gt;] &amp; [quality=&lt;quality&gt;]
+date-range-options   ::  [starttime=&lt;date|duration&gt;] &amp; [endtime=&lt;date|duration&gt;]
+merge-options        ::  [merge=&lt;quality|samplerate|overlap&gt;] &amp; [mergegaps=&lt;number&gt;]
+sort-options         ::  [orderby=&lt;NSLC_TIME_QUALITY_SAMPLERATE|latestupdate|latestupdate_desc&gt;]
+display-options      ::  [show=&lt;latestupdate&gt;] &amp; [includerestricted=&lt;true|FALSE&gt;] &amp; [limit=&lt;number&gt;]
+format-options       ::  [format=&lt;TEXT|geocsv|json|request|sync|zip&gt;]
+
+
+les valeurs par défaut sont en majuscules</code></pre>
+<h2 id="exemples-de-requêtes">Exemples de requêtes</h2>
+<h3 id="avec-extent">avec /extent</h3>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01">http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01</a></p>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&show=latestupdate&orderby=timespancount">http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;show=latestupdate&amp;orderby=timespancount</a></p>
+<h3 id="avec-query">avec /query</h3>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/query?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01">http://ws.resif.fr/fdsnws/availability/1/query?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01</a></p>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/query?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&merge=samplerate&mergegaps=36000">http://ws.resif.fr/fdsnws/availability/1/query?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;merge=samplerate&amp;mergegaps=36000</a></p>
+<h2 id="descriptions-détaillées-de-chaque-paramètre-de-la-requête">Descriptions détaillées de chaque paramètre de la requête</h2>
+<h3 id="format-autorisé-pour-la-station">Format autorisé pour la station</h3>
+<p>Les quatre paramètres (network, station, location, channel) déterminent les canaux d’intérêt.</p>
+<table>
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 7%" />
+<col style="width: 77%" />
+<col style="width: 6%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Paramètre</th>
+<th style="text-align: left;">Exemple</th>
+<th style="text-align: left;">Discussion</th>
+<th style="text-align: left;">Valeur par défaut</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">net[work]</td>
+<td style="text-align: left;">FR</td>
+<td style="text-align: left;">Nom du réseau sismique.</td>
+<td style="text-align: left;">aucune</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sta[tion]</td>
+<td style="text-align: left;">CIEL</td>
+<td style="text-align: left;">Nom de la station.</td>
+<td style="text-align: left;">aucune</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">loc[ation]</td>
+<td style="text-align: left;">00</td>
+<td style="text-align: left;">Code de localisation. Utilisez loc=-- pour des codes de localisations vides.</td>
+<td style="text-align: left;">aucune</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">cha[nnel]</td>
+<td style="text-align: left;">HHZ</td>
+<td style="text-align: left;">Code de canal.</td>
+<td style="text-align: left;">aucune</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">quality</td>
+<td style="text-align: left;">M</td>
+<td style="text-align: left;">Code de qualité SEED : D, M, Q, R.</td>
+<td style="text-align: left;">aucune</td>
+</tr>
+</tbody>
+</table>
+<h4 id="jokers-et-listes-darguments">Jokers et listes d’arguments</h4>
+<ul>
+<li><p>Jokers : le point d’interrogation <strong>?</strong> représente n’importe quel caractère unique, alors que l’astérisque <strong>*</strong> représente zéro caractère ou plus.</p></li>
+<li><p>Listes : plusieurs éléments peuvent également être récupérés à l’aide d’une liste séparée par des virgules. Les jokers peuvent être inclus dans la liste.</p></li>
+</ul>
+<p>Par exemple, pour le code des canaux : channel=EH?,BHZ</p>
+<h4 id="détails-sur-la-nomenclature-des-codes">Détails sur la nomenclature des codes</h4>
+<ul>
+<li>NETWORK = 1 à 2 caractères alphanumériques. Un groupe de points de mesures.</li>
+<li>STATION = 1 à 5 caractères alphanumériques. Un site de mesure dans un réseau.</li>
+<li>CHANNEL = 3 caractères qui désignent : la fréquence d’échantillonnage et la bande de fréquence du capteur, le type de l’instrument, l’orientation physique de la composante.</li>
+<li>LOCATION = 2 caractères qui permettent de distinguer plusieurs flux de données d’un même canal</li>
+</ul>
+<h3 id="formats-autorisés-pour-lintervalle-de-temps">Formats autorisés pour l’intervalle de temps</h3>
+<p>La définition de l’intervalle de temps peut prendre différentes formes :</p>
+<h4 id="avec-une-date-de-début-et-une-date-de-fin">Avec une date de début et une date de fin</h4>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Paramètre</th>
+<th style="text-align: left;">Exemple</th>
+<th style="text-align: left;">Discussion</th>
+<th style="text-align: left;">Valeur par défaut</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">start[time]</td>
+<td style="text-align: left;">2015-08-12T01:00:00</td>
+<td style="text-align: left;">Date de début.</td>
+<td style="text-align: left;">aucune</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">end[time]</td>
+<td style="text-align: left;">2015-08-13T01:00:00</td>
+<td style="text-align: left;">Date de fin.</td>
+<td style="text-align: left;">aucune</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exemple :</strong></p>
+<p>…starttime=2015-08-12T01:00:00&amp;endtime=2015-08-13T01:00:00…</p>
+<h4 id="combinaison-dune-date-et-dune-durée-en-secondes">Combinaison d’une date et d’une durée en secondes</h4>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Paramètre</th>
+<th style="text-align: left;">Exemple</th>
+<th style="text-align: left;">Discussion</th>
+<th style="text-align: left;">Valeur par défaut</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">start[time]</td>
+<td style="text-align: left;">2015-08-12T01:00:00</td>
+<td style="text-align: left;">Date de début.</td>
+<td style="text-align: left;">aucune</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">end[time]</td>
+<td style="text-align: left;">7200</td>
+<td style="text-align: left;">Durée du signal exprimée en secondes.</td>
+<td style="text-align: left;">aucune</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exemple :</strong></p>
+<p>…starttime=2015-08-12T01:00:00&amp;endtime=7200…</p>
+<p>L’exemple précédent spécifie une date pour le paramètre start[time] et 7200 secondes pour le paramètre end[time].</p>
+<h4 id="combinaison-du-mot-clé-currentutcday-avec-une-date-ou-bien-une-durée-en-secondes">Combinaison du mot-clé “currentutcday” avec une date ou bien une durée en secondes</h4>
+<p>Le mot-clé “currentutcday” signifie exactement minuit de la date du jour (heure UTC). Il peut être utilisé avec les paramètres start[time] et end[time].</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Paramètre</th>
+<th style="text-align: left;">Exemple</th>
+<th style="text-align: left;">Discussion</th>
+<th style="text-align: left;">Valeur par défaut</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">start[time]</td>
+<td style="text-align: left;">7200</td>
+<td style="text-align: left;">Date ou durée exprimée en secondes.</td>
+<td style="text-align: left;">aucune</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">end[time]</td>
+<td style="text-align: left;">currentutcday</td>
+<td style="text-align: left;">Minuit (UTC) de la date du jour.</td>
+<td style="text-align: left;">aucune</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exemples :</strong></p>
+<ol type="1">
+<li>…starttime=currentutcday&amp;endtime=7200…<br/></li>
+<li>…starttime=7200&amp;endtime=currentutcday…</li>
+</ol>
+<p>Le premier exemple désigne les 2 heures après minuit (heure UTC) du jour actuel. Le second exemple désigne les 2 dernières heures avant minuit (heure UTC) du jour actuel.</p>
+<h3 id="options-de-fusion">Options de fusion</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 9%" />
+<col style="width: 76%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Paramètre</th>
+<th style="text-align: left;">Exemples</th>
+<th style="text-align: left;">Discussion</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">merge</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Liste de paramètres séparés par des virgules (exemple merge=quality,samplerate).</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">quality</td>
+<td style="text-align: left;">Les périodes de qualités différentes sont fusionnées.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">samplerate</td>
+<td style="text-align: left;">Les périodes de fréquences d’échantillonnage différentes sont fusionnées.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">overlap</td>
+<td style="text-align: left;">Non applicable.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="options-de-sortie">Options de sortie</h3>
+<table>
+<colgroup>
+<col style="width: 8%" />
+<col style="width: 6%" />
+<col style="width: 85%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Paramètre</th>
+<th style="text-align: left;">Exemples</th>
+<th style="text-align: left;">Discussion</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">format</td>
+<td style="text-align: left;">json</td>
+<td style="text-align: left;">Format de sortie. Valeurs autorisées : text (par défaut, avec les entêtes), geocsv, json, sync, request et zip.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">includerestricted</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">Affiche ou non les données restreintes.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">limit</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">Limite le nombre de lignes en sortie.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="options-de-tri">Options de tri</h3>
+<table>
+<colgroup>
+<col style="width: 8%" />
+<col style="width: 23%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Paramètre</th>
+<th style="text-align: left;">Exemples</th>
+<th style="text-align: left;">Discussion</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">orderby</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Range les lignes par :</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">nslc_time_quality_samplerate</td>
+<td style="text-align: left;">network, station, location, channel, période de temps, quality, sample-rate (par défaut)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">timespancount (avec extent)</td>
+<td style="text-align: left;">nombre de périodes de temps (du plus petit au plus grand), network, station, location, channel, période de temps, quality, sample-rate</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">timespancount_desc (avec extent)</td>
+<td style="text-align: left;">nombre de périodes de temps (du plus grand au plus petit), network, station, location, channel, période de temps, quality, sample-rate</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">latestupdate</td>
+<td style="text-align: left;">date de mise à jour (du plus ancien au plus récent), network, station, location, channel, période de temps, quality, sample-rate</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">latestupdate_desc</td>
+<td style="text-align: left;">date de mise à jour (du plus récent au plus ancien), network, station, location, channel, période de temps, quality, sample-rate</td>
+</tr>
+</tbody>
+</table>
+<p><br/></p>
+<h2 id="paramètres-additionnels-pour-query">Paramètres additionnels pour /query</h2>
+<h3 id="options-de-fusion-1">Options de fusion</h3>
+<table>
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 8%" />
+<col style="width: 75%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Paramètre</th>
+<th style="text-align: left;">Exemple</th>
+<th style="text-align: left;">Discussion</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">mergegaps</td>
+<td style="text-align: left;">86400.0 (1 jour)</td>
+<td style="text-align: left;">Les périodes de temps qui sont séparées par des gaps plus petits ou égaux à la valeur donnée sont fusionnées.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="options-daffichage">Options d’affichage</h3>
+<table>
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 73%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Paramètre</th>
+<th style="text-align: left;">Exemple</th>
+<th style="text-align: left;">Discussion</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">show</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Liste de paramètres séparés par des virgules (exemple show=latestupdate).</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">latestupdate</td>
+<td style="text-align: left;">Affiche la date de mise à jour des données.</td>
+</tr>
+</tbody>
+</table>
+<p><br/></p>
+<h2 id="formats-des-dates-et-des-heures">Formats des dates et des heures</h2>
+<pre><code>YYYY-MM-DDThh:mm:ss[.ssssss] ex. 1997-01-31T12:04:32.123
+YYYY-MM-DD ex. 1997-01-31 (une heure de 00:00:00 est supposée)
+
+avec :
+
+YYYY    :: quatre chiffres de l&#39;année
+MM      :: deux chiffres du mois (01=Janvier, etc.)
+DD      :: deux chiffres du jour du mois (01 à 31)
+T       :: séparateur date-heure
+hh      :: deux chiffres de l&#39;heure (00 à 23)
+mm      :: deux chiffres des minutes (00 à 59)
+ss      :: deux chiffres des secondes (00 à 59)
+ssssss  :: un à six chiffres des microsecondes en base décimale (0 à 999999)</code></pre>
+</body>
+</html>
