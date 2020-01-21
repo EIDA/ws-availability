@@ -42,6 +42,9 @@ BEGIN
     CREATE INDEX ON traces (location);
     CREATE INDEX ON traces (channel);
     CREATE INDEX ON traces (quality);
+    -- with SET random_page_cost = 1;
+    CREATE INDEX idx_default_order
+    ON traces (network, station, location, channel, quality, samplerate, starttime, endtime);
 
     DROP TABLE IF EXISTS wsavailability.traces;
     ALTER TABLE traces SET SCHEMA wsavailability;
