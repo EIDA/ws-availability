@@ -12,6 +12,7 @@ from apps.availability.constants import SCHEMA
 from apps.globals import Error, MAX_DATA_ROWS, SCHEMAVERSION
 from apps.utils import config
 from apps.utils import overflow_error
+from apps.utils import tictac
 
 
 output_log = logging.getLogger("availability")
@@ -49,7 +50,7 @@ def sql_request(paramslist):
 
     select = list()
     for params in paramslist:
-        s = f"""SELECT network, station, location, channel, quality, samplerate, starttime, endtime, lastupdated, policy, mergeid FROM {SCHEMA}.traces WHERE"""
+        s = f"""SET random_page_cost=1; SELECT network, station, location, channel, quality, samplerate, starttime, endtime, lastupdated, policy, mergeid FROM {SCHEMA}.traces WHERE"""
         s = f"""{s} ({is_like_or_equal(params, "network")})"""
         if params["station"] != "*":
             s = f"""{s} AND ({is_like_or_equal(params, "station")})"""
@@ -73,7 +74,7 @@ def sql_request(paramslist):
 def collect_data(params):
     """ Connect to the PostgreSQL RESIF database """
 
-    start = time.time()
+    tic = time.time()
     conn = None
     output_log.debug("Start collecting data...")
 
@@ -87,28 +88,28 @@ def collect_data(params):
         SQL_SELECT = sql_request(params)
         output_log.info(f"{SQL_SELECT}")
 
-        localstart = time.time()
+        toc = time.time()
         cursor.execute(SQL_SELECT)
         output_log.debug(cursor.statusmessage)
-        output_log.debug(f"Execute in {round(time.time() - localstart, 2)} seconds.")
+        output_log.info(f"Execute in {tictac(tic)} seconds.")
 
-        localstart = time.time()
-
+        toc = time.time()
         data = list()
         for row in cursor.fetchall():
             if not params[0]["includerestricted"] and row[STATUS] == "RESTRICTED":
                 continue
             data.append(list(row))
         cursor.close()  # close this communication
-        output_log.debug(f"Fetchall in {round(time.time() - localstart, 2)} seconds.")
+        output_log.debug(f"Fetchall in {tictac(tic)} seconds.")
         return data
     except (Exception, psycopg2.DatabaseError) as error:
         output_log.exception(str(error))
     finally:
         if conn is not None:
             conn.close()
-            output_log.debug("Database connection closed.")
-        output_log.info(f"Data collected in {round(time.time() - start, 2)} seconds.")
+        output_log.info(
+            f"Get data (including execute and fech) in {tictac(tic)} seconds."
+        )
 
 
 def get_header(params):
@@ -210,7 +211,7 @@ def sort_records(params, data):
 
 
 def select_columns(params, data):
-    start = time.time()
+    tic = time.time()
     indexes = get_indexes(params) + [START, END]
     if params["showlastupdate"]:
         indexes = indexes + [UPDATE]
@@ -232,7 +233,7 @@ def select_columns(params, data):
                 row[UPDATE] = row[UPDATE].isoformat(timespec="microseconds") + "Z"
         row[:] = [str(row[i]) for i in indexes]
 
-    output_log.debug(f"Data selected in {round(time.time() - start, 2)} seconds.")
+    output_log.debug(f"Columns selection in {tictac(tic)} seconds.")
     return data
 
 
@@ -242,7 +243,7 @@ def fusion(params, data, indexes):
        :tol: timespans which are separated by gaps smaller than or equal to tol are merged together (query)
        :returns: produces a list of available time extents (extent) or contiguous time spans (query)"""
 
-    start = time.time()
+    tic = time.time()
     merge = list()
     timespancount = 0
     tol = params["mergegaps"] if params["mergegaps"] is not None else 0.0
@@ -276,7 +277,7 @@ def fusion(params, data, indexes):
             timespancount = 1
             merge[-1][COUNT] = 1
 
-    output_log.debug(f"Data merged in {round(time.time() - start, 2)} seconds.")
+    output_log.debug(f"Data merged in {tictac(tic)} seconds.")
     return merge
 
 
@@ -296,7 +297,7 @@ def get_indexes(params):
 
 
 def get_response(params, data):
-    start = time.time()
+    tic = time.time()
     fname = "resifws-availability"
     headers = {"Content-type": "text/plain"}
     if params["format"] == "text":
@@ -318,7 +319,7 @@ def get_response(params, data):
         response.headers["Content-type"] = "application/x-zip-compressed"
     elif params["format"] == "json":
         response = jsonify(records_to_dictlist(params, data))
-    output_log.debug(f"Response builts in {round(time.time() - start, 2)} seconds.")
+    output_log.debug(f"Response builts in {tictac(tic)} seconds.")
     return response
 
 
@@ -328,11 +329,12 @@ def get_output(validparamslist):
     :returns: text, json or csv with data availability"""
 
     try:
-        start = time.time()
+        tic = time.time()
         data = collect_data(validparamslist)
         if not data:
             return data  # empty (no data) or None (error)
 
+        toc = time.time()
         nrows = len(data)
         output_log.info(f"Number of collected rows: {nrows}")
         if nrows > MAX_DATA_ROWS:
@@ -349,6 +351,9 @@ def get_output(validparamslist):
         data = select_columns(params, data)
         output_log.info(f"Final row number: {len(data)}")
         response = get_response(params, data)
+        output_log.debug(
+            f"Postprocessing (including columns selection and response builts) in {tictac(tic)} seconds."
+        )
         return response
     except Exception as ex:
         output_log.exception(str(ex))
@@ -356,5 +361,4 @@ def get_output(validparamslist):
         if data:
             if response:
                 bytes = response.headers.get("Content-Length")
-                working_time = round(time.time() - start, 2)
-                output_log.info(f"{bytes} bytes rendered in {working_time} seconds.")
+                output_log.info(f"{bytes} bytes rendered in {tictac(tic)} seconds.")

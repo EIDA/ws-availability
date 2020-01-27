@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import time
 
 from difflib import SequenceMatcher
 from datetime import datetime, timedelta
@@ -104,6 +105,10 @@ def is_valid_nodata(nodata):
 
 def currentutcday():
     return datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def tictac(tic):
+    return round(time.time() - tic, 2)
 
 
 # Result HTTP code 400 shortcut function
