@@ -164,7 +164,7 @@ def check_request(request, params, alias):
             return error_param(params, Error.UNKNOWN_PARAM + key + hint)
 
         # find non word char except :
-        # "," for lists "*?" for wilcards and ".:-" for date
+        # "," for lists "*?" for wildcards and ".:-" for date
         if re.search(r"[^a-zA-Z0-9_,*?.:-]", val):
             return error_param(params, Error.CHAR + key)
 

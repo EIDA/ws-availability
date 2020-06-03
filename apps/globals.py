@@ -59,7 +59,7 @@ class Error:
     )
     OUTPUT_AVAILAB = f"Accepted output values are: {OUTPUT}." + BAD_VAL
     NODATA = f"Accepted nodata values are: {NODATA}." + BAD_VAL
-    NO_WILCARDS = "Wilcards or lists are not allowed in network parameter if there are wilcards (* or more than one ?) in station parameters."
+    NO_WILDCARDS = "Wildcards or lists are not allowed in network parameter if there are wildcards (* or more than one ?) in station parameters."
     NO_SELECTION = "Request contains no selections."
 
 
