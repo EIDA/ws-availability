@@ -328,6 +328,7 @@ def get_output(validparamslist):
     :param validparamslist: List of validated parameter dictionaries.
     :returns: text, json or csv with data availability"""
 
+    response = False
     try:
         tic = time.time()
         data = collect_data(validparamslist)
