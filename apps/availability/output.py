@@ -35,7 +35,7 @@ def get_max_rows(params):
 
 
 def is_like_or_equal(params, key):
-    """ Built the condition for the specified key in the "where" clause taking into account lists or wilcards """
+    """ Builds the condition for the specified key in the "where" clause taking into account lists or wildcards. """
 
     subquery = list()
     for param in params[key].split(","):
@@ -45,7 +45,7 @@ def is_like_or_equal(params, key):
 
 
 def sql_request(paramslist):
-    """ Built the PostgreSQL request.
+    """ Builds the PostgreSQL request.
         (mergeid is used here to store timespancount later)"""
 
     select = list()
@@ -319,7 +319,7 @@ def get_response(params, data):
         response.headers["Content-type"] = "application/x-zip-compressed"
     elif params["format"] == "json":
         response = jsonify(records_to_dictlist(params, data))
-    output_log.debug(f"Response builts in {tictac(tic)} seconds.")
+    output_log.debug(f"Response built in {tictac(tic)} seconds.")
     return response
 
 
@@ -330,6 +330,7 @@ def get_output(validparamslist):
 
     try:
         tic = time.time()
+        response = None
         data = collect_data(validparamslist)
         if not data:
             return data  # empty (no data) or None (error)
@@ -351,9 +352,7 @@ def get_output(validparamslist):
         data = select_columns(params, data)
         output_log.info(f"Final row number: {len(data)}")
         response = get_response(params, data)
-        output_log.debug(
-            f"Postprocessing (including columns selection and response builts) in {tictac(tic)} seconds."
-        )
+        output_log.debug(f"Processing in {tictac(tic)} seconds.")
         return response
     except Exception as ex:
         output_log.exception(str(ex))
