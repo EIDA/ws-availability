@@ -15,9 +15,6 @@ from apps.utils import is_valid_show
 from apps.availability.constants import BOOL_PARAMS
 
 
-model_log = logging.getLogger("availability")
-
-
 def check_parameters(params):
 
     try:
@@ -30,7 +27,7 @@ def check_parameters(params):
 
         quality = params["quality"].split(",")
         for q in quality:
-            model_log.debug(q)
+            logging.debug(q)
             if not is_valid_quality(q):
                 return error_param(params, Error.QUALITY + q)
 
@@ -92,10 +89,10 @@ def check_parameters(params):
         params["nodata"] = params["nodata"].lower()
 
         for key, val in params.items():
-            model_log.debug(key + ": " + str(val))
+            logging.debug(key + ": " + str(val))
 
         return (params, error)
 
     except Exception as e:
-        model_log.exception(str(e))
+        logging.exception(str(e))
         return (params, {"msg": HTTP._500_, "details": Error.PROCESSING, "code": 500})

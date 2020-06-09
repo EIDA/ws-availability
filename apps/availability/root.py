@@ -86,18 +86,17 @@ def checks_post(params):
 
 def availability(request, paramslist):
 
-    main_log = logging.getLogger("availability")
     validparamslist = list()
     try:
         result = {"msg": HTTP._400_, "details": Error.UNKNOWN_PARAM, "code": 400}
         for params in paramslist:
             if request.method == "POST":
                 args = "&".join(["=".join(kv) for kv in list(params.items())])
-                main_log.info(request.base_url + "?" + args)
+                logging.info(request.base_url + "?" + args)
                 params["base_url"] = request.base_url
                 (params, result) = checks_post(params)
             else:
-                main_log.info(request.url)
+                logging.info(request.url)
                 (params, result) = checks_get(request)
 
             if result["code"] == 200:
@@ -130,7 +129,7 @@ def availability(request, paramslist):
 
     except Exception as excep:
         result = {"msg": HTTP._500_, "details": Error.PROCESSING, "code": 500}
-        main_log.exception(str(excep))
+        logging.exception(str(excep))
 
     return error_request(
         msg=result["msg"], details=result["details"], code=result["code"]
