@@ -72,6 +72,7 @@ def sql_request(paramslist):
 def collect_data(params):
     """ Connect to the PostgreSQL RESIF database """
     tic = time.time()
+    data = list()
     logging.debug("Start collecting data...")
     with psycopg2.connect(os.getenv("PG_DBURI")) as conn:
         logging.debug(conn.get_dsn_parameters())
@@ -81,13 +82,12 @@ def collect_data(params):
             curs.execute(SQL_SELECT)
             logging.debug(f"{SQL_SELECT}")
             logging.debug(curs.statusmessage)
-            data = list()
             for row in curs.fetchall():
                 if not params[0]["includerestricted"] and row[STATUS] == "RESTRICTED":
                     continue
                 data.append(list(row))
             logging.info(f"Get data in {tictac(tic)} seconds.")
-            return data
+    return data
 
 
 def get_header(params):
@@ -306,9 +306,9 @@ def get_output(validparamslist):
     :param validparamslist: List of validated parameter dictionaries.
     :returns: text, json or csv with data availability"""
 
-    response = False
     try:
         tic = time.time()
+        data = None
         response = None
         data = collect_data(validparamslist)
         if not data:
