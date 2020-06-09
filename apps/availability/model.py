@@ -83,12 +83,12 @@ def check_parameters(params):
 
         # output parameter validation
         if not is_valid_output(params["format"]):
-            return error_param(params, Error.OUTPUT_AVAILAB + str(params["format"]))
+            return error_param(params, Error.OUTPUT + str(params["format"]))
         params["format"] = params["format"].lower()
 
         # nodata parameter validation
         if not is_valid_nodata(params["nodata"]):
-            return error_param(params, Error.NODATA + str(params["nodata"]))
+            return error_param(params, Error.NODATA_CODE + str(params["nodata"]))
         params["nodata"] = params["nodata"].lower()
 
         for key, val in params.items():

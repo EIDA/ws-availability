@@ -1,19 +1,16 @@
-import os
 import re
 import sys
 import time
 
 from difflib import SequenceMatcher
 from datetime import datetime, timedelta
-from configparser import ConfigParser
 
 from flask import Response, request
 
-from apps.globals import DATABASE_CONFIG_FILE
 from apps.globals import Error
 from apps.globals import HTTP
 from apps.globals import MERGE
-from apps.globals import NODATA
+from apps.globals import NODATA_CODE
 from apps.globals import ORDERBY
 from apps.globals import OUTPUT
 from apps.globals import SHOW
@@ -24,6 +21,7 @@ from apps.availability.constants import VERSION
 
 
 def is_valid_integer(dimension, mini=0, maxi=sys.maxsize):
+    # by default valid for positive integers
     try:
         dimension = int(dimension)
         if mini <= dimension <= maxi:
@@ -32,7 +30,8 @@ def is_valid_integer(dimension, mini=0, maxi=sys.maxsize):
         return False
 
 
-def is_valid_float(dimension, mini=sys.float_info.epsilon, maxi=sys.maxsize):
+def is_valid_float(dimension, mini=sys.float_info.epsilon, maxi=sys.float_info.max):
+    # by default valid for strictly positive floats
     try:
         dimension = float(dimension)
         if mini <= dimension <= maxi:
@@ -100,7 +99,7 @@ def is_valid_merge(merge):
 
 
 def is_valid_nodata(nodata):
-    return nodata.lower() in NODATA if nodata else False
+    return nodata.lower() in NODATA_CODE if nodata else False
 
 
 def currentutcday():
@@ -137,23 +136,6 @@ def error_500(dmesg):
     return error_request(msg=HTTP._500_, details=dmesg, code=500)
 
 
-# Read database config
-def config(filename=DATABASE_CONFIG_FILE, section="postgresql"):
-    if os.path.isfile(filename):
-        parser = ConfigParser()
-        parser.read(filename)
-        db = {}
-        if parser.has_section(section):
-            params = parser.items(section)
-            for param in params:
-                db[param[0]] = param[1]
-        else:
-            raise Exception(f"Section {section} not found in the {filename} file")
-        return db
-    else:
-        print(f"{DATABASE_CONFIG_FILE} not found")
-
-
 # check request
 def check_request(request, params, alias):
     for key, val in request.args.items():
@@ -163,7 +145,7 @@ def check_request(request, params, alias):
             hint = ". Did you mean " + guess[1] + " ?" if guess[0] > 0.7 else ""
             return error_param(params, Error.UNKNOWN_PARAM + key + hint)
 
-        # find non word char except :
+        # find nonword chars except :
         # "," for lists "*?" for wildcards and ".:-" for date
         if re.search(r"[^a-zA-Z0-9_,*?.:-]", val):
             return error_param(params, Error.CHAR + key)

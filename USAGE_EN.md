@@ -73,7 +73,7 @@ At least one station or one network must be specified.
 
 ## Detailed descriptions of each query parameter
 
-### Station codes details
+### Station code details
 The four parameters (network, station, location, channel) determine channels of interest.
 
 | Parameters | Examples | Discussion                                          |

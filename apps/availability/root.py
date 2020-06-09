@@ -120,7 +120,7 @@ def availability(request, paramslist):
             # resp empty (no data)
             result = {
                 "msg": f'HTTP._{params["nodata"]}_',
-                "details": Error.NO_DATA,
+                "details": Error.NODATA,
                 "code": int(params["nodata"]),
             }
 

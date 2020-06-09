@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import time
 import zipfile
@@ -10,12 +11,9 @@ from flask import make_response, jsonify
 
 from apps.availability.constants import SCHEMA
 from apps.globals import Error, MAX_DATA_ROWS, SCHEMAVERSION
-from apps.utils import config
 from apps.utils import overflow_error
 from apps.utils import tictac
 
-
-output_log = logging.getLogger("availability")
 
 END = 7
 START = 6
@@ -73,43 +71,23 @@ def sql_request(paramslist):
 
 def collect_data(params):
     """ Connect to the PostgreSQL RESIF database """
-
     tic = time.time()
-    conn = None
-    output_log.debug("Start collecting data...")
-
-    try:
-        conf = config()  # read connection parameters
-        conn = psycopg2.connect(**conf)  # connect to the RESIF database
-        cursor = conn.cursor()  # cursor to execute SQL command
-        output_log.info(conn.get_dsn_parameters())
-        output_log.info(f"Postgres version : {conn.server_version}")
-
-        SQL_SELECT = sql_request(params)
-        output_log.info(f"{SQL_SELECT}")
-
-        toc = time.time()
-        cursor.execute(SQL_SELECT)
-        output_log.debug(cursor.statusmessage)
-        output_log.info(f"Execute in {tictac(tic)} seconds.")
-
-        toc = time.time()
-        data = list()
-        for row in cursor.fetchall():
-            if not params[0]["includerestricted"] and row[STATUS] == "RESTRICTED":
-                continue
-            data.append(list(row))
-        cursor.close()  # close this communication
-        output_log.debug(f"Fetchall in {tictac(tic)} seconds.")
-        return data
-    except (Exception, psycopg2.DatabaseError) as error:
-        output_log.exception(str(error))
-    finally:
-        if conn is not None:
-            conn.close()
-        output_log.info(
-            f"Get data (including execute and fech) in {tictac(tic)} seconds."
-        )
+    logging.debug("Start collecting data...")
+    with psycopg2.connect(os.getenv("PG_DBURI")) as conn:
+        logging.debug(conn.get_dsn_parameters())
+        logging.debug(f"Postgres version : {conn.server_version}")
+        with conn.cursor() as curs:
+            SQL_SELECT = sql_request(params)
+            curs.execute(SQL_SELECT)
+            logging.debug(f"{SQL_SELECT}")
+            logging.debug(curs.statusmessage)
+            data = list()
+            for row in curs.fetchall():
+                if not params[0]["includerestricted"] and row[STATUS] == "RESTRICTED":
+                    continue
+                data.append(list(row))
+            logging.info(f"Get data in {tictac(tic)} seconds.")
+            return data
 
 
 def get_header(params):
@@ -233,7 +211,7 @@ def select_columns(params, data):
                 row[UPDATE] = row[UPDATE].isoformat(timespec="microseconds") + "Z"
         row[:] = [str(row[i]) for i in indexes]
 
-    output_log.debug(f"Columns selection in {tictac(tic)} seconds.")
+    logging.debug(f"Columns selection in {tictac(tic)} seconds.")
     return data
 
 
@@ -277,7 +255,7 @@ def fusion(params, data, indexes):
             timespancount = 1
             merge[-1][COUNT] = 1
 
-    output_log.debug(f"Data merged in {tictac(tic)} seconds.")
+    logging.debug(f"Data merged in {tictac(tic)} seconds.")
     return merge
 
 
@@ -319,7 +297,7 @@ def get_response(params, data):
         response.headers["Content-type"] = "application/x-zip-compressed"
     elif params["format"] == "json":
         response = jsonify(records_to_dictlist(params, data))
-    output_log.debug(f"Response built in {tictac(tic)} seconds.")
+    logging.debug(f"Response built in {tictac(tic)} seconds.")
     return response
 
 
@@ -336,9 +314,8 @@ def get_output(validparamslist):
         if not data:
             return data  # empty (no data) or None (error)
 
-        toc = time.time()
         nrows = len(data)
-        output_log.info(f"Number of collected rows: {nrows}")
+        logging.info(f"Number of collected rows: {nrows}")
         if nrows > MAX_DATA_ROWS:
             return overflow_error(Error.TOO_MUCH_ROWS)
 
@@ -351,14 +328,14 @@ def get_output(validparamslist):
             sort_records(params, data)
 
         data = select_columns(params, data)
-        output_log.info(f"Final row number: {len(data)}")
+        logging.info(f"Final row number: {len(data)}")
         response = get_response(params, data)
-        output_log.debug(f"Processing in {tictac(tic)} seconds.")
+        logging.debug(f"Processing in {tictac(tic)} seconds.")
         return response
     except Exception as ex:
-        output_log.exception(str(ex))
+        logging.exception(str(ex))
     finally:
         if data:
             if response:
                 bytes = response.headers.get("Content-Length")
-                output_log.info(f"{bytes} bytes rendered in {tictac(tic)} seconds.")
+                logging.info(f"{bytes} bytes rendered in {tictac(tic)} seconds.")

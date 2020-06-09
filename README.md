@@ -1,6 +1,6 @@
+# Webservice availability
 ws-availability implements the FDSN specification of the availability webservice.
 
-# Prerequisite
 ## Backend
 `ws-availability` relies on the seedtree5 database used at RESIF-DC.
 
@@ -8,28 +8,27 @@ The file `update_wsavailability_schema.sql` can be used to build the necessary m
 
 This is RESIF-DC inners and is not detailed here.
 
-# Deployment
 
-## Configuring
+## Play around with docker
 
-TODO: we need to configure through environment variables.
 
-Create the configuration file `apps/availability/database_config.ini` :
+docker build -t ws-availability .
+docker run --rm -e RUNMODE=test -p 8000:8000 --name ws-availability ws-availability
 
-``` ini
-[postgresql]
-host=server
-database=seedtree5
-user=wsavailability_ro
-password=*******
-port=5432
+
+Then :
+
+```
+wget -O - http://localhost:8000/1/application.wadl
 ```
 
-## Development environment
+Run it in debug mode with flask :
 
+```
+docker run --rm --name ws-availability -e RUNMODE=production -e FLASK_APP=start.py ws-availability flask run
+```
 
-    docker build -t ws-availability .
-    docker run -d -p 8000:8000 -e RUNMODE=test --name ws-availability ws-availability
+## RUNMODE builtin values
 
-
-
+  * `production` 
+  * `test`

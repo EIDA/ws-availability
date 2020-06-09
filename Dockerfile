@@ -5,7 +5,7 @@ COPY requirements.txt /
 RUN pip install --no-cache-dir -r /requirements.txt
 
 WORKDIR /appli
-COPY start.py log_init.py ./
+COPY start.py config.py ./
 COPY apps ./apps/
 COPY templates ./templates/
 COPY static ./static/

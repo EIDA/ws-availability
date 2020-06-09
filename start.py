@@ -1,18 +1,35 @@
 import io
+import logging
 import re
 
 from flask import Flask, make_response, render_template, request
 
 from apps.availability.constants import MAIN_VERSION, POST_PARAMS, VERSION
 from apps.availability.root import availability
+from config import Config
 
-import log_init  # rise up for module loading logs
 
 app = Flask(__name__)
 
+fmt = "[%(asctime)s] %(levelname)s [%(filename)s:%(lineno)d] [%(funcName)s] %(message)s"
+loglevel = logging.INFO if os.environ.get("RUNMODE") == "prodution" else logging.DEBUG
+logging.basicConfig(format=fmt, level=loglevel)
+
+app.config.from_object(Config)
+if app.config["RUNMODE"]:
+    app.logger.debug("Configuration set with RUNMODE=%s", app.config["RUNMODE"])
+
+# with FLASK_ENV=development
+app.logger.debug(
+    "Database URI : postgres://%s@%s:%s/%s",
+    app.config["PGUSER"],
+    app.config["PGHOST"],
+    app.config["PGPORT"],
+    app.config["PGDATABASE"],
+)
 
 # **************************************************************************
-# ************************** AVAILABILITY SERVICE **************************
+# ********************** AVAILABILITY SERVICE ROUTES ***********************
 # **************************************************************************
 
 BASE_URL = "/%s" % MAIN_VERSION
@@ -94,4 +111,4 @@ def availability_doc_en():
 
 # **** MAIN ****
 if __name__ == "__main__":
-    app.run(port=5000, debug=True, host="0.0.0.0")
+    app.run(host="0.0.0.0")

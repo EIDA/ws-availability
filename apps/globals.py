@@ -1,4 +1,3 @@
-DATABASE_CONFIG_FILE = "apps/availability/database_config.ini"
 STRING_TRUE = ("yes", "true", "t", "y", "1", "")
 STRING_FALSE = ("no", "false", "f", "n", "0")
 SHOW = ("latestupdate", "timespancount")
@@ -11,7 +10,7 @@ ORDERBY = (
     "latestupdate_desc",
 )
 OUTPUT = ("geocsv", "json", "request", "sync", "text", "zip")
-NODATA = ("204", "404")
+NODATA_CODE = ("204", "404")
 TIMEOUT = 120
 MAX_DAYS_AVAILABILITY = 10 ** 9 - 1
 MAX_ROWS = "2_500_000"
@@ -33,9 +32,9 @@ class Error:
                   This could be due to a temporary service outage, an invalid FDSN service address,\n\
                   an inactive internet connection or a blocking firewall rule."
     OK_CONNECTION = "Connection OK. "
-    NO_DATA = "Your query doesn't match any data available."
+    NODATA = "Your query doesn't match any available data."
     TIMEOUT = f"Your query exceeds timeout ({TIMEOUT} seconds)."
-    MISSING = "Missing parameter : "
+    MISSING = "Missing parameter: "
     BAD_VAL = " Invalid value: "
     CHAR = "White space(s) or invalid string. Invalid value for: "
     EMPTY = "Empty string. Invalid value for: "
@@ -57,8 +56,8 @@ class Error:
     MERGEGAPS_QUERY_ONLY = (
         "The mergegaps option is not available with extent mode but with query mode."
     )
-    OUTPUT_AVAILAB = f"Accepted output values are: {OUTPUT}." + BAD_VAL
-    NODATA = f"Accepted nodata values are: {NODATA}." + BAD_VAL
+    OUTPUT = f"Accepted output values are: {OUTPUT}." + BAD_VAL
+    NODATA_CODE = f"Accepted nodata values are: {NODATA_CODE}." + BAD_VAL
     NO_WILDCARDS = "Wildcards or lists are not allowed in network parameter if there are wildcards (* or more than one ?) in station parameters."
     NO_SELECTION = "Request contains no selections."
 
