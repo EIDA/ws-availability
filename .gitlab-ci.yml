@@ -1,0 +1,26 @@
+image: gricad-registry.univ-grenoble-alpes.fr/kubernetes-alpes/buildah:latest
+
+stages:
+  - build
+
+variables:
+  REGISTRY_LOGIN: buildah login -u gitlab-ci-token -p $CI_REGISTRY_PASSWORD
+  REGISTRY_LOGOUT: buildah logout
+  IMAGE_BUILD: buildah build-using-dockerfile --storage-driver vfs --format docker
+  IMAGE_PUSH: buildah push --storage-driver vfs
+
+before_script:
+- $REGISTRY_LOGIN $CI_REGISTRY
+
+after_script:
+- $REGISTRY_LOGOUT $CI_REGISTRY
+
+build:
+  stage: build
+  variables:
+    DOCKERFILE: Dockerfile
+    IMAGE_NAME: $CI_REGISTRY_IMAGE/ws-availability:$CI_COMMIT_SHORT_SHA
+  script:
+    - $IMAGE_BUILD --file $DOCKERFILE $BUILD_ARG --tag $IMAGE_NAME .
+    - $IMAGE_PUSH  $IMAGE_NAME $IMAGE_NAME
+
