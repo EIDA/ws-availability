@@ -1,5 +1,4 @@
 VERSION = "1.0.0"
-MAIN_VERSION = VERSION.split(".")[0]
 SCHEMA = "wsavailability"
 
 

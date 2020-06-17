@@ -3,9 +3,9 @@ import logging
 import os
 import re
 
-from flask import Flask, make_response, render_template, request
+from flask import Flask, make_response, render_template, redirect, request
 
-from apps.availability.constants import MAIN_VERSION, POST_PARAMS, VERSION
+from apps.availability.constants import POST_PARAMS, VERSION
 from apps.availability.root import availability
 from config import Config
 
@@ -33,7 +33,12 @@ app.logger.debug(
 # ********************** AVAILABILITY SERVICE ROUTES ***********************
 # **************************************************************************
 
-BASE_URL = "/%s" % MAIN_VERSION
+BASE_URL = "/" + VERSION.split(".")[0]
+
+
+@app.route("/", strict_slashes=False)
+def root():
+    return redirect(BASE_URL, code=301)
 
 
 @app.route(BASE_URL + "/query", methods=["GET"])
@@ -91,14 +96,13 @@ def availability_wadl():
     return response
 
 
-@app.route(BASE_URL + "/version", strict_slashes=False)
+@app.route(BASE_URL + "/version")
 def version():
     response = make_response(VERSION)
     response.headers["Content-Type"] = "text/plain"
     return response
 
 
-@app.route("/", strict_slashes=False)
 @app.route(BASE_URL, strict_slashes=False)
 @app.route(BASE_URL + "/local=fr")
 def availability_doc():
