@@ -3,7 +3,7 @@ import logging
 import os
 import re
 
-from flask import Flask, make_response, render_template, redirect, request
+from flask import Flask, make_response, render_template, request
 
 from apps.availability.constants import POST_PARAMS, VERSION
 from apps.availability.root import availability
@@ -33,20 +33,13 @@ app.logger.debug(
 # ********************** AVAILABILITY SERVICE ROUTES ***********************
 # **************************************************************************
 
-BASE_URL = "/" + VERSION.split(".")[0]
 
-
-@app.route("/", strict_slashes=False)
-def root():
-    return redirect(BASE_URL, code=301)
-
-
-@app.route(BASE_URL + "/query", methods=["GET"])
+@app.route("/query", methods=["GET"])
 def availability_root_get():
     return availability(request, paramslist=[request])
 
 
-@app.route(BASE_URL + "/query", methods=["POST"])
+@app.route("/query", methods=["POST"])
 def availability_root_post():
     rows = list()
     params = dict()
@@ -78,17 +71,17 @@ def availability_root_post():
     return availability(request, paramslist)
 
 
-@app.route(BASE_URL + "/extent", methods=["GET"])
+@app.route("/extent", methods=["GET"])
 def extent_get():
     return availability_root_get()
 
 
-@app.route(BASE_URL + "/extent", methods=["POST"])
+@app.route("/extent", methods=["POST"])
 def extent_post():
     return availability_root_post()
 
 
-@app.route(BASE_URL + "/application.wadl")
+@app.route("/application.wadl")
 def availability_wadl():
     template = render_template("ws-availability.wadl.xml")
     response = make_response(template)
@@ -96,24 +89,24 @@ def availability_wadl():
     return response
 
 
-@app.route(BASE_URL + "/version")
+@app.route("/version")
 def version():
     response = make_response(VERSION)
     response.headers["Content-Type"] = "text/plain"
     return response
 
 
-@app.route(BASE_URL, strict_slashes=False)
-@app.route(BASE_URL + "/local=fr")
+@app.route("/")
+@app.route("/local=fr")
 def availability_doc():
     return render_template("availability_doc.html")
 
 
-@app.route(BASE_URL + "/local=en")
+@app.route("/local=en")
 def availability_doc_en():
     return render_template("availability_doc_en.html")
 
 
 # **** MAIN ****
 if __name__ == "__main__":
-    app.run(host="0.0.0.0")
+    app.run()
