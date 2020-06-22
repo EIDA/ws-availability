@@ -22,10 +22,10 @@ Then :
 wget -O - http://localhost:8000/1/application.wadl
 ```
 
-Run it in debug mode with flask :
+Run it in debug mode with flask:
 
 ```
-docker run --rm --name ws-availability -e RUNMODE=production -e FLASK_APP=start.py ws-availability flask run
+RUNMODE=test FLASK_APP=start.py flask run
 ```
 
 ## RUNMODE builtin values
