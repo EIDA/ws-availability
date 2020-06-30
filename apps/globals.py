@@ -17,6 +17,8 @@ MAX_ROWS = "2_500_000"
 MAX_DATA_ROWS = int(MAX_ROWS.replace(",", ""))
 MAX_MERGEGAPS = 10000000000
 SCHEMAVERSION = "1.0"  # schemaVersion string of the json format
+DOCUMENTATION_URI = "http://ws.resif.fr/fdsnws/availability/1/"
+SERVICE = "fdsnws-availability"
 
 
 class Error:
