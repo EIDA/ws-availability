@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -7,7 +8,7 @@ from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
 
 import psycopg2
-from flask import make_response, jsonify
+from flask import current_app, jsonify, make_response
 
 from apps.availability.constants import SCHEMA
 from apps.globals import Error, MAX_DATA_ROWS, SCHEMAVERSION
@@ -15,14 +16,13 @@ from apps.utils import overflow_error
 from apps.utils import tictac
 
 
-END = 7
+QUALITY = 4
+SAMPLERATE = 5
 START = 6
+END = 7
+UPDATED = 8
 STATUS = 9
 COUNT = 10  # timespancount
-UPDATE = 8
-SAMPLERATE = 5
-QUALITY = 4
-LOCATION = 2
 
 
 def get_max_rows(params):
@@ -70,17 +70,18 @@ def sql_request(paramslist):
 
 
 def collect_data(params):
-    """ Connect to the PostgreSQL RESIF database """
+    """ Get the result of the SQL query. """
+
     tic = time.time()
     data = list()
     logging.debug("Start collecting data...")
-    with psycopg2.connect(os.getenv("PG_DBURI")) as conn:
+    with psycopg2.connect(current_app.config["DATABASE_URI"]) as conn:
         logging.debug(conn.get_dsn_parameters())
         logging.debug(f"Postgres version : {conn.server_version}")
         with conn.cursor() as curs:
-            SQL_SELECT = sql_request(params)
-            curs.execute(SQL_SELECT)
-            logging.debug(f"{SQL_SELECT}")
+            select = sql_request(params)
+            logging.debug(select)
+            curs.execute(select)
             logging.debug(curs.statusmessage)
             for row in curs.fetchall():
                 if not params[0]["includerestricted"] and row[STATUS] == "RESTRICTED":
@@ -157,13 +158,35 @@ def records_to_text(params, data, sep=" "):
 
 
 def records_to_dictlist(params, data):
+    """ Create json output according to the fdsnws specification schema:
+    http://www.fdsn.org/webservices/fdsnws-availability-1.0.schema.json """
+
+    dictlist = dict()
     header = get_header(params)
-    dictlist = []
-    for row in data:
-        dictlist.append({k: r for k, r in zip(header, row)})
+    header = [h.lower() for h in header]
+    if params["extent"]:
+        header[header.index("timespans")] = "timespanCount"
+        for n, row in enumerate(data):
+            dictlist[n] = {h: r for h, r in zip(header, row)}
+    else:
+        n = -1
+        prev_row = data[0]
+        for row in data:
+            if not dictlist or row[:START] != prev_row[:START]:
+                m = 0
+                n = n + 1
+                dictlist[n] = {h: r for h, r in zip(header[:START], row[:START])}
+                dictlist[n]["timespans"] = dict()
+                if params["showlastupdate"]:
+                    dictlist[n]["updated"] = row[UPDATED]
+            else:
+                m = m + 1
+            dictlist[n]["timespans"][m] = {0: row[START], 1: row[END]}
+            prev_row = row
+
     return {
         "created": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-        "schemaVersion": SCHEMAVERSION,
+        "version": SCHEMAVERSION,
         "datasources": dictlist,
     }
 
@@ -175,9 +198,9 @@ def sort_records(params, data):
         elif params["extent"] and params["orderby"] == "timespancount_desc":
             data.sort(key=lambda x: x[COUNT], reverse=True)
         elif params["orderby"] == "latestupdate":
-            data.sort(key=lambda x: x[UPDATE])
+            data.sort(key=lambda x: x[UPDATED])
         elif params["orderby"] == "latestupdate_desc":
-            data.sort(key=lambda x: x[UPDATE], reverse=True)
+            data.sort(key=lambda x: x[UPDATED], reverse=True)
         else:
             data.sort(key=lambda x: (x[QUALITY], x[SAMPLERATE]))
             data.sort(key=lambda x: (x[START], x[END]), reverse=True)
@@ -185,14 +208,14 @@ def sort_records(params, data):
 
 
 #    else:
-#        data.sort(key=lambda x: x[:UPDATE])
+#        data.sort(key=lambda x: x[:UPDATED])
 
 
 def select_columns(params, data):
     tic = time.time()
     indexes = get_indexes(params) + [START, END]
     if params["showlastupdate"]:
-        indexes = indexes + [UPDATE]
+        indexes = indexes + [UPDATED]
     if params["extent"]:
         indexes = indexes + [COUNT, STATUS]
     if params["format"] == "request":
@@ -208,8 +231,12 @@ def select_columns(params, data):
 
         if params["format"] != "request":
             if params["showlastupdate"]:
-                row[UPDATE] = row[UPDATE].isoformat(timespec="microseconds") + "Z"
-        row[:] = [str(row[i]) for i in indexes]
+                row[UPDATED] = row[UPDATED].isoformat(timespec="seconds") + "Z"
+
+        if params["format"] != "json":
+            row[:] = [str(row[i]) for i in indexes]
+        else:
+            row[:] = [row[i] for i in indexes]
 
     logging.debug(f"Columns selection in {tictac(tic)} seconds.")
     return data
@@ -227,7 +254,7 @@ def fusion(params, data, indexes):
     tol = params["mergegaps"] if params["mergegaps"] is not None else 0.0
 
     # The fusion step needs the rows to be sorted.
-    #    data.sort(key=lambda x: x[:UPDATE]) # done by postgres
+    #    data.sort(key=lambda x: x[:UPDATED]) # done by postgres
 
     for row in data:
         if merge and [row[i] for i in indexes] == [merge[-1][i] for i in indexes]:
@@ -242,8 +269,8 @@ def fusion(params, data, indexes):
             merge[-1][COUNT] = timespancount
 
             if params["extent"] or sametrace:
-                if row[UPDATE] > merge[-1][UPDATE]:
-                    merge[-1][UPDATE] = row[UPDATE]
+                if row[UPDATED] > merge[-1][UPDATED]:
+                    merge[-1][UPDATED] = row[UPDATED]
                 # if row[START] < merge[-1][START]:  # never occurs if sorted
                 #    merge[-1][START] = row[START]
                 if row[END] > merge[-1][END]:
@@ -282,8 +309,6 @@ def get_response(params, data):
         response = make_response(records_to_text(params, data), headers)
     elif params["format"] == "request":
         response = make_response(records_to_text(params, data), headers)
-    elif params["format"] == "sync":
-        response = make_response(records_to_text(params, data, "|"), headers)
     elif params["format"] == "geocsv":
         headers = {"Content-Disposition": f"attachment; filename={fname}.csv"}
         response = make_response(records_to_text(params, data, "|"), headers)
@@ -296,13 +321,16 @@ def get_response(params, data):
         response = make_response(tmp_zip.read(), headers)
         response.headers["Content-type"] = "application/x-zip-compressed"
     elif params["format"] == "json":
-        response = jsonify(records_to_dictlist(params, data))
+        headers = {"Content-type": "application/json"}
+        response = make_response(
+            json.dumps(records_to_dictlist(params, data), sort_keys=False), headers
+        )
     logging.debug(f"Response built in {tictac(tic)} seconds.")
     return response
 
 
 def get_output(validparamslist):
-    """Availability output (geocsv, json, request, sync, text, zip)
+    """Availability output (geocsv, json, request, text, zip)
     :param validparamslist: List of validated parameter dictionaries.
     :returns: text, json or csv with data availability"""
 

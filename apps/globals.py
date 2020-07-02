@@ -1,6 +1,6 @@
 STRING_TRUE = ("yes", "true", "t", "y", "1", "")
 STRING_FALSE = ("no", "false", "f", "n", "0")
-SHOW = ("latestupdate", "timespancount")
+SHOW = "latestupdate"
 MERGE = ("quality", "samplerate", "overlap")
 ORDERBY = (
     "nslc_time_quality_samplerate",
@@ -9,14 +9,14 @@ ORDERBY = (
     "latestupdate",
     "latestupdate_desc",
 )
-OUTPUT = ("geocsv", "json", "request", "sync", "text", "zip")
+OUTPUT = ("geocsv", "json", "request", "text", "zip")
 NODATA_CODE = ("204", "404")
 TIMEOUT = 120
 MAX_DAYS_AVAILABILITY = 10 ** 9 - 1
 MAX_ROWS = "2_500_000"
 MAX_DATA_ROWS = int(MAX_ROWS.replace(",", ""))
 MAX_MERGEGAPS = 10000000000
-SCHEMAVERSION = "1.0"  # schemaVersion string of the json format
+SCHEMAVERSION = 1.0  # version string of the json format
 DOCUMENTATION_URI = "http://ws.resif.fr/fdsnws/availability/1/"
 SERVICE = "fdsnws-availability"
 
@@ -49,7 +49,7 @@ class Error:
     TIME = "Bad date value: "
     ROWLIMIT = "The limit parameter must be an integer." + BAD_VAL
     MERGE = f"Accepted merge values are: {MERGE}." + BAD_VAL
-    SHOW = f"Accepted show values are: {SHOW}." + BAD_VAL
+    SHOW = f"Accepted show values: {SHOW}." + BAD_VAL
     ORDERBY = f"Accepted orderby values are: {ORDERBY}." + BAD_VAL
     MERGEGAPS = (
         f"The mergegaps parameter must be a float inside range [0, {MAX_MERGEGAPS}]."
