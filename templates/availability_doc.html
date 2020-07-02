@@ -4,19 +4,22 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>RESIF: RESIFWS: Availability Docs: v 1.0</title>
+  <title>RESIF: RESIFWS: Availability Docs: v1</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
       span.underline{text-decoration: underline;}
       div.column{display: inline-block; vertical-align: top; width: 50%;}
   </style>
-<link rel="stylesheet" href="./static/resifws.css"/>
-<a href="./local=en"> <img src="./static/images/en.png" alt="Français - Anglais"> </a>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+<link rel="stylesheet" href="../static/resifws.css"/>
+<a href="local=en"> <img src="../static/images/en.png" alt="Français - Anglais"> </a>
 </head>
 <body>
-<p style="text-align:center"> <img src="./static/images/logoresif.png" alt="logoresif" width="341" height="95"></p>
-<h1 id="webservice-fdsn-availability">Webservice FDSN availability</h1>
+<p style="text-align:center;"> <img src="../static/images/logoresif.png" alt="logoresif" width="341" height="95"></p>
+<h1 id="resif-dc-availability-fdsn-web-service-documentation">RESIF DC availability FDSN Web Service Documentation</h1>
 <h2 id="description">Description</h2>
 <p>Ce webservice donne la disponibilité des enregistrements sismiques du centre d’archivage du réseau RESIF. Il fournit des informations sous forme de plages temporelles détaillées.</p>
 <p>Il y a deux méthodes de requêtes pour ce service :</p>
@@ -42,7 +45,7 @@ date-range-options   ::  [starttime=&lt;date|duration&gt;] &amp; [endtime=&lt;da
 merge-options        ::  [merge=&lt;quality|samplerate|overlap&gt;]
 sort-options         ::  [orderby=&lt;NSLC_TIME_QUALITY_SAMPLERATE|timespancount|timespancount_desc|latestupdate|latestupdate_desc&gt;]
 display-options      ::  [includerestricted=&lt;true|FALSE&gt;] &amp; [limit=&lt;number&gt;]
-format-options       ::  [format=&lt;TEXT|geocsv|json|request|sync|zip&gt;]</code></pre>
+format-options       ::  [format=&lt;TEXT|geocsv|json|request|zip&gt;]</code></pre>
 <h1 id="query-usage">/query usage</h1>
 <pre><code>/query? [channel-options] [date-range-options] [merge-options] [sort-options] [display-options] [format-options]
 
@@ -53,17 +56,17 @@ date-range-options   ::  [starttime=&lt;date|duration&gt;] &amp; [endtime=&lt;da
 merge-options        ::  [merge=&lt;quality|samplerate|overlap&gt;] &amp; [mergegaps=&lt;number&gt;]
 sort-options         ::  [orderby=&lt;NSLC_TIME_QUALITY_SAMPLERATE|latestupdate|latestupdate_desc&gt;]
 display-options      ::  [show=&lt;latestupdate&gt;] &amp; [includerestricted=&lt;true|FALSE&gt;] &amp; [limit=&lt;number&gt;]
-format-options       ::  [format=&lt;TEXT|geocsv|json|request|sync|zip&gt;]
+format-options       ::  [format=&lt;TEXT|geocsv|json|request|zip&gt;]
 
 
 les valeurs par défaut sont en majuscules</code></pre>
 <h2 id="exemples-de-requêtes">Exemples de requêtes</h2>
 <h3 id="avec-extent">avec /extent</h3>
-<p><a href="http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01">http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01</a></p>
-<p><a href="http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&show=latestupdate&orderby=timespancount">http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;show=latestupdate&amp;orderby=timespancount</a></p>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&end=2018-11-15">http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;end=2018-11-15</a></p>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&end=2018-11-15&show=latestupdate&orderby=timespancount">http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;end=2018-11-15&amp;show=latestupdate&amp;orderby=timespancount</a></p>
 <h3 id="avec-query">avec /query</h3>
-<p><a href="http://ws.resif.fr/fdsnws/availability/1/query?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01">http://ws.resif.fr/fdsnws/availability/1/query?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01</a></p>
-<p><a href="http://ws.resif.fr/fdsnws/availability/1/query?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&merge=samplerate&mergegaps=36000">http://ws.resif.fr/fdsnws/availability/1/query?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;merge=samplerate&amp;mergegaps=36000</a></p>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/query?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&end=2018-11-15">http://ws.resif.fr/fdsnws/availability/1/query?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;end=2018-11-15</a></p>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/query?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&end=2018-11-15&merge=samplerate&mergegaps=36000">http://ws.resif.fr/fdsnws/availability/1/query?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;end=2018-11-15&amp;merge=samplerate&amp;mergegaps=36000</a></p>
 <h2 id="descriptions-détaillées-de-chaque-paramètre-de-la-requête">Descriptions détaillées de chaque paramètre de la requête</h2>
 <h3 id="format-autorisé-pour-la-station">Format autorisé pour la station</h3>
 <p>Les quatre paramètres (network, station, location, channel) déterminent les canaux d’intérêt.</p>
@@ -123,10 +126,10 @@ les valeurs par défaut sont en majuscules</code></pre>
 <p>Par exemple, pour le code des canaux : channel=EH?,BHZ</p>
 <h4 id="détails-sur-la-nomenclature-des-codes">Détails sur la nomenclature des codes</h4>
 <ul>
-<li>NETWORK : 1 à 2 caractères alphanumériques. Un groupe de points de mesures.</li>
-<li>STATION : 1 à 5 caractères alphanumériques. Un site de mesure dans un réseau.</li>
-<li>CHANNEL : 3 caractères alphanumériques. Le premier caractère indique la bande de fréquence du capteur, le second le type de l'instrument et le troisième l'orientation physique.</li>
-<li>LOCATION : 2 caractères alphanumériques. Ils permettent de distinguer plusieurs flux de données d'un même canal.</li>
+<li>NETWORK = 1 à 2 caractères alphanumériques. Un groupe de points de mesures.</li>
+<li>STATION = 1 à 5 caractères alphanumériques. Un site de mesure dans un réseau.</li>
+<li>CHANNEL = 3 caractères qui désignent : la fréquence d’échantillonnage et la bande de fréquence du capteur, le type de l’instrument, l’orientation physique de la composante.</li>
+<li>LOCATION = 2 caractères qui permettent de distinguer plusieurs flux de données d’un même canal</li>
 </ul>
 <h3 id="formats-autorisés-pour-lintervalle-de-temps">Formats autorisés pour l’intervalle de temps</h3>
 <p>La définition de l’intervalle de temps peut prendre différentes formes :</p>
@@ -272,7 +275,7 @@ les valeurs par défaut sont en majuscules</code></pre>
 <tr class="odd">
 <td style="text-align: left;">format</td>
 <td style="text-align: left;">json</td>
-<td style="text-align: left;">Format de sortie. Valeurs autorisées : text (par défaut, avec les entêtes), geocsv, json, sync, request et zip.</td>
+<td style="text-align: left;">Format de sortie. Valeurs autorisées : text (par défaut, avec les entêtes), geocsv, json, request et zip.</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">includerestricted</td>

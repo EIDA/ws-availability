@@ -56,7 +56,6 @@
                 <option value="text"/>
                 <option value="json"/>
                 <option value="request"/>
-                <option value="sync"/>
                 <option value="zip"/>
             </param>
             <param name="orderby" style="query" type="xsd:string">
@@ -116,7 +115,6 @@
                 <option value="text"/>
                 <option value="json"/>
                 <option value="request"/>
-                <option value="sync"/>
                 <option value="zip"/>
             </param>
             <param name="orderby" style="query" type="xsd:string">
