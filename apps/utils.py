@@ -120,8 +120,7 @@ def error_param(params, dmesg):
 # Error request function
 def error_request(msg=" ", details=" ", code=" "):
     request_date = datetime.utcnow().strftime("%Y-%b-%d %H:%M:%S UTC")
-    message_error = f"""Error {code}: {msg}\n
-{details}\n
+    message_error = f"""Error {code}: {details}\n
 Usage details are available from {DOCUMENTATION_URI}\n
 Request:
 {request.url}\n
