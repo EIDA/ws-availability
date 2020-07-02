@@ -9,7 +9,6 @@ class Config:
     Each parameter can be overriden directly by an environment variable.
     """
 
-    PGHOST = PGUSER = PGPORT = PGDATABASE = ""
     RUNMODE = os.environ.get("RUNMODE")
     if RUNMODE == "production":
         PGHOST = "resif-pgprod.u-ga.fr"
@@ -27,10 +26,9 @@ class Config:
         PGUSER = os.environ.get("PGUSER") or PGUSER
         PGPORT = os.environ.get("PGPORT") or PGPORT
         PGDATABASE = os.environ.get("PGDATABASE") or PGDATABASE
-        os.environ["PG_DBURI"] = f"postgresql://{PGUSER}@{PGHOST}:{PGPORT}/{PGDATABASE}"
-    except NameError as ne:
-        print(ne)
+    except NameError:
         print(
             "Missing environment variables. Either RUNMODE=(test|production) or PGHOST, PGUSER, PGPORT and PGDATABASE should be set."
         )
         raise
+    DATABASE_URI = f"postgresql://{PGUSER}@{PGHOST}:{PGPORT}/{PGDATABASE}"

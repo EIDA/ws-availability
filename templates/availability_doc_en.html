@@ -4,19 +4,22 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>RESIF: RESIFWS: Availability Docs: v 1.0</title>
+  <title>RESIF: RESIFWS: Availability Docs: v1</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
       span.underline{text-decoration: underline;}
       div.column{display: inline-block; vertical-align: top; width: 50%;}
   </style>
-<link rel="stylesheet" href="./static/resifws.css"/>
-<a href="./local=fr"> <img src="./static/images/fr.png" alt="Anglais - Français"> </a>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+<link rel="stylesheet" href="../static/resifws.css"/>
+<a href="local=fr"> <img src="../static/images/fr.png" alt="Anglais - Français"> </a>
 </head>
 <body>
-<p style="text-align:center"> <img src="./static/images/logoresif.png" alt="logoresif" width="341" height="95"></p>
-<h1 id="webservice-fdsn-availability">Webservice FDSN availability</h1>
+<p style="text-align:center;"> <img src="../static/images/logoresif.png" alt="logoresif" width="341" height="95"></p>
+<h1 id="documentation-du-webservice-fdsn-availability-de-resif">Documentation du Webservice FDSN availability de RESIF</h1>
 <h2 id="description">Description</h2>
 <p>The availability web service returns detailed time span information of what time series data is available at the RESIF data center archive. Only unrestricted data are available.</p>
 <p>There are two service query methods:</p>
@@ -42,7 +45,7 @@ date-range-options   ::  [starttime=&lt;date|duration&gt;] &amp; [endtime=&lt;da
 merge-options        ::  [merge=&lt;quality|samplerate|overlap&gt;]
 sort-options         ::  [orderby=&lt;NSLC_TIME_QUALITY_SAMPLERATE|timespancount|timespancount_desc|latestupdate|latestupdate_desc&gt;]
 display-options      ::  [includerestricted=&lt;true|FALSE&gt;] &amp; [limit=&lt;number&gt;]
-format-options       ::  [format=&lt;TEXT|geocsv|json|request|sync|zip&gt;]</code></pre>
+format-options       ::  [format=&lt;TEXT|geocsv|json|request|zip&gt;]</code></pre>
 <h1 id="query-usage-1">/query usage</h1>
 <pre><code>/query? [channel-options] [date-range-options] [merge-options] [sort-options] [display-options] [format-options]
 
@@ -53,19 +56,19 @@ date-range-options   ::  [starttime=&lt;date|duration&gt;] &amp; [endtime=&lt;da
 merge-options        ::  [merge=&lt;quality|samplerate|overlap&gt;] &amp; [mergegaps=&lt;number&gt;]
 sort-options         ::  [orderby=&lt;NSLC_TIME_QUALITY_SAMPLERATE|latestupdate|latestupdate_desc&gt;]
 display-options      ::  [show=&lt;latestupdate&gt;] &amp; [includerestricted=&lt;true|FALSE&gt;] &amp; [limit=&lt;number&gt;]
-format-options       ::  [format=&lt;TEXT|geocsv|json|request|sync|zip&gt;]
+format-options       ::  [format=&lt;TEXT|geocsv|json|request|zip&gt;]
 
 
 default values are uppercase</code></pre>
 <h2 id="sample-queries">Sample Queries</h2>
 <h3 id="with-extent">with /extent</h3>
-<p><a href="http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01">http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01</a></p>
-<p><a href="http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&show=latestupdate&orderby=timespancount">http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;show=latestupdate&amp;orderby=timespancount</a></p>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&end=2018-11-15">http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;end=2018-11-15</a></p>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&end=2018-11-15&show=latestupdate&orderby=timespancount">http://ws.resif.fr/fdsnws/availability/1/extent?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;end=2018-11-15&amp;show=latestupdate&amp;orderby=timespancount</a></p>
 <h3 id="with-query">with /query</h3>
-<p><a href="http://ws.resif.fr/fdsnws/availability/1/query?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01">http://ws.resif.fr/fdsnws/availability/1/query?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01</a></p>
-<p><a href="http://ws.resif.fr/fdsnws/availability/1/query?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&merge=samplerate&mergegaps=36000">http://ws.resif.fr/fdsnws/availability/1/query?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;merge=samplerate&amp;mergegaps=36000</a></p>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/query?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&end=2018-11-15">http://ws.resif.fr/fdsnws/availability/1/query?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;end=2018-11-15</a></p>
+<p><a href="http://ws.resif.fr/fdsnws/availability/1/query?net=FR&sta=CREF,OGCE&cha=EH?&start=2018-01-01&end=2018-11-15&merge=samplerate&mergegaps=36000">http://ws.resif.fr/fdsnws/availability/1/query?net=FR&amp;sta=CREF,OGCE&amp;cha=EH?&amp;start=2018-01-01&amp;end=2018-11-15&amp;merge=samplerate&amp;mergegaps=36000</a></p>
 <h2 id="detailed-descriptions-of-each-query-parameter">Detailed descriptions of each query parameter</h2>
-<h3 id="station-codes-details">Station code details</h3>
+<h3 id="station-code-details">Station code details</h3>
 <p>The four parameters (network, station, location, channel) determine channels of interest.</p>
 <table>
 <thead>
@@ -250,7 +253,7 @@ default values are uppercase</code></pre>
 <tr class="odd">
 <td style="text-align: left;">format</td>
 <td style="text-align: left;">json</td>
-<td style="text-align: left;">Specify output format. Accepted values are text (the default), json, sync, request and zip.</td>
+<td style="text-align: left;">Specify output format. Accepted values are text (the default), json, request and zip.</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">includerestricted</td>

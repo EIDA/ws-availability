@@ -7,12 +7,14 @@ from datetime import datetime, timedelta
 
 from flask import Response, request
 
+from apps.globals import DOCUMENTATION_URI
 from apps.globals import Error
 from apps.globals import HTTP
 from apps.globals import MERGE
 from apps.globals import NODATA_CODE
 from apps.globals import ORDERBY
 from apps.globals import OUTPUT
+from apps.globals import SERVICE
 from apps.globals import SHOW
 from apps.globals import STRING_FALSE
 from apps.globals import STRING_TRUE
@@ -118,12 +120,15 @@ def error_param(params, dmesg):
 # Error request function
 def error_request(msg=" ", details=" ", code=" "):
     request_date = datetime.utcnow().strftime("%Y-%b-%d %H:%M:%S UTC")
-    message_error = f"Error {code}: {msg} Please mention your request URL when asking for support\n\n\
-    More Details: {details}\n\n\
-    Request: {request.url}\n\
-    Request Submitted: {request_date} \n\
-    Service version: version {VERSION}"
-    return Response(message_error, status=code, mimetype="*/*")
+    message_error = f"""Error {code}: {details}\n
+Usage details are available from {DOCUMENTATION_URI}\n
+Request:
+{request.url}\n
+Request Submitted:
+{request_date}\n
+Service version:
+Service: {SERVICE}  version:{VERSION}"""
+    return Response(message_error, status=code, mimetype="text/plain")
 
 
 # Error 413 response alias

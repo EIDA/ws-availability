@@ -19,15 +19,7 @@ logging.basicConfig(format=fmt, level=loglevel)
 app.config.from_object(Config)
 if app.config["RUNMODE"]:
     app.logger.debug("Configuration set with RUNMODE=%s", app.config["RUNMODE"])
-
-# with FLASK_ENV=development
-app.logger.debug(
-    "Database URI : postgres://%s@%s:%s/%s",
-    app.config["PGUSER"],
-    app.config["PGHOST"],
-    app.config["PGPORT"],
-    app.config["PGDATABASE"],
-)
+app.logger.debug("Database URI : %s", app.config["DATABASE_URI"])
 
 # **************************************************************************
 # ********************** AVAILABILITY SERVICE ROUTES ***********************

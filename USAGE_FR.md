@@ -37,7 +37,7 @@ Au moins une station ou un réseau doit être précisé.
     merge-options        ::  [merge=<quality|samplerate|overlap>]
     sort-options         ::  [orderby=<NSLC_TIME_QUALITY_SAMPLERATE|timespancount|timespancount_desc|latestupdate|latestupdate_desc>]
     display-options      ::  [includerestricted=<true|FALSE>] & [limit=<number>]
-    format-options       ::  [format=<TEXT|geocsv|json|request|sync|zip>]
+    format-options       ::  [format=<TEXT|geocsv|json|request|zip>]
 
 
 # /query usage
@@ -51,7 +51,7 @@ Au moins une station ou un réseau doit être précisé.
     merge-options        ::  [merge=<quality|samplerate|overlap>] & [mergegaps=<number>]
     sort-options         ::  [orderby=<NSLC_TIME_QUALITY_SAMPLERATE|latestupdate|latestupdate_desc>]
     display-options      ::  [show=<latestupdate>] & [includerestricted=<true|FALSE>] & [limit=<number>]
-    format-options       ::  [format=<TEXT|geocsv|json|request|sync|zip>]
+    format-options       ::  [format=<TEXT|geocsv|json|request|zip>]
 
 
     les valeurs par défaut sont en majuscules
@@ -158,7 +158,7 @@ Le second exemple désigne les 2 dernières heures avant minuit (heure UTC) du j
 
 | Paramètre  | Exemples | Discussion                                                                                                |
 | :--------- | :------- | :-------------------------------------------------------------------------------------------------------- |
-| format     | json    | Format de sortie. Valeurs autorisées : text (par défaut, avec les entêtes), geocsv, json, sync, request et zip.  |
+| format     | json    | Format de sortie. Valeurs autorisées : text (par défaut, avec les entêtes), geocsv, json, request et zip.  |
 | includerestricted     | false | Affiche ou non les données restreintes.                                                                 |
 | limit      | integer  | Limite le nombre de lignes en sortie.                                                                           |
 
