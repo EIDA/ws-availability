@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import re
 import time
 import zipfile
@@ -8,7 +7,7 @@ from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
 
 import psycopg2
-from flask import current_app, jsonify, make_response
+from flask import current_app, make_response
 
 from apps.availability.constants import SCHEMA
 from apps.globals import Error, MAX_DATA_ROWS, SCHEMAVERSION
