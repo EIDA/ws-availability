@@ -21,10 +21,9 @@ class Parameters:
         self.mergegaps = None
         self.orderby = None
         self.show = ""
-        self.rowlimit = None
-        self.format = "text"
+        self.limit = None
         self.includerestricted = "f"
-        self.format = None
+        self.format = "text"
         self.nodata = "204"
         self.constraints = {
             "booleans": ["includerestricted"],
