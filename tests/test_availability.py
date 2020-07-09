@@ -6,6 +6,7 @@ from datetime import datetime
 sys.path.append("../")
 
 from apps.globals import Error, HTTP
+from apps.root import check_parameters
 from apps.utils import error_param
 from apps.utils import is_valid_integer
 from apps.utils import is_valid_float
@@ -15,7 +16,6 @@ from apps.utils import is_valid_station
 from apps.utils import is_valid_location
 from apps.utils import is_valid_channel
 from apps.utils import is_valid_bool_string
-from apps.availability.model import check_parameters
 
 
 class MyTest(unittest.TestCase):
@@ -122,6 +122,11 @@ class MyTest(unittest.TestCase):
         p1["includerestricted"] = "F"
         p1["nodata"] = "204"
         p1["base_url"] = "/extent"
+        p1["constraints"] = {
+            "booleans": ["includerestricted"],
+            "floats": [],
+            "not_none": [],
+        }
 
         valid_param = {"msg": HTTP._200_, "details": Error.VALID_PARAM, "code": 200}
 

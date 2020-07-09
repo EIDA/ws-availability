@@ -12,7 +12,7 @@ ORDERBY = (
 OUTPUT = ("geocsv", "json", "request", "text", "zip")
 NODATA_CODE = ("204", "404")
 TIMEOUT = 120
-MAX_DAYS_AVAILABILITY = 10 ** 9 - 1
+MAX_DAYS = None
 MAX_ROWS = "2_500_000"
 MAX_DATA_ROWS = int(MAX_ROWS.replace(",", ""))
 MAX_MERGEGAPS = 10000000000
@@ -22,14 +22,13 @@ SERVICE = "fdsnws-availability"
 
 
 class Error:
-    LEN_ARGS = "Too much arguments in URL."
     UNKNOWN_PARAM = "Unknown query parameter: "
-    MULTI_PARAM = "Duplicate query parameter: "
-    VALID_PARAM = "Valid parameters. "
+    MULTI_PARAM = " Multiple entries for query parameter: "
+    VALID_PARAM = "Valid parameters."
     START_LATER = "The starttime cannot be later than the endtime: "
     TOO_LONG_DURATION = "Too many days requested (greater than "
     TOO_MUCH_ROWS = f"The request exceeds the limit of {MAX_ROWS} rows."
-    PROCESSING = "Error processing your request."
+    UNSPECIFIED = "Error processing your request."
     NO_CONNECTION = "No services could be discovered at http://ws.resif.fr.\n\
                   This could be due to a temporary service outage, an invalid FDSN service address,\n\
                   an inactive internet connection or a blocking firewall rule."

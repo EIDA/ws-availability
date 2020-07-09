@@ -9,8 +9,9 @@ from datetime import datetime, timedelta
 import psycopg2
 from flask import current_app, make_response
 
-from apps.availability.constants import SCHEMA
+from apps.constants import SCHEMA
 from apps.globals import Error, MAX_DATA_ROWS, SCHEMAVERSION
+from apps.utils import error_request
 from apps.utils import overflow_error
 from apps.utils import tictac
 
@@ -332,16 +333,20 @@ def get_output(validparamslist):
         tic = time.time()
         data = None
         response = None
+        params = validparamslist[0]
+
         data = collect_data(validparamslist)
+        if data is None:
+            return data
         if not data:
-            return data  # empty (no data) or None (error)
+            code = params["nodata"]
+            return error_request(msg=f"HTTP._{code}_", details=Error.NODATA, code=code)
 
         nrows = len(data)
         logging.info(f"Number of collected rows: {nrows}")
         if nrows > MAX_DATA_ROWS:
             return overflow_error(Error.TOO_MUCH_ROWS)
 
-        params = validparamslist[0]
         if params["mergegaps"] is not None or params["extent"]:
             data = fusion(params, data, get_indexes(params))
         data = data[: params["limit"]]

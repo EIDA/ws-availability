@@ -1,12 +1,12 @@
 import re
 import sys
 import time
-
 from difflib import SequenceMatcher
 from datetime import datetime, timedelta
 
 from flask import Response, request
 
+from apps.constants import VERSION
 from apps.globals import DOCUMENTATION_URI
 from apps.globals import Error
 from apps.globals import HTTP
@@ -18,8 +18,6 @@ from apps.globals import SERVICE
 from apps.globals import SHOW
 from apps.globals import STRING_FALSE
 from apps.globals import STRING_TRUE
-
-from apps.availability.constants import VERSION
 
 
 def is_valid_integer(dimension, mini=0, maxi=sys.maxsize):
@@ -143,58 +141,51 @@ def error_500(dmesg):
 
 # check request
 def check_request(request, params, alias):
+    keys = list(params.keys())
     for key, val in request.args.items():
-        if key not in params:
-            ratios = [SequenceMatcher(None, key, p).ratio() for p in params]
-            guess = max([(v, params[ind]) for ind, v in enumerate(ratios)])
+        if key not in keys:
+            ratios = [SequenceMatcher(None, key, p).ratio() for p in keys]
+            guess = max([(v, keys[ind]) for ind, v in enumerate(ratios)])
             hint = ". Did you mean " + guess[1] + " ?" if guess[0] > 0.7 else ""
-            return error_param(params, Error.UNKNOWN_PARAM + key + hint)
+            return error_param(keys, Error.UNKNOWN_PARAM + key + hint)
 
         # find nonword chars except :
         # "," for lists "*?" for wildcards and ".:-" for date
         if re.search(r"[^a-zA-Z0-9_,*?.:-]", val):
-            return error_param(params, Error.CHAR + key)
+            return error_param(keys, Error.CHAR + key)
 
-    for key in params:
+    for key in keys:
         if len(request.args.getlist(key)) > 1:
-            return error_param(params, Error.MULTI_PARAM + str(key))
+            return error_param(keys, Error.MULTI_PARAM + key)
 
     for key in alias:
         if len([v for v in key if v in request.args]) > 1:
-            return error_param(params, Error.MULTI_PARAM + str(key))
+            return error_param(keys, Error.MULTI_PARAM + " and is shorthand ".join(key))
 
-    return (params, {"msg": HTTP._200_, "details": Error.VALID_PARAM, "code": 200})
+    return (keys, {"msg": HTTP._200_, "details": Error.VALID_PARAM, "code": 200})
 
 
-def check_base_parameters(
-    params, max_days=None, not_none=None, booleans=None, floats=None
-):
-
-    if max_days is None:
-        max_days = 10 ** 9 - 1
+def check_base_parameters(params, max_days=None):
 
     # Search for missing mandatory parameters
-    if not_none is not None:
-        for key in not_none:
-            if params[key] is None:
-                return error_param(params, Error.MISSING + key)
+    for key in params["constraints"]["not_none"]:
+        if params[key] is None:
+            return error_param(params, Error.MISSING + key)
 
     # Boolean parameter validations
-    if booleans is not None:
-        for key in booleans:
-            val = params[key]
-            if not is_valid_bool_string(val):
-                return error_param(params, f"Invalid {key} value: {val} {Error.BOOL}.")
-            params[key] = True if val.lower() in STRING_TRUE else False
+    for key in params["constraints"]["booleans"]:
+        val = params[key]
+        if not is_valid_bool_string(val):
+            return error_param(params, f"Invalid {key} value: {val} {Error.BOOL}.")
+        params[key] = True if val.lower() in STRING_TRUE else False
 
     # Float parameter validations
-    if floats is not None:
-        for key in floats:
-            val = params[key]
-            if is_valid_float(val):
-                params[key] = float(val)
-            elif val is not None:
-                return error_param(params, f"Invalid {key} value: {val}")
+    for key in params["constraints"]["floats"]:
+        val = params[key]
+        if is_valid_float(val):
+            params[key] = float(val)
+        elif val is not None:
+            return error_param(params, f"Invalid {key} value: {val}")
 
     # Station validations
     if params["network"].lower() == "temporary":
@@ -250,7 +241,7 @@ def check_base_parameters(
             end = str(params["end"])
             return error_param(params, Error.START_LATER + start + " > " + end)
 
-        if params["end"] - params["start"] > timedelta(days=max_days):
+        if max_days and params["end"] - params["start"] > timedelta(days=max_days):
             return error_param(params, Error.TOO_LONG_DURATION + f"{max_days} days).")
 
     # Search for empty selection
