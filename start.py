@@ -5,8 +5,8 @@ import re
 
 from flask import Flask, make_response, render_template, request
 
-from apps.availability.constants import POST_PARAMS, VERSION
-from apps.availability.root import availability
+from apps.constants import POST_PARAMS, VERSION
+from apps.root import output
 from config import Config
 
 
@@ -28,7 +28,7 @@ app.logger.debug("Database URI : %s", app.config["DATABASE_URI"])
 
 @app.route("/query", methods=["GET"])
 def availability_root_get():
-    return availability(request, paramslist=[request])
+    return output(request, paramslist=[request])
 
 
 @app.route("/query", methods=["POST"])
@@ -60,7 +60,7 @@ def availability_root_post():
             if len(row) == 6:  # Per line start time and end time.
                 paramslist[-1].update({"start": row[4], "end": row[5]})
 
-    return availability(request, paramslist)
+    return output(request, paramslist)
 
 
 @app.route("/extent", methods=["GET"])
