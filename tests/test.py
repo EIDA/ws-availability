@@ -5,7 +5,8 @@ from datetime import datetime
 
 sys.path.append("../")
 
-from apps.globals import Error, HTTP
+from apps.globals import Error
+from apps.globals import HTTP
 from apps.root import check_parameters
 from apps.utils import error_param
 from apps.utils import is_valid_integer

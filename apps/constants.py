@@ -36,7 +36,7 @@ class Parameters:
 
 
 POST_PARAMS = [
-    k for k in Parameters().todict().keys() if k not in ("net", "sta", "cha", "loc")
+    k for k in Parameters().todict() if k not in ("net", "sta", "cha", "loc")
 ]
 
 ALIAS = [

@@ -1,9 +1,14 @@
+import io
 import logging
 import queue
+import re
 from multiprocessing import Process, Queue
+
+from flask import request
 
 from apps.constants import ALIAS
 from apps.constants import Parameters
+from apps.constants import POST_PARAMS
 from apps.globals import Error
 from apps.globals import HTTP
 from apps.globals import MAX_DATA_ROWS
@@ -32,7 +37,7 @@ def check_parameters(params):
     if error["code"] != 200:
         return (params, error)
 
-    params["extent"] = True if "/extent" in params["base_url"] else False
+    params["extent"] = bool("/extent" in params["base_url"])
 
     quality = params["quality"].split(",")
     for q in quality:
@@ -103,18 +108,19 @@ def check_parameters(params):
     return (params, {"msg": HTTP._200_, "details": Error.VALID_PARAM, "code": 200})
 
 
-def checks_get(request):
+def checks_get():
 
     # get default parameters
     params = Parameters().todict()
+    params["base_url"] = request.base_url
 
     # check if the parameters are unknown
-    (p, result) = check_request(request, params, ALIAS)
+    (p, result) = check_request(params, ALIAS)
     if result["code"] != 200:
         return (p, result)
 
     # determine selected features
-    params["base_url"] = request.base_url
+    params["request"] = tuple(request.args)
 
     for key, val in params.items():
         params[key] = request.args.get(key, val)
@@ -137,30 +143,57 @@ def checks_post(params):
     return check_parameters(params)
 
 
-def output(request, paramslist):
+def get_post_params():
+    rows = list()
+    params = dict()
+    paramslist = list()
+    code = ["network", "station", "location", "channel"]
+    # Universal newline decoding :
+    stream = io.StringIO(request.stream.read().decode("UTF8"), newline=None)
+    for row in stream:
+        row = row.strip()  # Remove leading and trailing whitespace.
+        row = re.sub(r"[\s]+", " ", row)
+        if re.search(r"[^a-zA-Z0-9_,* =?.:-]", row) is None:  # Is a valid row ?
+            if re.search(r"=", row):  # parameter=value pairs
+                key, val = row.replace(" ", "").split("=")
+                if key in POST_PARAMS:
+                    key = key.replace("starttime", "start").replace("endtime", "end")
+                    params[key] = val
+            else:
+                rows.append(row)
+    for row in rows:
+        row = row.split(" ")
+        if len(row) >= 4:
+            paramslist.append({code[i]: row[i] for i in range(0, 4)})
+            paramslist[-1].update(params)
+            if len(row) == 6:  # Per line start time and end time.
+                paramslist[-1].update({"start": row[4], "end": row[5]})
+    return paramslist
+
+
+def output():
 
     try:
         process = None
-        param_dic_list = list()
+        valid_param_dicts = list()
         result = {"msg": HTTP._400_, "details": Error.UNKNOWN_PARAM, "code": 400}
-        for pdic in paramslist:
-            if request.method == "POST":
-                # builds the full url corresponding to a line of post request (debug)
-                args = "&".join(["=".join(kv) for kv in list(pdic.items())])
-                logging.debug(request.base_url + "?" + args)
-                pdic["base_url"] = request.base_url
-                (pdic, result) = checks_post(pdic)
-            else:
-                logging.debug(request.url)
-                (pdic, result) = checks_get(request)
+        logging.debug(request.url)
 
+        if request.method == "POST":
+            for params in get_post_params():
+                params["base_url"] = request.base_url
+                (params, result) = checks_post(params)
+                if result["code"] == 200:
+                    valid_param_dicts.append(params)
+        else:
+            (params, result) = checks_get()
             if result["code"] == 200:
-                param_dic_list.append(pdic)
+                valid_param_dicts.append(params)
 
-        if param_dic_list:
+        if valid_param_dicts:
 
             def put_response(q):
-                q.put(get_output(param_dic_list))
+                q.put(get_output(valid_param_dicts))
 
             q = Queue()
             process = Process(target=put_response, args=(q,))

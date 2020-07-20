@@ -72,18 +72,18 @@ def is_valid_channel(channel):
     return re.match("([A-Za-z0-9*?]{1,3})$", channel) if channel else False
 
 
-def is_valid_quality(quality):
-    return re.match("[DMQR*?]{1}$", quality) if quality else False
-
-
 def is_valid_bool_string(string):
     if string is None:
         return False
-    return True if string.lower() in (STRING_TRUE + STRING_FALSE) else False
+    return bool(string.lower() in STRING_TRUE + STRING_FALSE)
 
 
 def is_valid_output(output):
     return output.lower() in OUTPUT if output else False
+
+
+def is_valid_quality(quality):
+    return re.match("[DMQR*?]{1}$", quality) if quality else False
 
 
 def is_valid_orderby(orderby):
@@ -116,9 +116,10 @@ def error_param(params, dmesg):
 
 
 # Error request function
-def error_request(msg=" ", details=" ", code=" "):
+def error_request(msg="", details="", code=500):
     request_date = datetime.utcnow().strftime("%Y-%b-%d %H:%M:%S UTC")
-    message_error = f"""Error {code}: {details}\n
+    message_error = f"""Error {code}: {msg}\n
+{details}\n
 Usage details are available from {DOCUMENTATION_URI}\n
 Request:
 {request.url}\n
@@ -134,13 +135,8 @@ def overflow_error(dmesg):
     return error_request(msg=HTTP._413_, details=dmesg, code=413)
 
 
-# Error 500 response alias
-def error_500(dmesg):
-    return error_request(msg=HTTP._500_, details=dmesg, code=500)
-
-
 # check request
-def check_request(request, params, alias):
+def check_request(params, alias):
     keys = list(params.keys())
     for key, val in request.args.items():
         if key not in keys:
@@ -177,7 +173,7 @@ def check_base_parameters(params, max_days=None):
         val = params[key]
         if not is_valid_bool_string(val):
             return error_param(params, f"Invalid {key} value: {val} {Error.BOOL}.")
-        params[key] = True if val.lower() in STRING_TRUE else False
+        params[key] = bool(val.lower() in STRING_TRUE)
 
     # Float parameter validations
     for key in params["constraints"]["floats"]:
@@ -196,18 +192,18 @@ def check_base_parameters(params, max_days=None):
     location = params["location"].split(",")
     channel = params["channel"].split(",")
 
-    for n in network:
-        if not is_valid_network(n):
-            return error_param(params, Error.NETWORK + n)
-    for s in station:
-        if not is_valid_station(s):
-            return error_param(params, Error.STATION + s)
-    for l in location:
-        if not is_valid_location(l):
-            return error_param(params, Error.LOCATION + l)
-    for c in channel:
-        if not is_valid_channel(c):
-            return error_param(params, Error.CHANNEL + c)
+    for net in network:
+        if not is_valid_network(net):
+            return error_param(params, Error.NETWORK + net)
+    for sta in station:
+        if not is_valid_station(sta):
+            return error_param(params, Error.STATION + sta)
+    for loc in location:
+        if not is_valid_location(loc):
+            return error_param(params, Error.LOCATION + loc)
+    for cha in channel:
+        if not is_valid_channel(cha):
+            return error_param(params, Error.CHANNEL + cha)
 
     # Start time and end time validations
     if params["start"] is not None:

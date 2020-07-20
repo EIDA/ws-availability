@@ -167,16 +167,17 @@ def records_to_dictlist(params, data):
     if params["extent"]:
         header[header.index("timespans")] = "timespanCount"
         for row in data:
-            dictlist.append({h: r for h, r in zip(header, row)})
+            dictlist.append(dict(zip(header, row)))
     else:
+        start = -3 if params["showlastupdate"] else -2
         prev_row = data[0]
         for row in data:
-            if not dictlist or row[:START] != prev_row[:START]:
-                dictlist.append({h: r for h, r in zip(header[:START], row[:START])})
-                dictlist[-1]["timespans"] = []
+            if not dictlist or row[:start] != prev_row[:start]:
+                dictlist.append(dict(zip(header[:start], row[:start])))
+                dictlist[-1]["timespans"] = list()
                 if params["showlastupdate"]:
-                    dictlist[-1]["updated"] = row[UPDATED]
-            dictlist[-1]["timespans"].append([row[START], row[END]])
+                    dictlist[-1]["updated"] = row[-1]
+            dictlist[-1]["timespans"].append([row[start], row[start + 1]])
             prev_row = row
 
     return {
@@ -206,9 +207,9 @@ def sort_records(params, data):
 #        data.sort(key=lambda x: x[:UPDATED])
 
 
-def select_columns(params, data):
+def select_columns(params, data, indexes):
     tic = time.time()
-    indexes = get_indexes(params) + [START, END]
+    indexes = indexes + [START, END]
     if params["showlastupdate"]:
         indexes = indexes + [UPDATED]
     if params["extent"]:
@@ -224,9 +225,8 @@ def select_columns(params, data):
         row[START] = row[START].isoformat(timespec="microseconds") + "Z"
         row[END] = row[END].isoformat(timespec="microseconds") + "Z"
 
-        if params["format"] != "request":
-            if params["showlastupdate"]:
-                row[UPDATED] = row[UPDATED].isoformat(timespec="seconds") + "Z"
+        if params["showlastupdate"] and params["format"] != "request":
+            row[UPDATED] = row[UPDATED].isoformat(timespec="seconds") + "Z"
 
         if params["format"] != "json":
             row[:] = [str(row[i]) for i in indexes]
@@ -283,7 +283,7 @@ def fusion(params, data, indexes):
 
 def get_indexes(params):
     """Get column indexes to display according to requested params
-    :param params: Parameters object (network, station, ...)
+    :param params: parameter dictionary (network, station, ...)
     :returns: indexes : list of column indexes """
 
     indexes = [0, 1, 2, 3, 4, 5]
@@ -324,18 +324,23 @@ def get_response(params, data):
     return response
 
 
-def get_output(validparamslist):
-    """Availability output (geocsv, json, request, text, zip)
-    :param validparamslist: List of validated parameter dictionaries.
-    :returns: text, json or csv with data availability"""
+def get_output(param_dic_list):
+    """
+    Availability output (geocsv, json, request, text, zip)
+
+    Parameters:
+        param_dic_list: list of parameter dictionaries
+    Returns: 
+        response: response with text, json or csv with data availability
+    """
 
     try:
         tic = time.time()
         data = None
         response = None
-        params = validparamslist[0]
+        params = param_dic_list[0]
 
-        data = collect_data(validparamslist)
+        data = collect_data(param_dic_list)
         if data is None:
             return data
         if not data:
@@ -347,14 +352,15 @@ def get_output(validparamslist):
         if nrows > MAX_DATA_ROWS:
             return overflow_error(Error.TOO_MUCH_ROWS)
 
+        indexes = get_indexes(params)
         if params["mergegaps"] is not None or params["extent"]:
-            data = fusion(params, data, get_indexes(params))
+            data = fusion(params, data, indexes)
         data = data[: params["limit"]]
 
         if params["orderby"] != "nslc_time_quality_samplerate":
             sort_records(params, data)
 
-        data = select_columns(params, data)
+        data = select_columns(params, data, indexes)
         logging.info(f"Final row number: {len(data)}")
         response = get_response(params, data)
         logging.debug(f"Processing in {tictac(tic)} seconds.")
@@ -364,5 +370,5 @@ def get_output(validparamslist):
     finally:
         if data:
             if response:
-                bytes = response.headers.get("Content-Length")
-                logging.info(f"{bytes} bytes rendered in {tictac(tic)} seconds.")
+                nbytes = response.headers.get("Content-Length")
+                logging.info(f"{nbytes} bytes rendered in {tictac(tic)} seconds.")
