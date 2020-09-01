@@ -30,5 +30,5 @@ RUNMODE=test FLASK_APP=start.py flask run
 
 ## RUNMODE builtin values
 
-  * `production` 
+  * `production`
   * `test`

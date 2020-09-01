@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 
 from flask import Response, request
 
-from apps.constants import VERSION
 from apps.globals import DOCUMENTATION_URI
 from apps.globals import Error
 from apps.globals import HTTP
@@ -18,26 +17,25 @@ from apps.globals import SERVICE
 from apps.globals import SHOW
 from apps.globals import STRING_FALSE
 from apps.globals import STRING_TRUE
+from apps.globals import VERSION
 
 
 def is_valid_integer(dimension, mini=0, maxi=sys.maxsize):
     # by default valid for positive integers
     try:
         dimension = int(dimension)
-        if mini <= dimension <= maxi:
-            return True
     except Exception:
         return False
+    return bool(mini <= dimension <= maxi)
 
 
 def is_valid_float(dimension, mini=sys.float_info.epsilon, maxi=sys.float_info.max):
     # by default valid for strictly positive floats
     try:
         dimension = float(dimension)
-        if mini <= dimension <= maxi:
-            return True
     except Exception:
         return False
+    return bool(mini <= dimension <= maxi)
 
 
 def is_valid_datetime(date):
@@ -72,18 +70,18 @@ def is_valid_channel(channel):
     return re.match("([A-Za-z0-9*?]{1,3})$", channel) if channel else False
 
 
-def is_valid_quality(quality):
-    return re.match("[DMQR*?]{1}$", quality) if quality else False
-
-
 def is_valid_bool_string(string):
     if string is None:
         return False
-    return True if string.lower() in (STRING_TRUE + STRING_FALSE) else False
+    return bool(string.lower() in STRING_TRUE + STRING_FALSE)
 
 
 def is_valid_output(output):
     return output.lower() in OUTPUT if output else False
+
+
+def is_valid_quality(quality):
+    return re.match("[DMQR*?]{1}$", quality) if quality else False
 
 
 def is_valid_orderby(orderby):
@@ -116,9 +114,10 @@ def error_param(params, dmesg):
 
 
 # Error request function
-def error_request(msg=" ", details=" ", code=" "):
+def error_request(msg="", details="", code=500):
     request_date = datetime.utcnow().strftime("%Y-%b-%d %H:%M:%S UTC")
-    message_error = f"""Error {code}: {details}\n
+    message_error = f"""Error {code}: {msg}\n
+{details}\n
 Usage details are available from {DOCUMENTATION_URI}\n
 Request:
 {request.url}\n
@@ -139,30 +138,38 @@ def error_500(dmesg):
     return error_request(msg=HTTP._500_, details=dmesg, code=500)
 
 
-# check request
-def check_request(request, params, alias):
-    keys = list(params.keys())
+def check_request(params):
+    # preliminary parameter checks
+
     for key, val in request.args.items():
-        if key not in keys:
-            ratios = [SequenceMatcher(None, key, p).ratio() for p in keys]
-            guess = max([(v, keys[ind]) for ind, v in enumerate(ratios)])
+        # stops at the first unknown parameter meet:
+        if key not in params:
+            ratios = ((SequenceMatcher(None, key, p).ratio(), p) for p in params)
+            guess = max(ratios)
             hint = ". Did you mean " + guess[1] + " ?" if guess[0] > 0.7 else ""
-            return error_param(keys, Error.UNKNOWN_PARAM + key + hint)
+            return error_param(params, Error.UNKNOWN_PARAM + key + hint)
 
         # find nonword chars except :
         # "," for lists "*?" for wildcards and ".:-" for date
         if re.search(r"[^a-zA-Z0-9_,*?.:-]", val):
-            return error_param(keys, Error.CHAR + key)
+            return error_param(params, Error.CHAR + key)
 
-    for key in keys:
+    for key, val in params.items():
         if len(request.args.getlist(key)) > 1:
-            return error_param(keys, Error.MULTI_PARAM + key)
+            return error_param(params, Error.MULTI_PARAM + key)
+        params[key] = request.args.get(key, val)
 
-    for key in alias:
-        if len([v for v in key if v in request.args]) > 1:
-            return error_param(keys, Error.MULTI_PARAM + " and is shorthand ".join(key))
+    for key, alias in params["constraints"]["alias"]:
+        if key in request.args and alias in request.args:
+            return error_param(
+                params, f"{Error.MULTI_PARAM}{key} (and is shorthand {alias})"
+            )
+        if params[key] is None or params[key] == "false":
+            params[key] = request.args.get(alias, params[alias])
+        else:
+            params[alias] = params[key]
 
-    return (keys, {"msg": HTTP._200_, "details": Error.VALID_PARAM, "code": 200})
+    return (params, {"msg": HTTP._200_, "details": Error.VALID_PARAM, "code": 200})
 
 
 def check_base_parameters(params, max_days=None):
@@ -177,7 +184,7 @@ def check_base_parameters(params, max_days=None):
         val = params[key]
         if not is_valid_bool_string(val):
             return error_param(params, f"Invalid {key} value: {val} {Error.BOOL}.")
-        params[key] = True if val.lower() in STRING_TRUE else False
+        params[key] = bool(val.lower() in STRING_TRUE)
 
     # Float parameter validations
     for key in params["constraints"]["floats"]:
@@ -196,18 +203,18 @@ def check_base_parameters(params, max_days=None):
     location = params["location"].split(",")
     channel = params["channel"].split(",")
 
-    for n in network:
-        if not is_valid_network(n):
-            return error_param(params, Error.NETWORK + n)
-    for s in station:
-        if not is_valid_station(s):
-            return error_param(params, Error.STATION + s)
-    for l in location:
-        if not is_valid_location(l):
-            return error_param(params, Error.LOCATION + l)
-    for c in channel:
-        if not is_valid_channel(c):
-            return error_param(params, Error.CHANNEL + c)
+    for net in network:
+        if not is_valid_network(net):
+            return error_param(params, Error.NETWORK + net)
+    for sta in station:
+        if not is_valid_station(sta):
+            return error_param(params, Error.STATION + sta)
+    for loc in location:
+        if not is_valid_location(loc):
+            return error_param(params, Error.LOCATION + loc)
+    for cha in channel:
+        if not is_valid_channel(cha):
+            return error_param(params, Error.CHANNEL + cha)
 
     # Start time and end time validations
     if params["start"] is not None:

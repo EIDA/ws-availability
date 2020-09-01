@@ -5,7 +5,9 @@ from datetime import datetime
 
 sys.path.append("../")
 
-from apps.globals import Error, HTTP
+from apps.globals import Error
+from apps.globals import HTTP
+from apps.parameters import Parameters
 from apps.root import check_parameters
 from apps.utils import error_param
 from apps.utils import is_valid_integer
@@ -103,30 +105,14 @@ class MyTest(unittest.TestCase):
         self.assertFalse(is_valid_bool_string("oui"))
 
     def test_parameters(self):
-
-        # ?network=FR&channel=HHZ&starttime=2018-02-12T03:08:02&endtime=2018-02-12T03:10:00&station=CIEL
-        p1 = {}
+        p1 = Parameters().todict()
         p1["network"] = "FR"
         p1["station"] = "CIEL"
         p1["location"] = "*"
         p1["channel"] = "HHZ"
         p1["start"] = "2018-02-12T03:08:02"
         p1["end"] = "2018-02-12T04:08:02"
-        p1["format"] = "text"
-        p1["orderby"] = None
-        p1["quality"] = "*"
-        p1["show"] = ""
-        p1["limit"] = None
-        p1["merge"] = ""
-        p1["mergegaps"] = None
-        p1["includerestricted"] = "F"
-        p1["nodata"] = "204"
         p1["base_url"] = "/extent"
-        p1["constraints"] = {
-            "booleans": ["includerestricted"],
-            "floats": [],
-            "not_none": [],
-        }
 
         valid_param = {"msg": HTTP._200_, "details": Error.VALID_PARAM, "code": 200}
 

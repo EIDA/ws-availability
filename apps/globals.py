@@ -1,3 +1,19 @@
+# version string of the json format
+SCHEMAVERSION = 1.0
+
+# postgresql schema
+SCHEMA = "wsavailability"
+
+# limitations
+TIMEOUT = 120
+MAX_DAYS = None
+MAX_ROWS = "2_500_000"
+MAX_DATA_ROWS = int(MAX_ROWS.replace(",", ""))
+MAX_MERGEGAPS = 10000000000
+
+# available parameter values
+OUTPUT = ("geocsv", "json", "request", "text", "zip")
+NODATA_CODE = ("204", "404")
 STRING_TRUE = ("yes", "true", "t", "y", "1", "")
 STRING_FALSE = ("no", "false", "f", "n", "0")
 SHOW = "latestupdate"
@@ -9,30 +25,21 @@ ORDERBY = (
     "latestupdate",
     "latestupdate_desc",
 )
-OUTPUT = ("geocsv", "json", "request", "text", "zip")
-NODATA_CODE = ("204", "404")
-TIMEOUT = 120
-MAX_DAYS = None
-MAX_ROWS = "2_500_000"
-MAX_DATA_ROWS = int(MAX_ROWS.replace(",", ""))
-MAX_MERGEGAPS = 10000000000
-SCHEMAVERSION = 1.0  # version string of the json format
+
+# error message constants
 DOCUMENTATION_URI = "http://ws.resif.fr/fdsnws/availability/1/"
 SERVICE = "fdsnws-availability"
+VERSION = "1.0.1"
 
 
 class Error:
     UNKNOWN_PARAM = "Unknown query parameter: "
-    MULTI_PARAM = " Multiple entries for query parameter: "
+    MULTI_PARAM = "Multiple entries for query parameter: "
     VALID_PARAM = "Valid parameters."
     START_LATER = "The starttime cannot be later than the endtime: "
     TOO_LONG_DURATION = "Too many days requested (greater than "
     TOO_MUCH_ROWS = f"The request exceeds the limit of {MAX_ROWS} rows."
     UNSPECIFIED = "Error processing your request."
-    NO_CONNECTION = "No services could be discovered at http://ws.resif.fr.\n\
-                  This could be due to a temporary service outage, an invalid FDSN service address,\n\
-                  an inactive internet connection or a blocking firewall rule."
-    OK_CONNECTION = "Connection OK. "
     NODATA = "Your query doesn't match any available data."
     TIMEOUT = f"Your query exceeds timeout ({TIMEOUT} seconds)."
     MISSING = "Missing parameter: "
@@ -71,7 +78,6 @@ class HTTP:
     _403_ = "Forbidden access. "
     _404_ = "No data matches the selection. "
     _408_ = "Request exceeds timeout. "
-    _409_ = "Too much data. "
     _413_ = "Request too large. "
     _414_ = "Request URI too large. "
     _500_ = "Internal server error. "
