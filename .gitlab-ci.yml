@@ -21,6 +21,7 @@ build:
     DOCKERFILE: Dockerfile
     IMAGE_NAME: $CI_REGISTRY_IMAGE/ws-availability:$CI_COMMIT_SHORT_SHA
   script:
+    - echo $CI_COMMIT_SHORT_SHA > ./static/commit.txt
     - $IMAGE_BUILD --file $DOCKERFILE $BUILD_ARG --tag $IMAGE_NAME .
     - $IMAGE_PUSH  $IMAGE_NAME $IMAGE_NAME
 

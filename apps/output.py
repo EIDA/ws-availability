@@ -45,8 +45,8 @@ def is_like_or_equal(params, key):
 
 
 def sql_request(paramslist):
-    """ Builds the PostgreSQL request.
-        (mergeid is used here to store timespancount later)"""
+    """Builds the PostgreSQL request.
+    (mergeid is used here to store timespancount later)"""
 
     select = list()
     for params in paramslist:
@@ -160,8 +160,8 @@ def records_to_text(params, data, sep=" "):
 
 
 def records_to_dictlist(params, data):
-    """ Create json output according to the fdsnws specification schema:
-    http://www.fdsn.org/webservices/fdsnws-availability-1.0.schema.json """
+    """Create json output according to the fdsnws specification schema:
+    http://www.fdsn.org/webservices/fdsnws-availability-1.0.schema.json"""
 
     dictlist = list()
     header = get_header(params)
@@ -241,9 +241,9 @@ def select_columns(params, data, indexes):
 
 def fusion(params, data, indexes):
     """:param data: ordered data list
-       :k: list or range of indexes of the parameters to be grouped
-       :tol: timespans which are separated by gaps smaller than or equal to tol are merged together (query)
-       :returns: produces a list of available time extents (extent) or contiguous time spans (query)"""
+    :k: list or range of indexes of the parameters to be grouped
+    :tol: timespans which are separated by gaps smaller than or equal to tol are merged together (query)
+    :returns: produces a list of available time extents (extent) or contiguous time spans (query)"""
 
     tic = time.time()
     merge = list()
@@ -286,7 +286,7 @@ def fusion(params, data, indexes):
 def get_indexes(params):
     """Get column indexes to display according to requested params
     :param params: parameter dictionary (network, station, ...)
-    :returns: indexes : list of column indexes """
+    :returns: indexes : list of column indexes"""
 
     indexes = [0, 1, 2, 3, 4, 5]
     if "quality" in params["merge"] and "samplerate" in params["merge"]:

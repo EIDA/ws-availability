@@ -120,7 +120,7 @@ def error_request(msg="", details="", code=500):
 {details}\n
 Usage details are available from {DOCUMENTATION_URI}\n
 Request:
-{request.url}\n
+{request.full_path}\n
 Request Submitted:
 {request_date}\n
 Service version:
