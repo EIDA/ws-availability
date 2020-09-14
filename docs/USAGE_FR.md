@@ -1,4 +1,4 @@
-# RESIF DC availability FDSN Web Service Documentation
+# Documentation du Webservice FDSN availability de RESIF
 
 ## Description
 

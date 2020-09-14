@@ -1,8 +1,8 @@
-# Documentation du Webservice FDSN availability de RESIF
+# RESIF DC availability FDSN Web Service Documentation
 
 ## Description
 
-The availability web service returns detailed time span information of what time series data is available at the RESIF data center archive. Only unrestricted data are available.
+The availability web service returns detailed time span information of what time series data is available at the RESIF data center archive.
 
 There are two service query methods:
 
