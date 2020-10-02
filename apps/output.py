@@ -50,7 +50,7 @@ def sql_request(paramslist):
 
     select = list()
     for params in paramslist:
-        s = f"""SET random_page_cost=1; SELECT network, station, location, channel, quality, samplerate, starttime, endtime, lastupdated, policy, mergeid FROM {SCHEMA}.traces WHERE"""
+        s = f"""SELECT network, station, location, channel, quality, samplerate, starttime, endtime, lastupdated, policy, mergeid FROM {SCHEMA}.traces WHERE"""
         s = f"""{s} ({is_like_or_equal(params, "network")})"""
         if params["station"] != "*":
             s = f"""{s} AND ({is_like_or_equal(params, "station")})"""
@@ -68,7 +68,7 @@ def sql_request(paramslist):
         select.append(s.replace("?", "_").replace("*", "%"))
     select = " UNION ".join(select)
     nrows = get_max_rows(paramslist[0])
-    return f"""{select} ORDER BY network, station, location, channel, quality, samplerate, starttime, endtime LIMIT {nrows};"""
+    return f"""SET random_page_cost=1; {select} ORDER BY network, station, location, channel, quality, samplerate, starttime, endtime LIMIT {nrows};"""
 
 
 def collect_data(params):
