@@ -173,8 +173,6 @@ Le second exemple désigne les 2 dernières heures avant minuit (heure UTC) du j
 |            | latestupdate                 | date de mise à jour (du plus ancien au plus récent), network, station, location, channel, période de temps, quality, sample-rate |
 |            | latestupdate_desc            | date de mise à jour (du plus récent au plus ancien), network, station, location, channel, période de temps, quality, sample-rate |
 
-<br/>
-
 ## Paramètres additionnels pour /query
 
 ### Options de fusion
@@ -190,7 +188,36 @@ Le second exemple désigne les 2 dernières heures avant minuit (heure UTC) du j
 | show          |               | Liste de paramètres séparés par des virgules (exemple show=latestupdate). |
 |               | latestupdate  | Affiche la date de mise à jour des données.                               |
 
-<br/>
+## Requêtes HTTP POST
+
+Les méthodes /extent et /query peuvent être employées avec le protocole HTTP POST. Tous les paramètres valident avec HTTP GET sont utilisables avec HTTP POST.
+
+La forme générale d'une requête POST est un ensemble de paires parameter=value, une par ligne, suivies d'un nombre arbitraire de canaux et d'une fenêtre temporelle optionnelle :
+
+parameter=\<value\> \
+parameter=\<value\> \
+parameter=\<value\> \
+Net Sta Loc Chan [StartTime EndTime] \
+Net Sta Loc Chan [StartTime EndTime] \
+...
+
+La fenêtre temporelle peut être précisée globalement :
+
+... \
+start=2020-10-01T00:00:00 \
+end=2020-10-01T00:01:00 \
+Net1 Sta1 Loc1 Chan1 \
+Net2 Sta2 Loc2 Chan2 \
+...
+
+ou par ligne :
+
+... \
+Net1 Sta1 Loc1 Chan1 2020-10-01T00:00:00 2020-10-01T00:01:00 \
+Net2 Sta2 Loc2 Chan2 2020-10-02T00:00:00 2020-10-02T00:02:00 \
+...
+
+La fenêtre temporelle globale peut être utilisée conjointement avec des fenêtres temporelles individuelles. Si aucune information temporelle n’est précisée, la période maximale de disponibilité est utilisée.
 
 ## Formats des dates et des heures
 

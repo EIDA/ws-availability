@@ -172,8 +172,6 @@ The second example specifies the duration of 2 hours prior today’s midnight (U
 |            | latestupdate                 | update-date (past to present), network, station, location, channel, time-range, quality, sample-rate |
 |            | latestupdate_desc            | update-date (present to past), network, station, location, channel, time-range, quality, sample-rate |
 
-<br/>
-
 ## /query method additional parameters
 
 ### Merge options
@@ -189,7 +187,36 @@ The second example specifies the duration of 2 hours prior today’s midnight (U
 | show          |               | Comma separated list (example show=latestupdate). |
 |               | latestupdate  | Display the last date of data update.             |
 
-<br/>
+## HTTP POST queries
+
+/extent and /query methods can be accessed via HTTP POST. All of the parameters that can be submitted with the GET method are allowed in POST.
+
+The general form of a POST is parameter=value pairs, one per line, followed by an arbitrary number of channel and, optionally, time window selection lines:
+
+parameter=\<value\> \
+parameter=\<value\> \
+parameter=\<value\> \
+Net Sta Loc Chan [StartTime EndTime] \
+Net Sta Loc Chan [StartTime EndTime] \
+...
+
+Start time and end times can be specified globally, such as:
+
+... \
+start=2020-10-01T00:00:00 \
+end=2020-10-01T00:01:00\
+Net1 Sta1 Loc1 Chan1 \
+Net2 Sta2 Loc2 Chan2 \
+...
+
+or per line:
+
+... \
+Net1 Sta1 Loc1 Chan1 2020-10-01T00:00:00 2020-10-01T00:01:00 \
+Net2 Sta2 Loc2 Chan2 2020-10-02T00:00:00 2020-10-02T00:02:00 \
+...
+
+If not given, the start and end times default to the fully available time range. Additionally, global time ranges can be mixed with individual time ranges.
 
 ## Date and time formats
 

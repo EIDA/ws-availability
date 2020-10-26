@@ -335,7 +335,6 @@ les valeurs par défaut sont en majuscules</code></pre>
 </tr>
 </tbody>
 </table>
-<p><br/></p>
 <h2 id="paramètres-additionnels-pour-query">Paramètres additionnels pour /query</h2>
 <h3 id="options-de-fusion-1">Options de fusion</h3>
 <table>
@@ -386,7 +385,28 @@ les valeurs par défaut sont en majuscules</code></pre>
 </tr>
 </tbody>
 </table>
-<p><br/></p>
+<h2 id="requêtes-http-post">Requêtes HTTP POST</h2>
+<p>Les méthodes /extent et /query peuvent être employées avec le protocole HTTP POST. Tous les paramètres valident avec HTTP GET sont utilisables avec HTTP POST.</p>
+<p>La forme générale d’une requête POST est un ensemble de paires parameter=value, une par ligne, suivies d’un nombre arbitraire de canaux et d’une fenêtre temporelle optionnelle :</p>
+<p>parameter=&lt;value&gt;<br />
+parameter=&lt;value&gt;<br />
+parameter=&lt;value&gt;<br />
+Net Sta Loc Chan [StartTime EndTime]<br />
+Net Sta Loc Chan [StartTime EndTime]<br />
+…</p>
+<p>La fenêtre temporelle peut être précisée globalement :</p>
+<p>…<br />
+start=2020-10-01T00:00:00<br />
+end=2020-10-01T00:01:00<br />
+Net1 Sta1 Loc1 Chan1<br />
+Net2 Sta2 Loc2 Chan2<br />
+…</p>
+<p>ou par ligne :</p>
+<p>…<br />
+Net1 Sta1 Loc1 Chan1 2020-10-01T00:00:00 2020-10-01T00:01:00<br />
+Net2 Sta2 Loc2 Chan2 2020-10-02T00:00:00 2020-10-02T00:02:00<br />
+…</p>
+<p>La fenêtre temporelle globale peut être utilisée conjointement avec des fenêtres temporelles individuelles. Si aucune information temporelle n’est précisée, la période maximale de disponibilité est utilisée.</p>
 <h2 id="formats-des-dates-et-des-heures">Formats des dates et des heures</h2>
 <pre><code>YYYY-MM-DDThh:mm:ss[.ssssss] ex. 1997-01-31T12:04:32.123
 YYYY-MM-DD ex. 1997-01-31 (une heure de 00:00:00 est supposée)

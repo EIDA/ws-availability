@@ -313,7 +313,6 @@ default values are uppercase</code></pre>
 </tr>
 </tbody>
 </table>
-<p><br/></p>
 <h2 id="query-method-additional-parameters">/query method additional parameters</h2>
 <h3 id="merge-options-1">Merge options</h3>
 <table>
@@ -359,7 +358,28 @@ default values are uppercase</code></pre>
 </tr>
 </tbody>
 </table>
-<p><br/></p>
+<h2 id="http-post-queries">HTTP POST queries</h2>
+<p>/extent and /query methods can be accessed via HTTP POST. All of the parameters that can be submitted with the GET method are allowed in POST.</p>
+<p>The general form of a POST is parameter=value pairs, one per line, followed by an arbitrary number of channel and, optionally, time window selection lines:</p>
+<p>parameter=&lt;value&gt;<br />
+parameter=&lt;value&gt;<br />
+parameter=&lt;value&gt;<br />
+Net Sta Loc Chan [StartTime EndTime]<br />
+Net Sta Loc Chan [StartTime EndTime]<br />
+…</p>
+<p>Start time and end times can be specified globally, such as:</p>
+<p>…<br />
+start=2020-10-01T00:00:00<br />
+end=2020-10-01T00:01:00<br />
+Net1 Sta1 Loc1 Chan1<br />
+Net2 Sta2 Loc2 Chan2<br />
+…</p>
+<p>or per line:</p>
+<p>…<br />
+Net1 Sta1 Loc1 Chan1 2020-10-01T00:00:00 2020-10-01T00:01:00<br />
+Net2 Sta2 Loc2 Chan2 2020-10-02T00:00:00 2020-10-02T00:02:00<br />
+…</p>
+<p>If not given, the start and end times default to the fully available time range. Additionally, global time ranges can be mixed with individual time ranges.</p>
 <h2 id="date-and-time-formats">Date and time formats</h2>
 <pre><code>YYYY-MM-DDThh:mm:ss[.ssssss] ex. 1997-01-31T12:04:32.123
 YYYY-MM-DD ex. 1997-01-31 (a time of 00:00:00 is assumed)
