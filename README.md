@@ -1,6 +1,28 @@
 # Webservice availability
 ws-availability implements the FDSN specification of the availability webservice.
 
+
+## Running in development environment
+1. Go to the root directory:
+1. Create the virtual environment:
+    ```
+    $ python3 -m venv env
+    ```
+1. Activate the virtual environment:
+    ```
+    $ source env/bin/activate
+    ```
+1. Install the dependencies:
+    ```
+    (env) $ pip install -r requirements.txt
+    ```
+1. Now you can either:
+    1. Run it:
+        ```
+        (env) $ RUNMODE=test FLASK_APP=start.py flask run
+        ```
+    1. Debug it in VS Code (F5)
+
 ## Backend
 `ws-availability` relies on the seedtree5 database used at RESIF-DC.
 
