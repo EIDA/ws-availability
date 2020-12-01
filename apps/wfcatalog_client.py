@@ -29,113 +29,79 @@ STATUS = 9
 COUNT = 10  # timespancount
 
 
-def get_max_rows(params):
-    rowlimit = params["limit"]
-    if params["mergegaps"] is not None or params["extent"]:
-        rowlimit = MAX_DATA_ROWS
-    return min(rowlimit, MAX_DATA_ROWS) + 1
-
-
-def is_like_or_equal(params, key):
-    """ Builds the condition for the specified key in the "where" clause taking into account lists or wildcards. """
-
-    subquery = list()
-    for param in params[key].split(","):
-        op = "LIKE" if re.search(r"[*?]", param) else "="
-        subquery.append(f"{key} {op} '{param}'")
-    return " OR ".join(subquery)
-
-
 def mongo_request(paramslist):
+    result = []
     network = "*"
     station = "*"
     location = "*"
     channel = "*"
     quality = "*"
 
+    qry = {}
+
     for params in paramslist:
         if params["network"] != "*":
-            network = { "$in": params["network"].split(",") }
+            network = {"$in": params["network"].split(",")}
+            qry["net"] = network
         if params["station"] != "*":
-            station = { "$in": params["station"].split(",") }
+            station = {"$in": params["station"].split(",")}
+            qry["sta"] = station
         if params["location"] != "*":
-            location = { "$in": params["location"].split(",") }
+            location = {"$in": params["location"].split(",")}
+            qry["loc"] = location
         if params["channel"] != "*":
-            channel = { "$in": params["channel"].split(",") }
+            channels = params["channel"].split(",")
+            channels_wildcard = [c.replace("?", ".") for c in channels]
+            channels_regex = "^" + "|".join(channels_wildcard) + "$"
+            qry["cha"] = re.compile(channels_regex, re.IGNORECASE)
         if params["quality"] != "*":
-            quality = { "$in": params["quality"].split(",") }
+            quality = {"$in": params["quality"].split(",")}
+            qry["qlt"] = quality
+        if params["start"]:
+            ts = {"$gte": params["start"]}
+            qry["ts"] = ts
+        if params["end"]:
+            te = {"$lte": params["end"]}
+            qry["te"] = te
 
-    qry = {
-        "net": network,
-        "sta": station,
-        "loc": location,
-        "cha": channel,
-        "qlt": quality,
-        # "ts": { "2020-01-01" },
-        # "te": { "2020-01-02" },
-    }
-
-    client = MongoClient('localhost', 27017)
+    client = MongoClient("localhost", 27017)
     db = client.wfrepo
     dta = db.daily_streams.find(qry)
     for d in dta:
-        print(d)
-    return
+        elem = _parse_daily_stream_to_list(d)
+        result.append(elem)
+    return qry, result
 
-def sql_request(paramslist):
-    """Builds the PostgreSQL request.
-    (mergeid is used here to store timespancount later)"""
 
-    select = list()
-    for params in paramslist:
-        s = f"""SELECT network, station, location, channel, quality, samplerate, starttime, endtime, lastupdated, policy, mergeid FROM {SCHEMA}.traces WHERE"""
-        s = f"""{s} ({is_like_or_equal(params, "network")})"""
-        if params["station"] != "*":
-            s = f"""{s} AND ({is_like_or_equal(params, "station")})"""
-        if params["location"] != "*":
-            s = f"""{s} AND ({is_like_or_equal(params, "location")})"""
-        if params["channel"] != "*":
-            s = f"""{s} AND ({is_like_or_equal(params, "channel")})"""
-        if params["quality"] != "*":
-            s = f"""{s} AND ({is_like_or_equal(params, "quality")})"""
-
-        start = "-infinity" if params["start"] is None else params["start"]
-        end = "infinity" if params["end"] is None else params["end"]
-        s = f"""{s} AND (starttime , endtime) OVERLAPS ('{start}', '{end}')"""
-
-        select.append(s.replace("?", "_").replace("*", "%"))
-    select = " UNION ".join(select)
-    nrows = get_max_rows(paramslist[0])
-    return f"""SET random_page_cost=1; {select} ORDER BY network, station, location, channel, quality, samplerate, starttime, endtime LIMIT {nrows};"""
+def _parse_daily_stream_to_list(json):
+    result = [
+        json["net"],
+        json["sta"],
+        json["loc"],
+        json["cha"],
+        json["qlt"],
+        json["srate"][0],
+        json["ts"],
+        json["te"],
+        datetime.now(),
+        0,
+        json["status"],
+    ]
+    return result
 
 
 def collect_data(params):
     """ Get the result of the Mongo query. """
     tic = time.time()
-    data = list()
+    data = None
     logging.debug("Start collecting data...")
 
-    select = mongo_request(params)
-    logging.debug(select)
+    qry, data = mongo_request(params)
+    logging.debug(qry)
 
     logging.info(f"Get data in {tictac(tic)} seconds.")
+
     return data
-
-
-    # with psycopg2.connect(current_app.config["DATABASE_URI"]) as conn:
-    #     logging.debug(conn.get_dsn_parameters())
-    #     logging.debug(f"Postgres version : {conn.server_version}")
-    #     with conn.cursor() as curs:
-    #         select = sql_request(params)
-    #         logging.debug(select)
-    #         curs.execute(select)
-    #         logging.debug(curs.statusmessage)
-    #         for row in curs.fetchall():
-    #             if not params[0]["includerestricted"] and row[STATUS] == "RESTRICTED":
-    #                 continue
-    #             data.append(list(row))
-    #         logging.info(f"Get data in {tictac(tic)} seconds.")
-    # return data
 
 
 def get_header(params):
