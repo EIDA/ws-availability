@@ -54,3 +54,6 @@ RUNMODE=test FLASK_APP=start.py flask run
 
   * `production`
   * `test`
+
+# References
+This repository has been forked from https://gitlab.com/resif/ws-availability, special thanks to our colleagues at RESIF for sharing their implementation of the FDSNWS-Availability web service. 💐
