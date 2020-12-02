@@ -28,6 +28,7 @@ UPDATED = 8
 STATUS = 9
 COUNT = 10  # timespancount
 
+
 def get_header(params):
     header = ["Network", "Station", "Location", "Channel"]
     if params["format"] == "text":
@@ -194,7 +195,8 @@ def fusion(params, data, indexes):
             tol2 = timedelta(seconds=max([tol, sample_size]))
             sametrace = (
                 row[START] - merge[-1][END] <= tol2
-                and merge[-1][START] <= row[END] + tol2  # (never occurs if sorted ?)
+                # (never occurs if sorted ?)
+                and merge[-1][START] <= row[END] + tol2
             )
             if not sametrace:
                 timespancount += 1
@@ -255,7 +257,8 @@ def get_response(params, data):
     elif params["format"] == "json":
         headers = {"Content-type": "application/json"}
         response = make_response(
-            json.dumps(records_to_dictlist(params, data), sort_keys=False), headers
+            json.dumps(records_to_dictlist(params, data),
+                       sort_keys=False), headers
         )
     logging.debug(f"Response built in {tictac(tic)} seconds.")
     return response
@@ -313,4 +316,5 @@ def get_output(param_dic_list):
         if data:
             if response:
                 nbytes = response.headers.get("Content-Length")
-                logging.info(f"{nbytes} bytes rendered in {tictac(tic)} seconds.")
+                logging.info(
+                    f"{nbytes} bytes rendered in {tictac(tic)} seconds.")

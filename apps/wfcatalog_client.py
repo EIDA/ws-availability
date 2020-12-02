@@ -2,6 +2,8 @@ import time
 import logging
 import re
 
+from flask import current_app
+
 from apps.utils import tictac
 
 from pymongo import MongoClient
@@ -18,6 +20,11 @@ def mongo_request(paramslist):
         string: MongoDB query used to obtain data
         []: List of metrics extracted from the MongoDB
     """
+    db_host = current_app.config["MONGODB_HOST"]
+    db_port = current_app.config["MONGODB_PORT"]
+    db_usr = current_app.config["MONGODB_USR"]
+    db_pwd = current_app.config["MONGODB_PWD"]
+
     result = []
     network = "*"
     station = "*"
@@ -49,8 +56,13 @@ def mongo_request(paramslist):
             te = {"$lte": params["end"]}
             qry["te"] = te
 
-    client = MongoClient("localhost", 27017)
-    db = client.wfrepo
+    db = MongoClient(
+        db_host,
+        db_port,
+        username=db_usr,
+        password=db_pwd
+    ).get_database("wfrepo")
+
     d_streams = db.daily_streams.find(qry)
     for ds in d_streams:
         ds_id = ObjectId(ds["_id"])
@@ -68,6 +80,7 @@ def mongo_request(paramslist):
                 result.append(c_seg_elem)
 
     return qry, result
+
 
 def _query_params_to_regex(str):
     """Parse list of params into a regular expression

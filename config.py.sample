@@ -1,0 +1,59 @@
+import os
+
+
+class Config:
+
+    """
+    Configure Flask application from environment vars.
+    Preconfigured values are set from: RUNMODE=test or RUNMODE=production
+    Each parameter can be overriden directly by an environment variable.
+    """
+
+    RUNMODE = os.environ.get("RUNMODE")
+
+    if RUNMODE == "production":
+        # wfcatalog for MongoDB, anything else for RESIF
+        DB_BACKEND = "wfcatalog"
+        # RESIF DB
+        PGHOST = "resif-pgprod.u-ga.fr"
+        PGUSER = "wsavailability_ro"
+        PGPORT = "5432"
+        PGDATABASE = "seedtree5"
+        # WFCatalog MongoDB
+        MONGODB_HOST = "localhost"
+        MONGODB_PORT = 27017
+        MONGODB_USR = ""
+        MONGODB_PWD = ""
+        MONGODB_NAME = "wfrepo"
+    elif RUNMODE == "test":
+        # wfcatalog for MongoDB, anything else for RESIF
+        DB_BACKEND = "wfcatalog"
+        # RESIF DB
+        PGHOST = "resif-pgpreprod.u-ga.fr"
+        PGUSER = "wsavailability_ro"
+        PGPORT = "5432"
+        PGDATABASE = "seedtree5dev"
+        # WFCatalog MongoDB
+        MONGODB_HOST = "localhost"
+        MONGODB_PORT = 27017
+        MONGODB_USR = ""
+        MONGODB_PWD = ""
+        MONGODB_NAME = "wfrepo"
+
+    try:
+        DB_BACKEND = os.environ.get("DB_BACKEND") or DB_BACKEND
+        PGHOST = os.environ.get("PGHOST") or PGHOST
+        PGUSER = os.environ.get("PGUSER") or PGUSER
+        PGPORT = os.environ.get("PGPORT") or PGPORT
+        PGDATABASE = os.environ.get("PGDATABASE") or PGDATABASE
+        MONGODB_HOST = os.environ.get("MONGODB_HOST") or MONGODB_HOST
+        MONGODB_PORT = os.environ.get("MONGODB_PORT") or MONGODB_PORT
+        MONGODB_USR = os.environ.get("MONGODB_USR") or MONGODB_USR
+        MONGODB_PWD = os.environ.get("MONGODB_PWD") or MONGODB_PWD
+        MONGODB_NAME = os.environ.get("MONGODB_NAME") or MONGODB_NAME
+    except NameError:
+        print(
+            "Missing environment variables. Either RUNMODE=(test|production) or PGHOST, PGUSER, PGPORT and PGDATABASE should be set."
+        )
+        raise
+    DATABASE_URI = f"postgresql://{PGUSER}@{PGHOST}:{PGPORT}/{PGDATABASE}"
