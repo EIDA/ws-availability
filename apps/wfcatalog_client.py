@@ -24,6 +24,7 @@ def mongo_request(paramslist):
     db_port = current_app.config["MONGODB_PORT"]
     db_usr = current_app.config["MONGODB_USR"]
     db_pwd = current_app.config["MONGODB_PWD"]
+    db_name = current_app.config["MONGODB_NAME"]
 
     result = []
     network = "*"
@@ -61,7 +62,7 @@ def mongo_request(paramslist):
         db_port,
         username=db_usr,
         password=db_pwd
-    ).get_database("wfrepo")
+    ).get_database(db_name)
 
     d_streams = db.daily_streams.find(qry)
     for ds in d_streams:
