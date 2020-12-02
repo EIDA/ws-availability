@@ -11,17 +11,20 @@ class Config:
 
     RUNMODE = os.environ.get("RUNMODE")
     if RUNMODE == "production":
+        DB_BACKEND = "wfcatalog"
         PGHOST = "resif-pgprod.u-ga.fr"
         PGUSER = "wsavailability_ro"
         PGPORT = "5432"
         PGDATABASE = "seedtree5"
     elif RUNMODE == "test":
+        DB_BACKEND = "wfcatalog"
         PGHOST = "resif-pgpreprod.u-ga.fr"
         PGUSER = "wsavailability_ro"
         PGPORT = "5432"
         PGDATABASE = "seedtree5dev"
 
     try:
+        DB_BACKEND = os.environ.get("DB_BACKEND") or DB_BACKEND
         PGHOST = os.environ.get("PGHOST") or PGHOST
         PGUSER = os.environ.get("PGUSER") or PGUSER
         PGPORT = os.environ.get("PGPORT") or PGPORT

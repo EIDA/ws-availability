@@ -12,8 +12,7 @@ from apps.globals import MAX_DATA_ROWS
 from apps.globals import MAX_DAYS
 from apps.globals import MAX_MERGEGAPS
 from apps.globals import TIMEOUT
-from apps.output import get_output
-from apps.wfcatalog_client import get_output as get_output_wfcatalog
+from apps.data_access_layer import get_output
 from apps.parameters import Parameters
 from apps.utils import check_base_parameters
 from apps.utils import check_request
@@ -180,7 +179,7 @@ def output():
         if valid_param_dicts:
 
             def put_response(q):
-                q.put(get_output_wfcatalog(valid_param_dicts))
+                q.put(get_output(valid_param_dicts))
 
             q = Queue()
             process = Process(target=put_response, args=(q,))
