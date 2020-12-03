@@ -80,6 +80,11 @@ def mongo_request(paramslist):
                 c_seg_elem = _parse_c_segment_to_list(ds, cs)
                 result.append(c_seg_elem)
 
+    # Result needs to be sorted
+    result.sort(
+        key=lambda x: (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7])
+    )
+
     return qry, result
 
 
