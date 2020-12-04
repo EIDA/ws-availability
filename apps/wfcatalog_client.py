@@ -9,6 +9,8 @@ from apps.utils import tictac
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
+from .fdsn_client import FdsnClient
+
 
 def mongo_request(paramslist):
     """Build and run WFCatalog MongoDB request using request query parameters
@@ -30,12 +32,14 @@ def mongo_request(paramslist):
     network = "*"
     station = "*"
     location = "*"
-    channel = "*"
+    # channel = "*"
     quality = "*"
 
-    qry = {}
+    # List of queries executed agains the DB, let's keep it for logging
+    qries = []
 
     for params in paramslist:
+        qry = {}
         if params["network"] != "*":
             network = {"$in": params["network"].split(",")}
             qry["net"] = network
@@ -56,36 +60,47 @@ def mongo_request(paramslist):
         if params["end"]:
             te = {"$lte": params["end"]}
             qry["te"] = te
+        
+        # Let's memorize this new query for logging purposes
+        qries.append(qry)
 
-    db = MongoClient(
-        db_host,
-        db_port,
-        username=db_usr,
-        password=db_pwd
-    ).get_database(db_name)
+        db = MongoClient(
+            db_host,
+            db_port,
+            username=db_usr,
+            password=db_pwd
+        ).get_database(db_name)
 
-    d_streams = db.daily_streams.find(qry)
-    for ds in d_streams:
-        ds_id = ObjectId(ds["_id"])
-        ds_avail = float(ds["avail"])
+        d_streams = db.daily_streams.find(qry)
+        for ds in d_streams:
+            ds_id = ObjectId(ds["_id"])
+            ds_avail = float(ds["avail"])
 
-        if ds_avail >= 100:
-            # If availability = 100, just add it to the set (no c_segments present)
-            ds_elem = _parse_daily_stream_to_list(ds)
-            result.append(ds_elem)
-        else:
-            # If availability < 100, collect the continuous segments
-            c_segs = db.c_segments.find({"streamId": ds_id})
-            for cs in c_segs:
-                c_seg_elem = _parse_c_segment_to_list(ds, cs)
-                result.append(c_seg_elem)
+            if ds_avail >= 100:
+                # If availability = 100, just add it to the set (no c_segments present)
+                ds_elem = _parse_daily_stream_to_list(ds)
+                # If user provided overlapping parameters in the HTTP POST
+                # it can be that the same stream or segment has been queried,
+                # so we need to make sure final dataset has no duplicates.
+                if not ds_elem in result:
+                    result.append(ds_elem)
+            else:
+                # If availability < 100, collect the continuous segments
+                c_segs = db.c_segments.find({"streamId": ds_id})
+                for cs in c_segs:
+                    c_seg_elem = _parse_c_segment_to_list(ds, cs)
+                    # If user provided overlapping parameters in the HTTP POST
+                    # it can be that the same stream or segment has been queried,
+                    # so we need to make sure final dataset has no duplicates.
+                    if not c_seg_elem in result:
+                        result.append(c_seg_elem)
 
-    # Result needs to be sorted
+    # Result needs to be sorted, this seems to be required by the fusion step
     result.sort(
         key=lambda x: (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7])
     )
 
-    return qry, result
+    return qries, result
 
 
 def _query_params_to_regex(str):
@@ -157,13 +172,33 @@ def _parse_c_segment_to_list(daily_stream, c_segment):
     ]
     return result
 
+# TODO: Flattening function for HTTP POST parameters to minimize duplicate queries
+def _flatten_parameters(params):
+    """Flatten the list of parameters. HTTP POST method can provide multiple
+    rows of parameters like:
+        NL DBN01 * * 2018-01-01 2019-01-01
+        NL DBN01,DBN02 * * 2016-01-01 2017-01-01
+        NL DBN01 * HD? 2016-01-01 2017-01-01
+
+    Args:
+        params ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
+    raise NotImplementedError()
+
 
 def collect_data(params):
     """ Get the result of the Mongo query. """
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
-
     qry, data = mongo_request(params)
+
+    # if data:
+    #     fc = FdsnClient()
+    #     data = fc.assign_restricted_statuses(params, data)
+
     logging.debug(qry)
 
     return data
