@@ -141,7 +141,7 @@ def _parse_daily_stream_to_list(daily_stream):
         daily_stream["ts"],
         daily_stream["te"],
         daily_stream["created"],
-        daily_stream["status"].upper(),
+        "PARTIAL",
         1,
     ]
     return result
@@ -167,7 +167,7 @@ def _parse_c_segment_to_list(daily_stream, c_segment):
         c_segment["ts"],
         c_segment["te"],
         daily_stream["created"],
-        daily_stream["status"].upper(),
+        "PARTIAL",
         1,
     ]
     return result
