@@ -3,7 +3,8 @@ ws-availability implements the FDSN specification of the availability webservice
 
 
 ## Running in development environment
-1. Go to the root directory:
+1. Go to the root directory
+1. Copy `config.py.sample` to `config.py` and adjust it as needed
 1. Create the virtual environment:
     ```
     $ python3 -m venv env
