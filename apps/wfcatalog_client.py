@@ -13,13 +13,13 @@ from .fdsn_client import FdsnClient
 
 
 def mongo_request(paramslist):
-    """Build and run WFCatalog MongoDB request using request query parameters
+    """Build and run WFCatalog MongoDB queries using request query parameters
 
     Args:
-        paramslist ([]): List of URL query parameters
+        paramslist ([]): List of lists containing URL query parameters
 
     Returns:
-        string: MongoDB query used to obtain data
+        []: MongoDB queries used to obtain data
         []: List of metrics extracted from the MongoDB
     """
     db_host = current_app.config["MONGODB_HOST"]
