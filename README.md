@@ -34,21 +34,26 @@ This is RESIF-DC inners and is not detailed here.
 
 ## Play around with docker
 
+```
+$ docker build -t ws-availability .
+# Run with bridged network
+$ docker run --rm -e RUNMODE=test -p 8000:8000 --name ws-availability ws-availability
+# Run with shared host network
+$ docker run --rm --net=host -e RUNMODE=test -p 8000:8000 --name ws-availability ws-availability
+```
 
-docker build -t ws-availability .
-docker run --rm -e RUNMODE=test -p 8000:8000 --name ws-availability ws-availability
 
 
 Then :
 
 ```
-wget -O - http://localhost:8000/1/application.wadl
+$ wget -O - http://localhost:8000/1/application.wadl
 ```
 
 Run it in debug mode with flask:
 
 ```
-RUNMODE=test FLASK_APP=start.py flask run
+$ RUNMODE=test FLASK_APP=start.py flask run
 ```
 
 ## RUNMODE builtin values
