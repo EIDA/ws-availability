@@ -35,11 +35,11 @@ This is RESIF-DC inners and is not detailed here.
 ## Play around with docker
 
 ```
-$ docker build -t ws-availability .
+$ docker build -t ws-availability:latest .
 # Run with bridged network
-$ docker run --rm -e RUNMODE=test -p 8000:8000 --name ws-availability ws-availability
+$ docker run --rm -e RUNMODE=test -p 8000:8000 --name ws-availability ws-availability:latest
 # Run with shared host network
-$ docker run --rm --net=host -e RUNMODE=test -p 8000:8000 --name ws-availability ws-availability
+$ docker run --rm --net=host -e RUNMODE=test --name ws-availability ws-availability:latest
 ```
 
 
