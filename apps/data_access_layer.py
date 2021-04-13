@@ -257,8 +257,7 @@ def get_response(params, data):
     elif params["format"] == "json":
         headers = {"Content-type": "application/json"}
         response = make_response(
-            json.dumps(records_to_dictlist(params, data),
-                       sort_keys=False), headers
+            json.dumps(records_to_dictlist(params, data), sort_keys=False), headers
         )
     logging.debug(f"Response built in {tictac(tic)} seconds.")
     return response
@@ -316,5 +315,4 @@ def get_output(param_dic_list):
         if data:
             if response:
                 nbytes = response.headers.get("Content-Length")
-                logging.info(
-                    f"{nbytes} bytes rendered in {tictac(tic)} seconds.")
+                logging.info(f"{nbytes} bytes rendered in {tictac(tic)} seconds.")

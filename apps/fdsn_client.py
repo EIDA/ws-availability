@@ -45,11 +45,11 @@ class FdsnClient:
         """
 
         # body = "level=station\n"
-        
+
         net_stat = set()
         for s in streams:
             net_stat.add(f"?{s[0]} {s[1]} * * {s[6]} {s[7]}")
-        
+
         for ns in net_stat:
             url = FDSN_STATION_URL + ns
             resp = self._get(url)

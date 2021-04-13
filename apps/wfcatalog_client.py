@@ -60,15 +60,12 @@ def mongo_request(paramslist):
         if params["end"]:
             te = {"$lte": params["end"]}
             qry["te"] = te
-        
+
         # Let's memorize this new query for logging purposes
         qries.append(qry)
 
         db = MongoClient(
-            db_host,
-            db_port,
-            username=db_usr,
-            password=db_pwd
+            db_host, db_port, username=db_usr, password=db_pwd
         ).get_database(db_name)
 
         d_streams = db.daily_streams.find(qry)
@@ -96,9 +93,7 @@ def mongo_request(paramslist):
                         result.append(c_seg_elem)
 
     # Result needs to be sorted, this seems to be required by the fusion step
-    result.sort(
-        key=lambda x: (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7])
-    )
+    result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7]))
 
     return qries, result
 
@@ -171,6 +166,7 @@ def _parse_c_segment_to_list(daily_stream, c_segment):
         1,
     ]
     return result
+
 
 # TODO: Flattening function for HTTP POST parameters to minimize duplicate queries
 def _flatten_parameters(params):
