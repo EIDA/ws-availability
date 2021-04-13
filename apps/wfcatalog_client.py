@@ -65,7 +65,7 @@ def mongo_request(paramslist):
         qries.append(qry)
 
         db = MongoClient(
-            db_host, db_port, username=db_usr, password=db_pwd
+            db_host, db_port, username=db_usr, password=db_pwd, authSource=db_name
         ).get_database(db_name)
 
         d_streams = db.daily_streams.find(qry)
