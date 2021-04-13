@@ -1,7 +1,7 @@
 import logging
 import os
 
-from flask import Flask, make_response, render_template
+from flask import current_app, Flask, make_response, render_template
 
 from apps.globals import VERSION
 from apps.root import output
@@ -64,12 +64,18 @@ def commit():
 @app.route("/")
 @app.route("/local=fr")
 def doc():
-    return render_template("doc.html")
+    if current_app.config["DB_BACKEND"] == "wfcatalog":
+        return render_template("doc-eida.html")
+    else:
+        return render_template("doc.html")
 
 
 @app.route("/local=en")
 def doc_en():
-    return render_template("doc_en.html")
+    if current_app.config["DB_BACKEND"] == "wfcatalog":
+        return render_template("doc-eida.html")
+    else:
+        return render_template("doc_en.html")
 
 
 # **** MAIN ****

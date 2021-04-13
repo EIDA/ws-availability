@@ -10,4 +10,4 @@ COPY apps ./apps/
 COPY templates ./templates/
 COPY static ./static/
 
-CMD ["/bin/bash", "-c", "gunicorn --bind 0.0.0.0:8000 start:app"]
+CMD ["/bin/bash", "-c", "gunicorn --bind 0.0.0.0:9001 start:app"]

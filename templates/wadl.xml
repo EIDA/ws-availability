@@ -135,16 +135,16 @@
             <representation mediaType="application/json"/>
         </response>
 
-    <method name="POST" id="postExtent">
-        <request>
-            <representation mediaType="application/x-www-form-urlencoded"/>
-        </request>
-        <response>
-            <representation mediaType="text/plain"/>
-            <representation mediaType="text/csv"/>
-            <representation mediaType="application/json"/>
-        </response>
-    </method>
+        <method name="POST" id="postExtent">
+            <request>
+                <representation mediaType="application/x-www-form-urlencoded"/>
+            </request>
+            <response>
+                <representation mediaType="text/plain"/>
+                <representation mediaType="text/csv"/>
+                <representation mediaType="application/json"/>
+            </response>
+        </method>
 
 
     </method>
