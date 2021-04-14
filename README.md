@@ -51,7 +51,7 @@ $ docker run --rm --net=host -e RUNMODE=test --name ws-availability ws-availabil
 Then :
 
 ```bash
-$ wget -O - http://localhost:8000/1/application.wadl
+$ wget -O - http://localhost:9001/1/application.wadl
 ```
 
 Run it in debug mode with flask:
