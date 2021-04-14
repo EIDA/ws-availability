@@ -27,7 +27,7 @@ ORDERBY = (
 )
 
 # error message constants
-DOCUMENTATION_URI = "http://ws.resif.fr/fdsnws/availability/1/"
+DOCUMENTATION_URI = "http://www.fdsn.org/webservices/fdsnws-availability-1.0.pdf"
 SERVICE = "fdsnws-availability"
 VERSION = "1.0.1"
 
