@@ -11,7 +11,7 @@ from config import Config
 app = Flask(__name__)
 
 FMT = "[%(asctime)s] %(levelname)s [%(filename)s:%(lineno)d] [%(funcName)s] %(message)s"
-LOGLEVEL = logging.INFO if os.environ.get("RUNMODE") == "prodution" else logging.DEBUG
+LOGLEVEL = logging.INFO if os.environ.get("RUNMODE") == "production" else logging.DEBUG
 logging.basicConfig(format=FMT, level=LOGLEVEL)
 
 app.config.from_object(Config)
