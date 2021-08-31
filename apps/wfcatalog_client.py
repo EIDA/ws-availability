@@ -1,15 +1,16 @@
-import time
 import logging
 import re
 
 from flask import current_app
 
-from apps.utils import tictac
-
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
-from .fdsn_client import FdsnClient
+from .restriction import RestrictionInventory
+
+from apps.globals import FDSNWS_STATION_URL, MONGODB_RESULT_LIMIT
+
+RESTRICTED = RestrictionInventory(FDSNWS_STATION_URL)
 
 
 def mongo_request(paramslist):
@@ -65,31 +66,43 @@ def mongo_request(paramslist):
         qries.append(qry)
 
         db = MongoClient(
-            db_host, db_port, username=db_usr, password=db_pwd, authSource=db_name
+            db_host,
+            db_port,
+            username=db_usr,
+            password=db_pwd,
+            authSource=db_name,
+            socketTimeoutMS=5000,
+            connectTimeoutMS=5000,
         ).get_database(db_name)
 
-        d_streams = db.daily_streams.find(qry)
+        d_streams = db.daily_streams.find(qry).limit(MONGODB_RESULT_LIMIT)
         for ds in d_streams:
             ds_id = ObjectId(ds["_id"])
             ds_avail = float(ds["avail"])
 
             if ds_avail >= 100:
                 # If availability = 100, just add it to the set (no c_segments present)
-                ds_elem = _parse_daily_stream_to_list(ds)
+                ds_elem, restr = _parse_daily_stream_to_list(ds)
                 # If user provided overlapping parameters in the HTTP POST
                 # it can be that the same stream or segment has been queried,
                 # so we need to make sure final dataset has no duplicates.
-                if not ds_elem in result:
+                # Also, check if restricted status is known from FDSNWS-Station.
+                # Unknown restricted status is not supported yet.
+                if restr and not ds_elem in result:
                     result.append(ds_elem)
             else:
                 # If availability < 100, collect the continuous segments
-                c_segs = db.c_segments.find({"streamId": ds_id})
+                c_segs = db.c_segments.find({"streamId": ds_id}).limit(
+                    MONGODB_RESULT_LIMIT
+                )
                 for cs in c_segs:
-                    c_seg_elem = _parse_c_segment_to_list(ds, cs)
+                    c_seg_elem, restr = _parse_c_segment_to_list(ds, cs)
                     # If user provided overlapping parameters in the HTTP POST
                     # it can be that the same stream or segment has been queried,
                     # so we need to make sure final dataset has no duplicates.
-                    if not c_seg_elem in result:
+                    # Also, check if restricted status is known from FDSNWS-Station.
+                    # Unknown restricted status is not supported yet.
+                    if restr and not c_seg_elem in result:
                         result.append(c_seg_elem)
 
     # Result needs to be sorted, this seems to be required by the fusion step
@@ -117,15 +130,41 @@ def _query_params_to_regex(str):
     return re.compile(regex, re.IGNORECASE)
 
 
-def _parse_daily_stream_to_list(daily_stream):
-    """Parse the daily stream JSON document
+def _get_restricted_status(daily_stream):
+    """Gets the restricted status of provided daily stream.
 
     Args:
-        daily_stream (string): Daily stream representation in JSON format
+        daily_stream (dict): Daily stream dictionary from WFCatalog DB.
 
     Returns:
-        []: List with daily stream metrics
+        string: Restricted status, `None` if unknown.
     """
+    restricted = None
+
+    r = RESTRICTED.is_restricted(
+        f"{daily_stream['net']}.{daily_stream['sta']}..{daily_stream['cha']}",
+        daily_stream["ts"].date(),
+        daily_stream["te"].date(),
+    )
+
+    if r:
+        restricted = r.name
+
+    return restricted
+
+
+def _parse_daily_stream_to_list(daily_stream):
+    """Parse the daily stream JSON document.
+
+    Args:
+        daily_stream (string): Daily stream representation in JSON format.
+
+    Returns:
+        list: List with daily stream metrics.
+        str: Restricted status information, `None` if unknown.
+    """
+    restr = _get_restricted_status(daily_stream)
+
     result = [
         daily_stream["net"],
         daily_stream["sta"],
@@ -136,22 +175,25 @@ def _parse_daily_stream_to_list(daily_stream):
         daily_stream["ts"],
         daily_stream["te"],
         daily_stream["created"],
-        "OPEN",
+        restr,
         1,
     ]
-    return result
+    return result, restr
 
 
 def _parse_c_segment_to_list(daily_stream, c_segment):
-    """Parse the daily stream and continuous segments JSON documents
+    """Parse the daily stream and continuous segments JSON documents.
 
     Args:
-        daily_stream (string): Daily stream representation in JSON format
-        c_segment (string): Continuous segment representation in JSON format
+        daily_stream (string): Daily stream representation in JSON format.
+        c_segment (string): Continuous segment representation in JSON format.
 
     Returns:
-        []: List with continuous segment metrics wrapped around daily stream
+        list: List with continuous segment metrics wrapped around daily stream.
+        str: Restricted status information, `None` if unknown.
     """
+    restr = _get_restricted_status(daily_stream)
+
     result = [
         daily_stream["net"],
         daily_stream["sta"],
@@ -162,10 +204,10 @@ def _parse_c_segment_to_list(daily_stream, c_segment):
         c_segment["ts"],
         c_segment["te"],
         daily_stream["created"],
-        "OPEN",
+        restr,
         1,
     ]
-    return result
+    return result, restr
 
 
 # TODO: Flattening function for HTTP POST parameters to minimize duplicate queries

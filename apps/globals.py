@@ -4,6 +4,23 @@ SCHEMAVERSION = 1.0
 # postgresql schema
 SCHEMA = "wsavailability"
 
+# FDSNWS-Station cache source
+FDSNWS_STATION_URL = (
+    "http://www.orfeus-eu.org/fdsnws/station/1/query?level=channel"
+)
+
+# WFCatalog MongoDB max result size
+MONGODB_RESULT_LIMIT = 100000
+
+# Response 
+QUALITY = 4
+SAMPLERATE = 5
+START = 6
+END = 7
+UPDATED = 8
+STATUS = 9
+COUNT = 10  # timespancount
+
 # limitations
 TIMEOUT = 120
 MAX_DAYS = None
