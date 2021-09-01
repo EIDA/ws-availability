@@ -1,5 +1,4 @@
 FROM gricad-registry.univ-grenoble-alpes.fr/osug/resif/resif_docker/obspy:1.2.1-python-3.8-slim
-MAINTAINER RESIF DC <resif-dc@univ-grenoble-alpes.fr>
 RUN pip install --no-cache-dir gunicorn
 COPY requirements.txt /
 RUN pip install --no-cache-dir -r /requirements.txt
