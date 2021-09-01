@@ -7,6 +7,13 @@ from obspy import read_inventory
 from obspy.core.inventory import Network, Channel
 from typing import Union
 
+from requests import HTTPError
+
+from apps.globals import (
+    FDSNWS_STATION_CACHE_REFRESH_LONG,
+    FDSNWS_STATION_CACHE_REFRESH_SHORT,
+)
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -45,10 +52,17 @@ class Epoch:
 
 class RestrictionInventory:
     def __init__(self, url: str):
-        # Get inventory from FDSN
-        inv = read_inventory(url)
-
+        self.refresh_timeout = FDSNWS_STATION_CACHE_REFRESH_LONG
         self._inv = {}
+
+        inv = None
+        try:
+            # Get inventory from FDSN
+            inv = read_inventory(url)
+        except HTTPError as err:
+            self.refresh_timeout = FDSNWS_STATION_CACHE_REFRESH_SHORT
+            logging.exception(err)
+            return
 
         # Read ObsPy inventory
         for net in inv:
@@ -98,6 +112,10 @@ class RestrictionInventory:
                     self._inv[seed_id][i].end = self._inv[seed_id][
                         i + 1
                     ].start - timedelta(days=1)
+
+    @property
+    def is_populated(self):
+        return len(self._inv) > 0
 
     @staticmethod
     def _is_obspy_restricted(cha_or_net: Union[Network, Channel]) -> Restriction:

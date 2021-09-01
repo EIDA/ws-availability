@@ -1,5 +1,8 @@
 import logging
 import re
+import time
+import datetime
+import threading
 
 from flask import current_app
 
@@ -8,9 +11,25 @@ from bson.objectid import ObjectId
 
 from .restriction import RestrictionInventory
 
-from apps.globals import FDSNWS_STATION_URL, MONGODB_RESULT_LIMIT
+from apps.globals import (
+    FDSNWS_STATION_URL,
+    MONGODB_RESULT_LIMIT
+)
 
-RESTRICTED = RestrictionInventory(FDSNWS_STATION_URL)
+RESTRICTED = None
+
+
+def _refresh_restricted_bit_cache():
+    global RESTRICTED
+
+    while True:
+        logging.debug(f"Rebuilding FDSNWS-Station cache at {datetime.datetime.now()}")
+        tmp_restr = RestrictionInventory(FDSNWS_STATION_URL)
+        # Make sure instance is populated, there might have been a HTTP
+        # error when reading the inventory from FDSNWS-Station
+        if tmp_restr.is_populated:
+            RESTRICTED = tmp_restr
+        time.sleep(tmp_restr.refresh_timeout)
 
 
 def mongo_request(paramslist):
@@ -240,3 +259,10 @@ def collect_data(params):
     logging.debug(qry)
 
     return data
+
+
+# Start cache refresh in a thread
+t = threading.Thread(
+    name="refresh_restricted_bit_cache", target=_refresh_restricted_bit_cache
+)
+t.start()
