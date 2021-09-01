@@ -3,6 +3,9 @@ import re
 import time
 import threading
 
+from pymemcache.client import base
+from pymemcache import serde
+
 from flask import current_app
 
 from pymongo import MongoClient
@@ -10,8 +13,6 @@ from bson.objectid import ObjectId
 
 from .restriction import RestrictionInventory
 
-from apps.globals import Error
-from apps.utils import overflow_error
 from apps.globals import (
     FDSNWS_STATION_URL
 )
@@ -22,15 +23,13 @@ RESTRICTED = None
 def _refresh_restricted_bit_cache():
     global RESTRICTED
 
-    while True:
-        logging.info(f"Started rebuilding FDSNWS-Station cache")
-        tmp_restr = RestrictionInventory(FDSNWS_STATION_URL)
-        # Make sure instance is populated, there might have been a HTTP
-        # error when reading the inventory from FDSNWS-Station
-        if tmp_restr.is_populated:
-            RESTRICTED = tmp_restr
-        logging.info(f"Completed rebuilding FDSNWS-Station cache")
-        time.sleep(tmp_restr.refresh_timeout)
+    logging.info(f"Started rebuilding FDSNWS-Station cache")
+    tmp_restr = RestrictionInventory(FDSNWS_STATION_URL)
+    # Make sure instance is populated, there might have been a HTTP
+    # error when reading the inventory from FDSNWS-Station
+    if tmp_restr.is_populated:
+        RESTRICTED = tmp_restr
+    logging.info(f"Completed rebuilding FDSNWS-Station cache")
 
 
 def mongo_request(paramslist):
@@ -91,11 +90,9 @@ def mongo_request(paramslist):
             username=db_usr,
             password=db_pwd,
             authSource=db_name,
-            socketTimeoutMS=5000,
-            connectTimeoutMS=5000,
         ).get_database(db_name)
 
-        d_streams = db.daily_streams.find(qry, batch_size=10000)
+        d_streams = db.daily_streams.find(qry).limit(100000)
 
         for ds in d_streams:
             ds_id = ObjectId(ds["_id"])
@@ -161,7 +158,7 @@ def _get_restricted_status(daily_stream):
         string: Restricted status, `None` if unknown.
     """
     global RESTRICTED
-    
+
     restricted = None
 
     r = RESTRICTED.is_restricted(
@@ -252,9 +249,16 @@ def _flatten_parameters(params):
 
 def collect_data(params):
     """ Get the result of the Mongo query. """
+
+    client = base.Client(("localhost", 11211), serde=serde.pickle_serde)
+    param_hash = str(hash(str(params)))
+    if client.get(param_hash):
+        return client.get(param_hash)
+
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
     qry, data = mongo_request(params)
+    client.set(param_hash, data, 600)
 
     # if data:
     #     fc = FdsnClient()
@@ -266,7 +270,9 @@ def collect_data(params):
 
 
 # Start cache refresh in a thread
-t = threading.Thread(
-    name="refresh_restricted_bit_cache", target=_refresh_restricted_bit_cache
-)
-t.start()
+# t = threading.Thread(
+#     name="refresh_restricted_bit_cache", target=_refresh_restricted_bit_cache
+# )
+# t.start()
+
+_refresh_restricted_bit_cache()

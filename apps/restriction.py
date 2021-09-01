@@ -1,5 +1,8 @@
 import logging
 
+from pymemcache.client import base
+from pymemcache import serde
+
 from datetime import date, timedelta
 from enum import Flag, auto
 from functools import reduce
@@ -13,8 +16,6 @@ from apps.globals import (
     FDSNWS_STATION_CACHE_REFRESH_LONG,
     FDSNWS_STATION_CACHE_REFRESH_SHORT,
 )
-
-logging.basicConfig(level=logging.INFO)
 
 
 class Restriction(Flag):
@@ -55,9 +56,20 @@ class RestrictionInventory:
         self.refresh_timeout = FDSNWS_STATION_CACHE_REFRESH_LONG
         self._inv = {}
 
+        client = base.Client(("localhost", 11211), serde=serde.pickle_serde)
+
+        cached_inventory = client.get("inventory")
+        if cached_inventory:
+            logging.info(f"Getting inventory from cache...")
+            self._inv = cached_inventory
+            return
+
+        logging.info(f"Caching inventory from FDSNWS-Station...")
+
         inv = None
+
         try:
-            # Get inventory from FDSN
+            # Get inventory from FDSN:
             inv = read_inventory(url)
         except HTTPError as err:
             self.refresh_timeout = FDSNWS_STATION_CACHE_REFRESH_SHORT
@@ -112,6 +124,7 @@ class RestrictionInventory:
                     self._inv[seed_id][i].end = self._inv[seed_id][
                         i + 1
                     ].start - timedelta(days=1)
+                client.set("inventory", self._inv, 86400)
 
     @property
     def is_populated(self):
