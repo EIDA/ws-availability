@@ -1,7 +1,6 @@
 import logging
 import re
 import time
-import datetime
 import threading
 
 from flask import current_app
@@ -11,9 +10,10 @@ from bson.objectid import ObjectId
 
 from .restriction import RestrictionInventory
 
+from apps.globals import Error
+from apps.utils import overflow_error
 from apps.globals import (
-    FDSNWS_STATION_URL,
-    MONGODB_RESULT_LIMIT
+    FDSNWS_STATION_URL
 )
 
 RESTRICTED = None
@@ -23,12 +23,13 @@ def _refresh_restricted_bit_cache():
     global RESTRICTED
 
     while True:
-        logging.debug(f"Rebuilding FDSNWS-Station cache at {datetime.datetime.now()}")
+        logging.info(f"Started rebuilding FDSNWS-Station cache")
         tmp_restr = RestrictionInventory(FDSNWS_STATION_URL)
         # Make sure instance is populated, there might have been a HTTP
         # error when reading the inventory from FDSNWS-Station
         if tmp_restr.is_populated:
             RESTRICTED = tmp_restr
+        logging.info(f"Completed rebuilding FDSNWS-Station cache")
         time.sleep(tmp_restr.refresh_timeout)
 
 
@@ -94,7 +95,8 @@ def mongo_request(paramslist):
             connectTimeoutMS=5000,
         ).get_database(db_name)
 
-        d_streams = db.daily_streams.find(qry).limit(MONGODB_RESULT_LIMIT)
+        d_streams = db.daily_streams.find(qry, batch_size=10000)
+
         for ds in d_streams:
             ds_id = ObjectId(ds["_id"])
             ds_avail = float(ds["avail"])
@@ -111,9 +113,7 @@ def mongo_request(paramslist):
                     result.append(ds_elem)
             else:
                 # If availability < 100, collect the continuous segments
-                c_segs = db.c_segments.find({"streamId": ds_id}).limit(
-                    MONGODB_RESULT_LIMIT
-                )
+                c_segs = db.c_segments.find({"streamId": ds_id})
                 for cs in c_segs:
                     c_seg_elem, restr = _parse_c_segment_to_list(ds, cs)
                     # If user provided overlapping parameters in the HTTP POST
@@ -160,6 +160,8 @@ def _get_restricted_status(daily_stream):
     Returns:
         string: Restricted status, `None` if unknown.
     """
+    global RESTRICTED
+    
     restricted = None
 
     r = RESTRICTED.is_restricted(
