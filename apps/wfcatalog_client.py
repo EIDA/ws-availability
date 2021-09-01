@@ -64,10 +64,10 @@ def mongo_request(paramslist):
             network = {"$in": params["network"].split(",")}
             qry["net"] = network
         if params["station"] != "*":
-            station = {"$in": params["station"].split(",")}
+            station = _query_params_to_regex(params["station"])
             qry["sta"] = station
         if params["location"] != "*":
-            location = {"$in": params["location"].split(",")}
+            location = _query_params_to_regex(params["location"])
             qry["loc"] = location
         if params["channel"] != "*":
             qry["cha"] = _query_params_to_regex(params["channel"])
@@ -141,8 +141,10 @@ def _query_params_to_regex(str):
     """
     # Split the string by comma and put in in a list
     split = str.split(",")
-    # Replace question marks with commas (regex any char)
+    # Replace question marks with regexp equivalent
     wildcards = [s.replace("?", ".") for s in split]
+    # Replace wildcards marks with regexp equivalent
+    wildcards = [s.replace("*", ".*") for s in split]
     # Add start and end of string
     regex = "^" + "|".join(wildcards) + "$"
     # Compile and return
