@@ -11,9 +11,6 @@ FDSNWS_STATION_URL = "http://www.orfeus-eu.org/fdsnws/station/1/query?level=chan
 FDSNWS_STATION_CACHE_REFRESH_LONG = 120
 FDSNWS_STATION_CACHE_REFRESH_SHORT = 30
 
-# WFCatalog MongoDB max result size
-MONGODB_RESULT_LIMIT = 100000
-
 # Response
 QUALITY = 4
 SAMPLERATE = 5
