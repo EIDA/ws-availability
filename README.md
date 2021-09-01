@@ -56,6 +56,16 @@ $ docker run -d --restart=always -e RUNMODE=production --net=host --name ws-avai
 $ docker run --rm --net=host -e RUNMODE=test --name ws-availability ws-availability:latest
 ```
 
+## Memcache
+
+⚠️ EIDA deployment requires a memcache instance, it can be easily deployed using Docker:
+
+```bash
+docker run -d --restart=always --net=host memcached
+# or
+docker run -d --restart=always -p 11211:11211 memcached
+```
+
 Then :
 
 ```bash
