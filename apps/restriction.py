@@ -11,11 +11,7 @@ from obspy.core.inventory import Network, Channel
 from typing import Union
 
 from requests import HTTPError
-
-from apps.globals import (
-    FDSNWS_STATION_CACHE_REFRESH_LONG,
-    FDSNWS_STATION_CACHE_REFRESH_SHORT,
-)
+from apps.globals import CPREF
 
 
 class Restriction(Flag):
@@ -53,12 +49,11 @@ class Epoch:
 
 class RestrictionInventory:
     def __init__(self, url: str):
-        self.refresh_timeout = FDSNWS_STATION_CACHE_REFRESH_LONG
         self._inv = {}
 
         client = base.Client(("localhost", 11211), serde=serde.pickle_serde)
 
-        cached_inventory = client.get("inventory")
+        cached_inventory = client.get(f"{CPREF}inventory")
         if cached_inventory:
             logging.info(f"Getting inventory from cache...")
             self._inv = cached_inventory
@@ -72,7 +67,6 @@ class RestrictionInventory:
             # Get inventory from FDSN:
             inv = read_inventory(url)
         except HTTPError as err:
-            self.refresh_timeout = FDSNWS_STATION_CACHE_REFRESH_SHORT
             logging.exception(err)
             return
 
@@ -124,7 +118,7 @@ class RestrictionInventory:
                     self._inv[seed_id][i].end = self._inv[seed_id][
                         i + 1
                     ].start - timedelta(days=1)
-                client.set("inventory", self._inv, 86400)
+                client.set(f"{CPREF}inventory", self._inv, 86400)
 
     @property
     def is_populated(self):

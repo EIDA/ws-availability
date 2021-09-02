@@ -1,7 +1,5 @@
 import logging
 import re
-import time
-import threading
 
 from pymemcache.client import base
 from pymemcache import serde
@@ -13,9 +11,7 @@ from bson.objectid import ObjectId
 
 from .restriction import RestrictionInventory
 
-from apps.globals import (
-    FDSNWS_STATION_URL
-)
+from apps.globals import FDSNWS_STATION_URL, CPREF
 
 RESTRICTED = None
 
@@ -252,13 +248,13 @@ def collect_data(params):
 
     client = base.Client(("localhost", 11211), serde=serde.pickle_serde)
     param_hash = str(hash(str(params)))
-    if client.get(param_hash):
-        return client.get(param_hash)
+    if client.get(f"{CPREF}{param_hash}"):
+        return client.get(f"{CPREF}{param_hash}")
 
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
     qry, data = mongo_request(params)
-    client.set(param_hash, data, 600)
+    client.set(f"{CPREF}{param_hash}", data, 600)
 
     # if data:
     #     fc = FdsnClient()
@@ -268,11 +264,5 @@ def collect_data(params):
 
     return data
 
-
-# Start cache refresh in a thread
-# t = threading.Thread(
-#     name="refresh_restricted_bit_cache", target=_refresh_restricted_bit_cache
-# )
-# t.start()
 
 _refresh_restricted_bit_cache()
