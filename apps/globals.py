@@ -7,6 +7,8 @@ SCHEMA = "wsavailability"
 # FDSNWS-Station cache source
 FDSNWS_STATION_URL = "http://www.orfeus-eu.org/fdsnws/station/1/query?level=channel"
 
+# Cache host (localhost or container name)
+CACHE_HOST = "cache"
 # Cache prefix (collision prevention - multiple apps can use same memcache instance)
 CACHE_PREFIX = "WSAV-"
 # Cache long invalidation period in seconds

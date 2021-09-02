@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  fdsnws-availability:
+    build: .
+    container_name: fdsnws-availability
+    command: gunicorn --workers 2 --timeout 60 --bind 0.0.0.0:9001 start:app
+    ports:
+      - "9001:9001"
+    depends_on:
+      - cache
+  cache:
+   image: memcached
+   container_name: fdsnws-availability-cache
+   ports:
+     - "11211:11211"
+   entrypoint:
+    - memcached
+    - -m 64
