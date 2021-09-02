@@ -11,12 +11,13 @@ from bson.objectid import ObjectId
 
 from .restriction import RestrictionInventory
 
-from apps.globals import FDSNWS_STATION_URL, CPREF
+from apps.globals import FDSNWS_STATION_URL, CACHE_PREFIX, CACHE_SHORT_INV_PERIOD
 
 RESTRICTED = None
 
 
 def _refresh_restricted_bit_cache():
+    """Builds local cache."""
     global RESTRICTED
 
     logging.info(f"Started rebuilding FDSNWS-Station cache")
@@ -248,21 +249,21 @@ def collect_data(params):
 
     client = base.Client(("localhost", 11211), serde=serde.pickle_serde)
     param_hash = str(hash(str(params)))
-    if client.get(f"{CPREF}{param_hash}"):
-        return client.get(f"{CPREF}{param_hash}")
+    cached_response_key = f"{CACHE_PREFIX}{param_hash}"
+
+    # Try to get cached response for given params
+    if client.get(cached_response_key):
+        return client.get(cached_response_key)
 
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
     qry, data = mongo_request(params)
-    client.set(f"{CPREF}{param_hash}", data, 600)
-
-    # if data:
-    #     fc = FdsnClient()
-    #     data = fc.assign_restricted_statuses(params, data)
+    client.set(cached_response_key, data, CACHE_SHORT_INV_PERIOD)
 
     logging.debug(qry)
 
     return data
 
 
+# Build local cache
 _refresh_restricted_bit_cache()

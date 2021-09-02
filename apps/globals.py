@@ -7,9 +7,12 @@ SCHEMA = "wsavailability"
 # FDSNWS-Station cache source
 FDSNWS_STATION_URL = "http://www.orfeus-eu.org/fdsnws/station/1/query?level=channel"
 
-# FDSNWS-Station cache refresh in seconds
-FDSNWS_STATION_CACHE_REFRESH_LONG = 120
-FDSNWS_STATION_CACHE_REFRESH_SHORT = 30
+# Cache prefix (collision prevention - multiple apps can use same memcache instance)
+CACHE_PREFIX = "WSAV-"
+# Cache long invalidation period in seconds
+CACHE_LONG_INV_PERIOD = 86400
+# Cache short invalidation period in seconds
+CACHE_SHORT_INV_PERIOD = 600
 
 # Response
 QUALITY = 4

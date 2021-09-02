@@ -11,7 +11,7 @@ from obspy.core.inventory import Network, Channel
 from typing import Union
 
 from requests import HTTPError
-from apps.globals import CPREF
+from apps.globals import CACHE_PREFIX, CACHE_LONG_INV_PERIOD
 
 
 class Restriction(Flag):
@@ -52,8 +52,10 @@ class RestrictionInventory:
         self._inv = {}
 
         client = base.Client(("localhost", 11211), serde=serde.pickle_serde)
+        cached_inventory_key = f"{CACHE_PREFIX}inventory"
 
-        cached_inventory = client.get(f"{CPREF}inventory")
+        # Try to get cached inventory from shared memcache instance
+        cached_inventory = client.get(cached_inventory_key)
         if cached_inventory:
             logging.info(f"Getting inventory from cache...")
             self._inv = cached_inventory
@@ -118,7 +120,9 @@ class RestrictionInventory:
                     self._inv[seed_id][i].end = self._inv[seed_id][
                         i + 1
                     ].start - timedelta(days=1)
-                client.set(f"{CPREF}inventory", self._inv, 86400)
+
+        # Store inventory in shared memcache instance
+        client.set(cached_inventory_key, self._inv, CACHE_LONG_INV_PERIOD)
 
     @property
     def is_populated(self):
