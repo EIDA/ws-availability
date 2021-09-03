@@ -122,11 +122,11 @@ def _query_params_to_regex(str):
     # Split the string by comma and put in in a list
     split = str.split(",")
     # Replace question marks with regexp equivalent
-    wildcards = [s.replace("?", ".") for s in split]
+    split = [s.replace("?", ".") for s in split]
     # Replace wildcards marks with regexp equivalent
-    wildcards = [s.replace("*", ".*") for s in split]
+    split = [s.replace("*", ".*") for s in split]
     # Add start and end of string
-    regex = "^" + "|".join(wildcards) + "$"
+    regex = "^" + "|".join(split) + "$"
     # Compile and return
     return re.compile(regex, re.IGNORECASE)
 
