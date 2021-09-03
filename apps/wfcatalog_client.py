@@ -11,7 +11,7 @@ from bson.objectid import ObjectId
 
 from .restriction import RestrictionInventory
 
-from apps.globals import FDSNWS_STATION_URL, CACHE_HOST, CACHE_PREFIX, CACHE_SHORT_INV_PERIOD
+from apps.globals import FDSNWS_STATION_URL, CACHE_HOST, CACHE_SHORT_INV_PERIOD
 
 RESTRICTED_INVENTORY = None
 
@@ -235,17 +235,16 @@ def collect_data(params):
     """ Get the result of the Mongo query. """
 
     client = base.Client((CACHE_HOST, 11211), serde=serde.pickle_serde)
-    param_hash = str(hash(str(params)))
-    cached_response_key = f"{CACHE_PREFIX}{param_hash}"
+    CACHED_REQUEST_KEY = str(hash(str(params)))
 
     # Try to get cached response for given params
-    if client.get(cached_response_key):
-        return client.get(cached_response_key)
+    if client.get(CACHED_REQUEST_KEY):
+        return client.get(CACHED_REQUEST_KEY)
 
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
     qry, data = mongo_request(params)
-    client.set(cached_response_key, data, CACHE_SHORT_INV_PERIOD)
+    client.set(CACHED_REQUEST_KEY, data, CACHE_SHORT_INV_PERIOD)
 
     logging.debug(qry)
 

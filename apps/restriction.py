@@ -11,7 +11,7 @@ from obspy.core.inventory import Network, Channel
 from typing import Union
 
 from requests import HTTPError
-from apps.globals import CACHE_HOST, CACHE_PREFIX, CACHE_LONG_INV_PERIOD
+from apps.globals import CACHE_HOST, CACHE_LONG_INV_PERIOD
 
 
 class Restriction(Flag):
@@ -52,10 +52,10 @@ class RestrictionInventory:
         self._inv = {}
 
         client = base.Client((CACHE_HOST, 11211), serde=serde.pickle_serde)
-        cached_inventory_key = f"{CACHE_PREFIX}inventory"
+        CACHED_INVENTORY_KEY = "inventory"
 
         # Try to get cached inventory from shared memcache instance
-        cached_inventory = client.get(cached_inventory_key)
+        cached_inventory = client.get(CACHED_INVENTORY_KEY)
         if cached_inventory:
             self._inv = cached_inventory
             logging.info(f"Loaded inventory from cache...")
@@ -122,7 +122,7 @@ class RestrictionInventory:
                     ].start - timedelta(days=1)
 
         # Store inventory in shared memcache instance
-        client.set(cached_inventory_key, self._inv, CACHE_LONG_INV_PERIOD)
+        client.set(CACHED_INVENTORY_KEY, self._inv, CACHE_LONG_INV_PERIOD)
         logging.warning(f"Completed caching inventory from FDSNWS-Station")
 
     @property
