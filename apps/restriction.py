@@ -57,11 +57,11 @@ class RestrictionInventory:
         # Try to get cached inventory from shared memcache instance
         cached_inventory = client.get(cached_inventory_key)
         if cached_inventory:
-            logging.info(f"Getting inventory from cache...")
             self._inv = cached_inventory
+            logging.info(f"Loaded inventory from cache...")
             return
 
-        logging.info(f"Caching inventory from FDSNWS-Station...")
+        logging.info(f"Getting inventory from FDSNWS-Station...")
 
         inv = None
 
@@ -123,6 +123,7 @@ class RestrictionInventory:
 
         # Store inventory in shared memcache instance
         client.set(cached_inventory_key, self._inv, CACHE_LONG_INV_PERIOD)
+        logging.warning(f"Completed caching inventory from FDSNWS-Station")
 
     @property
     def is_populated(self):

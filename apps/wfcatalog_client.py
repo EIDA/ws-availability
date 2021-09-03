@@ -13,21 +13,7 @@ from .restriction import RestrictionInventory
 
 from apps.globals import FDSNWS_STATION_URL, CACHE_HOST, CACHE_PREFIX, CACHE_SHORT_INV_PERIOD
 
-RESTRICTED = None
-
-
-def _refresh_restricted_bit_cache():
-    """Builds local cache."""
-    global RESTRICTED
-
-    logging.info(f"Started rebuilding FDSNWS-Station cache")
-    tmp_restr = RestrictionInventory(FDSNWS_STATION_URL)
-    # Make sure instance is populated, there might have been a HTTP
-    # error when reading the inventory from FDSNWS-Station
-    if tmp_restr.is_populated:
-        RESTRICTED = tmp_restr
-    logging.info(f"Completed rebuilding FDSNWS-Station cache")
-
+RESTRICTED_INVENTORY = None
 
 def mongo_request(paramslist):
     """Build and run WFCatalog MongoDB queries using request query parameters
@@ -154,20 +140,21 @@ def _get_restricted_status(daily_stream):
     Returns:
         string: Restricted status, `None` if unknown.
     """
-    global RESTRICTED
+    global RESTRICTED_INVENTORY
 
-    restricted = None
+    if not RESTRICTED_INVENTORY:
+        RESTRICTED_INVENTORY = RestrictionInventory(FDSNWS_STATION_URL)
 
-    r = RESTRICTED.is_restricted(
+    r = RESTRICTED_INVENTORY.is_restricted(
         f"{daily_stream['net']}.{daily_stream['sta']}..{daily_stream['cha']}",
         daily_stream["ts"].date(),
         daily_stream["te"].date(),
     )
 
     if r:
-        restricted = r.name
-
-    return restricted
+        return r.name
+    else:
+        return None
 
 
 def _parse_daily_stream_to_list(daily_stream):
@@ -263,7 +250,3 @@ def collect_data(params):
     logging.debug(qry)
 
     return data
-
-
-# Build local cache
-_refresh_restricted_bit_cache()
