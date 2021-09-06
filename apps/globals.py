@@ -9,8 +9,6 @@ FDSNWS_STATION_URL = "http://www.orfeus-eu.org/fdsnws/station/1/query?level=chan
 
 # Cache host (localhost or container name)
 CACHE_HOST = "cache"
-# Cache prefix (collision prevention - multiple apps can use same memcache instance)
-CACHE_PREFIX = "WSAV-"
 # Cache long invalidation period in seconds
 CACHE_LONG_INV_PERIOD = 86400
 # Cache short invalidation period in seconds
