@@ -4,17 +4,6 @@ SCHEMAVERSION = 1.0
 # postgresql schema
 SCHEMA = "wsavailability"
 
-# FDSNWS-Station cache source
-FDSNWS_STATION_URL = "http://www.orfeus-eu.org/fdsnws/station/1/query?level=channel"
-
-# Cache host (localhost or container name)
-CACHE_HOST = "cache"
-CACHE_PORT = 11211
-# Cache long invalidation period in seconds
-CACHE_LONG_INV_PERIOD = 86400
-# Cache short invalidation period in seconds
-CACHE_SHORT_INV_PERIOD = 600
-
 # Response
 QUALITY = 4
 SAMPLERATE = 5

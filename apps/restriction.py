@@ -1,5 +1,7 @@
 import logging
 
+from flask import current_app
+
 from pymemcache.client import base
 from pymemcache import serde
 
@@ -11,7 +13,6 @@ from obspy.core.inventory import Network, Channel
 from typing import Union
 
 from requests import HTTPError
-from apps.globals import CACHE_HOST, CACHE_PORT, CACHE_LONG_INV_PERIOD
 
 
 class Restriction(Flag):
@@ -51,7 +52,10 @@ class RestrictionInventory:
     def __init__(self, url: str):
         self._inv = {}
 
-        client = base.Client((CACHE_HOST, CACHE_PORT), serde=serde.pickle_serde)
+        cache_host = current_app.config["CACHE_HOST"]
+        cache_port = current_app.config["CACHE_PORT"]
+
+        client = base.Client((cache_host, cache_port), serde=serde.pickle_serde)
         CACHED_INVENTORY_KEY = "inventory"
 
         # Try to get cached inventory from shared memcache instance
@@ -122,7 +126,8 @@ class RestrictionInventory:
                     ].start - timedelta(days=1)
 
         # Store inventory in shared memcache instance
-        client.set(CACHED_INVENTORY_KEY, self._inv, CACHE_LONG_INV_PERIOD)
+        cache_long_inv_period = current_app.config["CACHE_LONG_INV_PERIOD"]
+        client.set(CACHED_INVENTORY_KEY, self._inv, cache_long_inv_period)
         logging.warning(f"Completed caching inventory from FDSNWS-Station")
 
     @property

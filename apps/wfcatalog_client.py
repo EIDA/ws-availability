@@ -11,8 +11,6 @@ from bson.objectid import ObjectId
 
 from .restriction import RestrictionInventory
 
-from apps.globals import FDSNWS_STATION_URL, CACHE_HOST, CACHE_PORT, CACHE_SHORT_INV_PERIOD
-
 RESTRICTED_INVENTORY = None
 
 def mongo_request(paramslist):
@@ -143,7 +141,8 @@ def _get_restricted_status(daily_stream):
     global RESTRICTED_INVENTORY
 
     if not RESTRICTED_INVENTORY:
-        RESTRICTED_INVENTORY = RestrictionInventory(FDSNWS_STATION_URL)
+        fdsnws_station_url = current_app.config["FDSNWS_STATION_URL"]
+        RESTRICTED_INVENTORY = RestrictionInventory(fdsnws_station_url)
 
     r = RESTRICTED_INVENTORY.is_restricted(
         f"{daily_stream['net']}.{daily_stream['sta']}..{daily_stream['cha']}",
@@ -233,8 +232,11 @@ def _flatten_parameters(params):
 
 def collect_data(params):
     """ Get the result of the Mongo query. """
+    cache_host = current_app.config["CACHE_HOST"]
+    cache_port = current_app.config["CACHE_PORT"]
+    cache_short_inv_period = current_app.config["CACHE_SHORT_INV_PERIOD"]
 
-    client = base.Client((CACHE_HOST, CACHE_PORT), serde=serde.pickle_serde)
+    client = base.Client((cache_host, cache_port), serde=serde.pickle_serde)
     CACHED_REQUEST_KEY = str(hash(str(params)))
 
     # Try to get cached response for given params
@@ -244,7 +246,7 @@ def collect_data(params):
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
     qry, data = mongo_request(params)
-    client.set(CACHED_REQUEST_KEY, data, CACHE_SHORT_INV_PERIOD)
+    client.set(CACHED_REQUEST_KEY, data, cache_short_inv_period)
 
     logging.debug(qry)
 

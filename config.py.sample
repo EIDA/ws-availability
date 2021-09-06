@@ -25,6 +25,15 @@ class Config:
         MONGODB_USR = ""
         MONGODB_PWD = ""
         MONGODB_NAME = "wfrepo"
+        # FDSNWS-Station cache source
+        FDSNWS_STATION_URL = "http://www.orfeus-eu.org/fdsnws/station/1/query?level=channel"
+        # Cache host (localhost or container name)
+        CACHE_HOST = "cache"
+        CACHE_PORT = 11211
+        # Cache long invalidation period in seconds
+        CACHE_LONG_INV_PERIOD = 86400
+        # Cache short invalidation period in seconds
+        CACHE_SHORT_INV_PERIOD = 600
     elif RUNMODE == "test":
         # wfcatalog for MongoDB, anything else for RESIF
         DB_BACKEND = "wfcatalog"
@@ -39,6 +48,15 @@ class Config:
         MONGODB_USR = ""
         MONGODB_PWD = ""
         MONGODB_NAME = "wfrepo"
+        # FDSNWS-Station cache source
+        FDSNWS_STATION_URL = "http://www.orfeus-eu.org/fdsnws/station/1/query?level=channel"
+        # Cache host (localhost or container name)
+        CACHE_HOST = "localhost"
+        CACHE_PORT = 11211
+        # Cache long invalidation period in seconds
+        CACHE_LONG_INV_PERIOD = 86400
+        # Cache short invalidation period in seconds
+        CACHE_SHORT_INV_PERIOD = 600
 
     try:
         DB_BACKEND = os.environ.get("DB_BACKEND") or DB_BACKEND
@@ -51,6 +69,11 @@ class Config:
         MONGODB_USR = os.environ.get("MONGODB_USR") or MONGODB_USR
         MONGODB_PWD = os.environ.get("MONGODB_PWD") or MONGODB_PWD
         MONGODB_NAME = os.environ.get("MONGODB_NAME") or MONGODB_NAME
+        FDSNWS_STATION_URL = os.environ.get("FDSNWS_STATION_URL") or FDSNWS_STATION_URL
+        CACHE_HOST = os.environ.get("CACHE_HOST") or CACHE_HOST
+        CACHE_PORT = os.environ.get("CACHE_PORT") or CACHE_PORT
+        CACHE_LONG_INV_PERIOD = os.environ.get("CACHE_LONG_INV_PERIOD") or CACHE_LONG_INV_PERIOD
+        CACHE_SHORT_INV_PERIOD = os.environ.get("CACHE_SHORT_INV_PERIOD") or CACHE_SHORT_INV_PERIOD
     except NameError:
         print(
             "Missing environment variables. Either RUNMODE=(test|production) or PGHOST, PGUSER, PGPORT and PGDATABASE should be set."
