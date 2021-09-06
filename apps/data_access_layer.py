@@ -1,32 +1,22 @@
 import json
 import logging
-import re
 import time
 import zipfile
 from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
 
-import psycopg2
 from flask import current_app, make_response
 
 from apps.globals import Error
 from apps.globals import MAX_DATA_ROWS
-from apps.globals import SCHEMA
 from apps.globals import SCHEMAVERSION
+from apps.globals import QUALITY, SAMPLERATE, START, END, UPDATED, STATUS, COUNT
 from apps.utils import error_request
 from apps.utils import overflow_error
 from apps.utils import tictac
 
-from .wfcatalog_client import collect_data as collect_data_wfcatalog
-from .resif_client import collect_data as collect_data_resif
-
-QUALITY = 4
-SAMPLERATE = 5
-START = 6
-END = 7
-UPDATED = 8
-STATUS = 9
-COUNT = 10  # timespancount
+from apps.wfcatalog_client import collect_data as collect_data_wfcatalog
+from apps.resif_client import collect_data as collect_data_resif
 
 
 def get_header(params):

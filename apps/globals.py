@@ -4,6 +4,27 @@ SCHEMAVERSION = 1.0
 # postgresql schema
 SCHEMA = "wsavailability"
 
+# FDSNWS-Station cache source
+FDSNWS_STATION_URL = "http://www.orfeus-eu.org/fdsnws/station/1/query?level=channel"
+
+# Cache host (localhost or container name)
+CACHE_HOST = "cache"
+# Cache prefix (collision prevention - multiple apps can use same memcache instance)
+CACHE_PREFIX = "WSAV-"
+# Cache long invalidation period in seconds
+CACHE_LONG_INV_PERIOD = 86400
+# Cache short invalidation period in seconds
+CACHE_SHORT_INV_PERIOD = 600
+
+# Response
+QUALITY = 4
+SAMPLERATE = 5
+START = 6
+END = 7
+UPDATED = 8
+STATUS = 9
+COUNT = 10  # timespancount
+
 # limitations
 TIMEOUT = 120
 MAX_DAYS = None
