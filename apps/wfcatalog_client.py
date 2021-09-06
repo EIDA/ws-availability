@@ -11,7 +11,7 @@ from bson.objectid import ObjectId
 
 from .restriction import RestrictionInventory
 
-from apps.globals import FDSNWS_STATION_URL, CACHE_HOST, CACHE_SHORT_INV_PERIOD
+from apps.globals import FDSNWS_STATION_URL, CACHE_HOST, CACHE_PORT, CACHE_SHORT_INV_PERIOD
 
 RESTRICTED_INVENTORY = None
 
@@ -234,7 +234,7 @@ def _flatten_parameters(params):
 def collect_data(params):
     """ Get the result of the Mongo query. """
 
-    client = base.Client((CACHE_HOST, 11211), serde=serde.pickle_serde)
+    client = base.Client((CACHE_HOST, CACHE_PORT), serde=serde.pickle_serde)
     CACHED_REQUEST_KEY = str(hash(str(params)))
 
     # Try to get cached response for given params

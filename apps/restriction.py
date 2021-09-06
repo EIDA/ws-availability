@@ -11,7 +11,7 @@ from obspy.core.inventory import Network, Channel
 from typing import Union
 
 from requests import HTTPError
-from apps.globals import CACHE_HOST, CACHE_LONG_INV_PERIOD
+from apps.globals import CACHE_HOST, CACHE_PORT, CACHE_LONG_INV_PERIOD
 
 
 class Restriction(Flag):
@@ -51,7 +51,7 @@ class RestrictionInventory:
     def __init__(self, url: str):
         self._inv = {}
 
-        client = base.Client((CACHE_HOST, 11211), serde=serde.pickle_serde)
+        client = base.Client((CACHE_HOST, CACHE_PORT), serde=serde.pickle_serde)
         CACHED_INVENTORY_KEY = "inventory"
 
         # Try to get cached inventory from shared memcache instance
