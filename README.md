@@ -6,7 +6,6 @@ WS-Availability implements the FDSN specification of the availability webservice
 
 1. Go to the root directory.
 1. Copy `config.py.sample` to `config.py` and adjust it as needed.
-1. Go to `apps/globals.py` and set the `FDSNWS_STATION_URL` to preferred (local) inventory.
 1. Create the virtual environment:
 
     ```bash
