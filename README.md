@@ -24,6 +24,12 @@ WS-Availability implements the FDSN specification of the availability webservice
     pip install -r requirements.txt
     ```
 
+1. Create memcache instance (mandatory for WFCatalog-based deployment):
+
+    ```bash
+    docker run -d --restart=always --net=host memcached
+    ```
+
 1. Now you can either:
     1. Run it:
 
@@ -32,6 +38,15 @@ WS-Availability implements the FDSN specification of the availability webservice
         ```
 
     1. Debug it in VS Code (F5)
+
+## Running in Docker
+1. Go to the root directory.
+1. Copy `config.py.sample` to `config.py` and adjust it as needed.
+1. Build the containers:
+
+    ```bash
+    docker-compose up --build -d
+    ```
 
 ## Backend
 
