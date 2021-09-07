@@ -28,6 +28,7 @@ def mongo_request(paramslist):
     db_usr = current_app.config["MONGODB_USR"]
     db_pwd = current_app.config["MONGODB_PWD"]
     db_name = current_app.config["MONGODB_NAME"]
+    db_max_rows = current_app.config["MONGODB_MAX_ROWS"]
 
     result = []
     network = "*"
@@ -73,7 +74,9 @@ def mongo_request(paramslist):
             authSource=db_name,
         ).get_database(db_name)
 
-        d_streams = db.daily_streams.find(qry, batch_size=1000)
+        d_streams = db.daily_streams.find(qry, batch_size=1000).limit(db_max_rows)
+        # Eagerly execute query instead of using a cursor
+        d_streams = list(d_streams)
 
         for ds in d_streams:
             ds_id = ObjectId(ds["_id"])
