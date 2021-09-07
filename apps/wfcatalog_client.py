@@ -13,6 +13,20 @@ from .restriction import RestrictionInventory
 
 RESTRICTED_INVENTORY = None
 
+PROJ = {
+    "net": 1,
+    "sta": 1,
+    "loc": 1,
+    "cha": 1,
+    "avail": 1,
+    "qlt": 1,
+    "srate": 1,
+    "ts": 1,
+    "te": 1,
+    "created": 1,
+}
+
+
 def mongo_request(paramslist):
     """Build and run WFCatalog MongoDB queries using request query parameters
 
@@ -74,9 +88,9 @@ def mongo_request(paramslist):
             authSource=db_name,
         ).get_database(db_name)
 
-        d_streams = db.daily_streams.find(qry)
+        d_streams = db.daily_streams.find(qry, batch_size=1000, projection=PROJ)
         # Eagerly execute query instead of using a cursor
-        d_streams = list(d_streams)
+        # d_streams = list(d_streams)
 
         for ds in d_streams:
             ds_id = ObjectId(ds["_id"])
@@ -94,7 +108,7 @@ def mongo_request(paramslist):
                     result.append(ds_elem)
             else:
                 # If availability < 100, collect the continuous segments
-                c_segs = db.c_segments.find({"streamId": ds_id})
+                c_segs = db.c_segments.find({"streamId": ds_id}, projection=PROJ)
                 # Eagerly execute query instead of using a cursor
                 c_segs = list(c_segs)
                 for cs in c_segs:
@@ -219,7 +233,7 @@ def _parse_c_segment_to_list(daily_stream, c_segment):
 
 
 def collect_data(params):
-    """ Get the result of the Mongo query. """
+    """Get the result of the Mongo query."""
     cache_host = current_app.config["CACHE_HOST"]
     cache_port = current_app.config["CACHE_PORT"]
     cache_short_inv_period = current_app.config["CACHE_SHORT_INV_PERIOD"]
