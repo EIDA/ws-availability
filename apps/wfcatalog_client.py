@@ -74,7 +74,7 @@ def mongo_request(paramslist):
             authSource=db_name,
         ).get_database(db_name)
 
-        d_streams = db.daily_streams.find(qry, batch_size=1000).limit(db_max_rows)
+        d_streams = db.daily_streams.find(qry).limit(db_max_rows)
         # Eagerly execute query instead of using a cursor
         d_streams = list(d_streams)
 
@@ -95,6 +95,8 @@ def mongo_request(paramslist):
             else:
                 # If availability < 100, collect the continuous segments
                 c_segs = db.c_segments.find({"streamId": ds_id}, batch_size=100)
+                # Eagerly execute query instead of using a cursor
+                c_segs = list(c_segs)
                 for cs in c_segs:
                     c_seg_elem, restr = _parse_c_segment_to_list(ds, cs)
                     # If user provided overlapping parameters in the HTTP POST
