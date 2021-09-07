@@ -74,7 +74,7 @@ def mongo_request(paramslist):
             authSource=db_name,
         ).get_database(db_name)
 
-        d_streams = db.daily_streams.find(qry).limit(db_max_rows)
+        d_streams = db.daily_streams.find(qry)
         # Eagerly execute query instead of using a cursor
         d_streams = list(d_streams)
 
@@ -90,11 +90,11 @@ def mongo_request(paramslist):
                 # so we need to make sure final dataset has no duplicates.
                 # Also, check if restricted status is known from FDSNWS-Station.
                 # Unknown restricted status is not supported yet.
-                if restr and not ds_elem in result:
+                if restr:
                     result.append(ds_elem)
             else:
                 # If availability < 100, collect the continuous segments
-                c_segs = db.c_segments.find({"streamId": ds_id}, batch_size=100)
+                c_segs = db.c_segments.find({"streamId": ds_id})
                 # Eagerly execute query instead of using a cursor
                 c_segs = list(c_segs)
                 for cs in c_segs:
@@ -104,7 +104,7 @@ def mongo_request(paramslist):
                     # so we need to make sure final dataset has no duplicates.
                     # Also, check if restricted status is known from FDSNWS-Station.
                     # Unknown restricted status is not supported yet.
-                    if restr and not c_seg_elem in result:
+                    if restr:
                         result.append(c_seg_elem)
 
     # Result needs to be sorted, this seems to be required by the fusion step
@@ -216,23 +216,6 @@ def _parse_c_segment_to_list(daily_stream, c_segment):
         1,
     ]
     return result, restr
-
-
-# TODO: Flattening function for HTTP POST parameters to minimize duplicate queries
-def _flatten_parameters(params):
-    """Flatten the list of parameters. HTTP POST method can provide multiple
-    rows of parameters like:
-        NL DBN01 * * 2018-01-01 2019-01-01
-        NL DBN01,DBN02 * * 2016-01-01 2017-01-01
-        NL DBN01 * HD? 2016-01-01 2017-01-01
-
-    Args:
-        params ([type]): [description]
-
-    Returns:
-        [type]: [description]
-    """
-    raise NotImplementedError()
 
 
 def collect_data(params):
