@@ -104,7 +104,7 @@ def mongo_request(paramslist):
                 # so we need to make sure final dataset has no duplicates.
                 # Also, check if restricted status is known from FDSNWS-Station.
                 # Unknown restricted status is not supported yet.
-                if restr:
+                if restr and ds_elem not in result:
                     result.append(ds_elem)
             else:
                 # If availability < 100, collect the continuous segments
@@ -118,7 +118,7 @@ def mongo_request(paramslist):
                     # so we need to make sure final dataset has no duplicates.
                     # Also, check if restricted status is known from FDSNWS-Station.
                     # Unknown restricted status is not supported yet.
-                    if restr:
+                    if restr and c_segs not in result:
                         result.append(c_seg_elem)
 
     # Result needs to be sorted, this seems to be required by the fusion step
