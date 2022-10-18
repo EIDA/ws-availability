@@ -2,7 +2,7 @@ import io
 import logging
 import queue
 import re
-from multiprocessing import Process, Queue
+import multiprocessing as mp
 
 from flask import request
 
@@ -27,6 +27,7 @@ from apps.utils import is_valid_output
 from apps.utils import is_valid_quality
 from apps.utils import is_valid_show
 
+mp.set_start_method("fork")
 
 def check_parameters(params):
 
@@ -181,8 +182,8 @@ def output():
             def put_response(q):
                 q.put(get_output(valid_param_dicts))
 
-            q = Queue()
-            process = Process(target=put_response, args=(q,))
+            q = mp.Queue()
+            process = mp.Process(target=put_response, args=(q,))
             process.start()
             resp = q.get(timeout=TIMEOUT)
 

@@ -17,7 +17,6 @@ logging.basicConfig(format=FMT, level=LOGLEVEL)
 app.config.from_object(Config)
 if app.config["RUNMODE"]:
     app.logger.debug("Configuration set with RUNMODE=%s", app.config["RUNMODE"])
-app.logger.debug("Database URI: %s", app.config["DATABASE_URI"])
 
 # ************************************************************************
 # **************************** SERVICE ROUTES ****************************

@@ -6,6 +6,7 @@
     "configurations": [{
             "name": "Launch (Flask)",
             "type": "python",
+            "python": "${workspaceFolder}/env/bin/python",
             "request": "launch",
             "module": "flask",
             "env": {
