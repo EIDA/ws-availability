@@ -4,7 +4,7 @@ import re
 from flask import current_app
 from pymemcache import serde
 from pymemcache.client import base
-from pymongo import ASCENDING, MongoClient
+from pymongo import MongoClient
 
 from .restriction import RestrictionInventory
 
@@ -87,31 +87,18 @@ def mongo_request(paramslist):
             authSource=db_name,
         ).get_database(db_name)
 
-        cursor = db.availability.find(qry, projection=PROJ)
+        cursor = db.availability.find(qry, batch_size=2500, projection=PROJ)
 
-        # cursor = db.availability.find(qry, projection=PROJ).sort(
-        #     [("net", ASCENDING),
-        #     ("sta", ASCENDING),
-        #     ("loc", ASCENDING),
-        #     ("cha", ASCENDING),
-        #     ("qlt", ASCENDING),
-        #     ("srate", ASCENDING),
-        #     ("ts", ASCENDING),
-        #     ("te", ASCENDING)]
-        # )
+        # Result without restricted data
+        # result += [[c[key] for key in c.keys()] for c in cursor]
 
-        # Eagerly load the rows from the DB
-        # rows = list(cursor)
-
+        # Assign restricted data information from cache
         for c in cursor:
             c["restr"] = _get_restricted_status(c)
-            result += [c[key] for key in c.keys()]
-
-        # Flatten list of objects to list of arrays
-        # result += [[row[key] for key in row.keys()] for row in rows]
+            result.append([c[key] for key in c.keys()])
 
     # Result needs to be sorted, this seems to be required by the fusion step
-    result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7]))
+    result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4], x[5]))
 
     return qries, result
 

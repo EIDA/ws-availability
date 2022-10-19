@@ -14,7 +14,7 @@ STATUS = 9
 COUNT = 10  # timespancount
 
 # limitations
-TIMEOUT = 120
+TIMEOUT = 600
 MAX_DAYS = None
 MAX_ROWS = "2_500_000"
 MAX_DATA_ROWS = int(MAX_ROWS.replace(",", ""))

@@ -68,7 +68,8 @@ class RestrictionInventory:
 
         try:
             # Get inventory from FDSN:
-            inv = read_inventory(url)
+            # inv = read_inventory(url)
+            inv = read_inventory("/Users/jarek/Downloads/data.xml")
         except HTTPError as err:
             logging.exception(err)
             return
