@@ -1,33 +1,22 @@
 import io
 import logging
+import multiprocessing as mp
 import queue
 import re
-import multiprocessing as mp
 
 from flask import request
 
-from apps.globals import Error
-from apps.globals import HTTP
-from apps.globals import MAX_DATA_ROWS
-from apps.globals import MAX_DAYS
-from apps.globals import MAX_MERGEGAPS
-from apps.globals import TIMEOUT
 from apps.data_access_layer import get_output
+from apps.globals import (HTTP, MAX_DATA_ROWS, MAX_DAYS, MAX_MERGEGAPS,
+                          TIMEOUT, Error)
 from apps.parameters import Parameters
-from apps.utils import check_base_parameters
-from apps.utils import check_request
-from apps.utils import error_param
-from apps.utils import error_request
-from apps.utils import is_valid_integer
-from apps.utils import is_valid_float
-from apps.utils import is_valid_merge
-from apps.utils import is_valid_nodata
-from apps.utils import is_valid_orderby
-from apps.utils import is_valid_output
-from apps.utils import is_valid_quality
-from apps.utils import is_valid_show
+from apps.utils import (check_base_parameters, check_request, error_param,
+                        error_request, is_valid_float, is_valid_integer,
+                        is_valid_merge, is_valid_nodata, is_valid_orderby,
+                        is_valid_output, is_valid_quality, is_valid_show)
 
 mp.set_start_method("fork")
+
 
 def check_parameters(params):
 

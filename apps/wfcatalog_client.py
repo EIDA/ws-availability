@@ -1,9 +1,11 @@
 import logging
 import re
-from pymemcache.client import base
-from pymemcache import serde
+
 from flask import current_app
-from pymongo import MongoClient, ASCENDING
+from pymemcache import serde
+from pymemcache.client import base
+from pymongo import ASCENDING, MongoClient
+
 from .restriction import RestrictionInventory
 
 RESTRICTED_INVENTORY = None
@@ -22,6 +24,7 @@ PROJ = {
     "restr": 1,
     "count": 1,
 }
+
 
 def mongo_request(paramslist):
     """Build and run WFCatalog MongoDB queries using request query parameters
@@ -98,10 +101,14 @@ def mongo_request(paramslist):
         # )
 
         # Eagerly load the rows from the DB
-        rows = list(cursor)
+        # rows = list(cursor)
+
+        for c in cursor:
+            c["restr"] = _get_restricted_status(c)
+            result += [c[key] for key in c.keys()]
 
         # Flatten list of objects to list of arrays
-        result += [[row[key] for key in row.keys()] for row in rows]
+        # result += [[row[key] for key in row.keys()] for row in rows]
 
     # Result needs to be sorted, this seems to be required by the fusion step
     result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7]))
@@ -130,7 +137,7 @@ def _query_params_to_regex(str):
     return re.compile(regex, re.IGNORECASE)
 
 
-def _get_restricted_status(daily_stream):
+def _get_restricted_status(segment):
     """Gets the restricted status of provided daily stream.
 
     Args:
@@ -146,9 +153,9 @@ def _get_restricted_status(daily_stream):
         RESTRICTED_INVENTORY = RestrictionInventory(fdsnws_station_url)
 
     r = RESTRICTED_INVENTORY.is_restricted(
-        f"{daily_stream['net']}.{daily_stream['sta']}..{daily_stream['cha']}",
-        daily_stream["ts"].date(),
-        daily_stream["te"].date(),
+        f"{segment['net']}.{segment['sta']}..{segment['cha']}",
+        segment["ts"].date(),
+        segment["te"].date(),
     )
 
     if r:

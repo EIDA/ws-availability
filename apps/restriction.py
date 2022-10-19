@@ -1,17 +1,14 @@
 import logging
-
-from flask import current_app
-
-from pymemcache.client import base
-from pymemcache import serde
-
 from datetime import date, timedelta
 from enum import Flag, auto
 from functools import reduce
-from obspy import read_inventory
-from obspy.core.inventory import Network, Channel
 from typing import Union
 
+from flask import current_app
+from obspy import read_inventory
+from obspy.core.inventory import Channel, Network
+from pymemcache import serde
+from pymemcache.client import base
 from requests import HTTPError
 
 

@@ -8,14 +8,14 @@
             "type": "python",
             "python": "${workspaceFolder}/env/bin/python",
             "request": "launch",
-            "module": "flask",
+            "module": "gunicorn",
             "env": {
                 "FLASK_APP": "${workspaceFolder}/start.py",
                 "FLASK_ENV": "development",
                 "FLASK_DEBUG": "0",
                 "RUNMODE": "test"
             },
-            "args": ["run"]
+            "args": ["--workers", "1", "--timeout", "600", "--bind", "0.0.0.0:9001", "start:app"]
         },
     ]
 }
