@@ -27,9 +27,9 @@ class Config:
         CACHE_HOST = "cache"
         CACHE_PORT = 11211
         # Cache long invalidation period in seconds
-        CACHE_LONG_INV_PERIOD = 86400
+        CACHE_LONG_INV_PERIOD = 604800
         # Cache short invalidation period in seconds
-        CACHE_SHORT_INV_PERIOD = 600
+        CACHE_SHORT_INV_PERIOD = 1200
     elif RUNMODE == "test":
         # wfcatalog for MongoDB
         DB_BACKEND = "wfcatalog"
@@ -46,9 +46,9 @@ class Config:
         CACHE_HOST = "localhost"
         CACHE_PORT = 11211
         # Cache long invalidation period in seconds
-        CACHE_LONG_INV_PERIOD = 86400
+        CACHE_LONG_INV_PERIOD = 604800
         # Cache short invalidation period in seconds
-        CACHE_SHORT_INV_PERIOD = 600
+        CACHE_SHORT_INV_PERIOD = 1200
 
     try:
         DB_BACKEND = os.environ.get("DB_BACKEND") or DB_BACKEND
