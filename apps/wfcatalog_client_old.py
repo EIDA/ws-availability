@@ -1,28 +1,29 @@
 import logging
 import re
 
-from flask import current_app
-from pymemcache import serde
 from pymemcache.client import base
+from pymemcache import serde
+
+from flask import current_app
+
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 
 from .restriction import RestrictionInventory
 
 RESTRICTED_INVENTORY = None
 
 PROJ = {
-    "_id": 0,
     "net": 1,
     "sta": 1,
     "loc": 1,
     "cha": 1,
+    "avail": 1,
     "qlt": 1,
     "srate": 1,
     "ts": 1,
     "te": 1,
     "created": 1,
-    "restr": 1,
-    "count": 1,
 }
 
 
@@ -87,18 +88,41 @@ def mongo_request(paramslist):
             authSource=db_name,
         ).get_database(db_name)
 
-        cursor = db.availability.find(qry, batch_size=1000, projection=PROJ)
+        d_streams = db.daily_streams.find(qry, batch_size=1000, projection=PROJ)
+        # Eagerly execute query instead of using a cursor
+        # d_streams = list(d_streams)
 
-        # Result without restricted data
-        # result += [[c[key] for key in c.keys()] for c in cursor]
+        for ds in d_streams:
+            ds_id = ObjectId(ds["_id"])
+            ds_avail = float(ds["avail"])
 
-        # Assign restricted data information from cache
-        for c in cursor:
-            c["restr"] = _get_restricted_status(c)
-            result.append([c[key] for key in c.keys()])
+            if ds_avail >= 100:
+                # If availability = 100, just add it to the set (no c_segments present)
+                ds_elem, restr = _parse_daily_stream_to_list(ds)
+                # If user provided overlapping parameters in the HTTP POST
+                # it can be that the same stream or segment has been queried,
+                # so we need to make sure final dataset has no duplicates.
+                # Also, check if restricted status is known from FDSNWS-Station.
+                # Unknown restricted status is not supported yet.
+                if restr and ds_elem not in result:
+                    result.append(ds_elem)
+            else:
+                # If availability < 100, collect the continuous segments
+                c_segs = db.c_segments.find({"streamId": ds_id}, projection=PROJ)
+                # Eagerly execute query instead of using a cursor
+                c_segs = list(c_segs)
+                for cs in c_segs:
+                    c_seg_elem, restr = _parse_c_segment_to_list(ds, cs)
+                    # If user provided overlapping parameters in the HTTP POST
+                    # it can be that the same stream or segment has been queried,
+                    # so we need to make sure final dataset has no duplicates.
+                    # Also, check if restricted status is known from FDSNWS-Station.
+                    # Unknown restricted status is not supported yet.
+                    if restr and c_segs not in result:
+                        result.append(c_seg_elem)
 
     # Result needs to be sorted, this seems to be required by the fusion step
-    result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
+    result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7]))
 
     return qries, result
 
@@ -124,7 +148,7 @@ def _query_params_to_regex(str):
     return re.compile(regex, re.IGNORECASE)
 
 
-def _get_restricted_status(segment):
+def _get_restricted_status(daily_stream):
     """Gets the restricted status of provided daily stream.
 
     Args:
@@ -140,15 +164,72 @@ def _get_restricted_status(segment):
         RESTRICTED_INVENTORY = RestrictionInventory(fdsnws_station_url)
 
     r = RESTRICTED_INVENTORY.is_restricted(
-        f"{segment['net']}.{segment['sta']}..{segment['cha']}",
-        segment["ts"].date(),
-        segment["te"].date(),
+        f"{daily_stream['net']}.{daily_stream['sta']}..{daily_stream['cha']}",
+        daily_stream["ts"].date(),
+        daily_stream["te"].date(),
     )
 
     if r:
         return r.name
     else:
         return None
+
+
+def _parse_daily_stream_to_list(daily_stream):
+    """Parse the daily stream JSON document.
+
+    Args:
+        daily_stream (string): Daily stream representation in JSON format.
+
+    Returns:
+        list: List with daily stream metrics.
+        str: Restricted status information, `None` if unknown.
+    """
+    restr = _get_restricted_status(daily_stream)
+
+    result = [
+        daily_stream["net"],
+        daily_stream["sta"],
+        daily_stream["loc"],
+        daily_stream["cha"],
+        daily_stream["qlt"],
+        daily_stream["srate"][0],
+        daily_stream["ts"],
+        daily_stream["te"],
+        daily_stream["created"],
+        restr,
+        1,
+    ]
+    return result, restr
+
+
+def _parse_c_segment_to_list(daily_stream, c_segment):
+    """Parse the daily stream and continuous segments JSON documents.
+
+    Args:
+        daily_stream (string): Daily stream representation in JSON format.
+        c_segment (string): Continuous segment representation in JSON format.
+
+    Returns:
+        list: List with continuous segment metrics wrapped around daily stream.
+        str: Restricted status information, `None` if unknown.
+    """
+    restr = _get_restricted_status(daily_stream)
+
+    result = [
+        daily_stream["net"],
+        daily_stream["sta"],
+        daily_stream["loc"],
+        daily_stream["cha"],
+        daily_stream["qlt"],
+        c_segment["srate"],
+        c_segment["ts"],
+        c_segment["te"],
+        daily_stream["created"],
+        restr,
+        1,
+    ]
+    return result, restr
 
 
 def collect_data(params):
