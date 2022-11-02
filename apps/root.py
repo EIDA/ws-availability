@@ -7,13 +7,22 @@ import re
 from flask import request
 
 from apps.data_access_layer import get_output
-from apps.globals import (HTTP, MAX_DATA_ROWS, MAX_DAYS, MAX_MERGEGAPS,
-                          TIMEOUT, Error)
+from apps.globals import HTTP, MAX_DATA_ROWS, MAX_DAYS, MAX_MERGEGAPS, TIMEOUT, Error
 from apps.parameters import Parameters
-from apps.utils import (check_base_parameters, check_request, error_param,
-                        error_request, is_valid_float, is_valid_integer,
-                        is_valid_merge, is_valid_nodata, is_valid_orderby,
-                        is_valid_output, is_valid_quality, is_valid_show)
+from apps.utils import (
+    check_base_parameters,
+    check_request,
+    error_param,
+    error_request,
+    is_valid_float,
+    is_valid_integer,
+    is_valid_merge,
+    is_valid_nodata,
+    is_valid_orderby,
+    is_valid_output,
+    is_valid_quality,
+    is_valid_show,
+)
 
 mp.set_start_method("fork")
 

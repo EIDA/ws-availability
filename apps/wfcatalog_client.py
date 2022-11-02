@@ -1,5 +1,4 @@
 import logging
-import re
 
 from flask import current_app
 from pymemcache import serde
@@ -44,31 +43,32 @@ def mongo_request(paramslist):
     # db_max_rows = current_app.config["MONGODB_MAX_ROWS"]
 
     result = []
-    network = "*"
-    station = "*"
-    location = "*"
-    # channel = "*"
-    quality = "*"
 
     # List of queries executed agains the DB, let's keep it for logging
     qries = []
 
     for params in paramslist:
-        qry = {}
+        qry = {"$and": []}
         if params["network"] != "*":
-            network = {"$in": params["network"].split(",")}
-            qry["net"] = network
+            qry["$and"].append(
+                {"$or": [{"net": n} for n in params["network"].split(",")]}
+            )
         if params["station"] != "*":
-            station = _query_params_to_regex(params["station"])
-            qry["sta"] = station
+            qry["$and"].append(
+                {"$or": [{"sta": s} for s in params["station"].split(",")]}
+            )
         if params["location"] != "*":
-            location = _query_params_to_regex(params["location"])
-            qry["loc"] = location
+            qry["$and"].append(
+                {"$or": [{"loc": l} for l in params["location"].split(",")]}
+            )
         if params["channel"] != "*":
-            qry["cha"] = _query_params_to_regex(params["channel"])
+            qry["$and"].append(
+                {"$or": [{"cha": c} for c in params["channel"].split(",")]}
+            )
         if params["quality"] != "*":
-            quality = {"$in": params["quality"].split(",")}
-            qry["qlt"] = quality
+            qry["$and"].append(
+                {"$or": [{"qlt": q} for q in params["quality"].split(",")]}
+            )
         if params["start"]:
             ts = {"$gte": params["start"]}
             qry["ts"] = ts
@@ -89,9 +89,6 @@ def mongo_request(paramslist):
 
         cursor = db.availability.find(qry, batch_size=1000, projection=PROJ)
 
-        # Result without restricted data
-        # result += [[c[key] for key in c.keys()] for c in cursor]
-
         # Assign restricted data information from cache
         for c in cursor:
             c["restr"] = _get_restricted_status(c)
@@ -101,27 +98,6 @@ def mongo_request(paramslist):
     result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
 
     return qries, result
-
-
-def _query_params_to_regex(str):
-    """Parse list of params into a regular expression
-
-    Args:
-        str (string): Comma-separated parameters
-
-    Returns:
-        obj: Compiled regular expression
-    """
-    # Split the string by comma and put in in a list
-    split = str.split(",")
-    # Replace question marks with regexp equivalent
-    split = [s.replace("?", ".") for s in split]
-    # Replace wildcards marks with regexp equivalent
-    split = [s.replace("*", ".*") for s in split]
-    # Add start and end of string
-    regex = "^" + "|".join(split) + "$"
-    # Compile and return
-    return re.compile(regex, re.IGNORECASE)
 
 
 def _get_restricted_status(segment):

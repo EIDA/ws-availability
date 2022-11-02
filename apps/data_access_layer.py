@@ -7,8 +7,18 @@ from tempfile import NamedTemporaryFile
 
 from flask import make_response
 
-from apps.globals import (COUNT, END, MAX_DATA_ROWS, QUALITY, SAMPLERATE,
-                          SCHEMAVERSION, START, STATUS, UPDATED, Error)
+from apps.globals import (
+    COUNT,
+    END,
+    MAX_DATA_ROWS,
+    QUALITY,
+    SAMPLERATE,
+    SCHEMAVERSION,
+    START,
+    STATUS,
+    UPDATED,
+    Error,
+)
 from apps.utils import error_request, overflow_error, tictac
 from apps.wfcatalog_client import collect_data
 
