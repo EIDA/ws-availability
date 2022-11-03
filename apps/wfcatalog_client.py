@@ -48,27 +48,17 @@ def mongo_request(paramslist):
     qries = []
 
     for params in paramslist:
-        qry = {"$and": []}
+        qry = {}
         if params["network"] != "*":
-            qry["$and"].append(
-                {"$or": [{"net": n} for n in params["network"].split(",")]}
-            )
+            qry["net"] = {"$regex": _query_params_to_regex(params["network"])}
         if params["station"] != "*":
-            qry["$and"].append(
-                {"$or": [{"sta": s} for s in params["station"].split(",")]}
-            )
+            qry["sta"] = {"$regex": _query_params_to_regex(params["station"])}
         if params["location"] != "*":
-            qry["$and"].append(
-                {"$or": [{"loc": l} for l in params["location"].split(",")]}
-            )
+            qry["loc"] = {"$regex": _query_params_to_regex(params["location"])}
         if params["channel"] != "*":
-            qry["$and"].append(
-                {"$or": [{"cha": c} for c in params["channel"].split(",")]}
-            )
+            qry["cha"] = {"$regex": _query_params_to_regex(params["channel"])}
         if params["quality"] != "*":
-            qry["$and"].append(
-                {"$or": [{"qlt": q} for q in params["quality"].split(",")]}
-            )
+            qry["qlt"] = {"$regex": _query_params_to_regex(params["quality"])}
         if params["start"]:
             ts = {"$gte": params["start"]}
             qry["ts"] = ts
@@ -87,18 +77,37 @@ def mongo_request(paramslist):
             authSource=db_name,
         ).get_database(db_name)
 
-        cursor = db.availability.find(qry, batch_size=1000, projection=PROJ)
+        cursor = db.availability.find(qry, batch_size=25000, projection=PROJ)
+        result = list(cursor)
 
         # Assign restricted data information from cache
-        for c in cursor:
-            c["restr"] = _get_restricted_status(c)
-            result.append([c[key] for key in c.keys()])
+        # for c in cursor:
+            # c["restr"] = _get_restricted_status(c)
+            # result.append([c[key] for key in c.keys()])
 
     # Result needs to be sorted, this seems to be required by the fusion step
-    result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
+    result.sort(key=lambda x: (x['net'], x['sta'], x['loc'], x['cha'], x['ts']))
 
     return qries, result
 
+def _query_params_to_regex(str):
+    """Parse list of params into a regular expression
+    Args:
+        str (string): Comma-separated parameters
+    Returns:
+        obj: Compiled regular expression
+    """
+    # Split the string by comma and put in in a list
+    split = str.split(",")
+    # Replace question marks with regexp equivalent
+    split = [s.replace("?", ".") for s in split]
+    # Replace wildcards marks with regexp equivalent
+    split = [s.replace("*", ".*") for s in split]
+    # Add start and end of string
+    regex = "|".join(split)
+    # Compile and return
+    # return re.compile(regex, re.IGNORECASE)
+    return f"/{regex}/"
 
 def _get_restricted_status(segment):
     """Gets the restricted status of provided daily stream.
