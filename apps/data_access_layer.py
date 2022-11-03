@@ -11,6 +11,10 @@ from apps.globals import (
     COUNT,
     END,
     MAX_DATA_ROWS,
+    NETWORK,
+    STATION,
+    LOCATION,
+    CHANNEL,
     QUALITY,
     SAMPLERATE,
     SCHEMAVERSION,
@@ -62,8 +66,8 @@ def get_geocsv_header(params):
 
 def get_column_widths(data, header=None):
     """Find the maximum width of each column"""
-    ncols = range(len(data[0]))
-    colwidths = [max([len(r[i]) for r in data]) for i in ncols]
+    keys = data[0].keys()
+    colwidths = [max([len(str(r[i])) for r in data]) for i in keys]
     if header:
         colwidths = [max(len(h), cw) for h, cw in zip(header, colwidths)]
     return colwidths
@@ -76,15 +80,18 @@ def records_to_text(params, data, sep=" "):
         sizes = get_column_widths(data, header)
         # pad header and rows according to the maximum column width
         header = [val.ljust(sz) for val, sz in zip(header, sizes)]
-        for row in data:
-            row[:] = [val.ljust(sz) for val, sz in zip(row, sizes)]
+        # for idx, row in enumerate(data):
+        #     row[:] = [val.ljust(sz) for val, sz in zip(row, sizes)]
 
     if params["format"] in ["geocsv", "zip"]:
         text = get_geocsv_header(params)
     elif params["format"] != "request":
         text = sep.join(header) + "\n"
 
-    data = [f"{sep.join(row)}\n" for row in data]
+    data = [
+        sep.join([str(data[idx][key]) for key in data[idx].keys()]) + "\n"
+        for idx, _ in enumerate(data)
+    ]
     text += "".join(data)
     return text
 
@@ -147,7 +154,7 @@ def select_columns(params, data, indexes):
     if params["extent"]:
         indexes = indexes + [COUNT, STATUS]
     if params["format"] == "request":
-        indexes = [0, 1, 2, 3] + [START, END]
+        indexes = [NETWORK, STATION, LOCATION, CHANNEL] + [START, END]
 
     for row in data:
         if params["start"] and row[START] < params["start"]:
@@ -160,10 +167,11 @@ def select_columns(params, data, indexes):
         if params["showlastupdate"] and params["format"] != "request":
             row[UPDATED] = row[UPDATED].isoformat(timespec="seconds") + "Z"
 
-        if params["format"] != "json":
-            row[:] = [str(row[i]) for i in indexes]
-        else:
-            row[:] = [row[i] for i in indexes]
+        # TODO
+        # if params["format"] != "json":
+        #     row[:] = [str(row[i]) for i in indexes]
+        # else:
+        #     row[:] = [row[i] for i in indexes]
 
     logging.debug(f"Columns selection in {tictac(tic)} seconds.")
     return data
@@ -219,13 +227,13 @@ def get_indexes(params):
     :param params: parameter dictionary (network, station, ...)
     :returns: indexes : list of column indexes"""
 
-    indexes = [0, 1, 2, 3, 4, 5]
+    indexes = [NETWORK, STATION, LOCATION, CHANNEL, QUALITY, SAMPLERATE]
     if "quality" in params["merge"] and "samplerate" in params["merge"]:
-        indexes = [0, 1, 2, 3]
+        indexes = [NETWORK, STATION, LOCATION, CHANNEL]
     elif "quality" in params["merge"]:
-        indexes = [0, 1, 2, 3, 5]
+        indexes = [NETWORK, STATION, LOCATION, CHANNEL, SAMPLERATE]
     elif "samplerate" in params["merge"]:
-        indexes = [0, 1, 2, 3, 4]
+        indexes = [NETWORK, STATION, LOCATION, CHANNEL, QUALITY]
     return indexes
 
 

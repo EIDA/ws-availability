@@ -47,24 +47,55 @@ def mongo_request(paramslist):
     # List of queries executed agains the DB, let's keep it for logging
     qries = []
 
+    # NO REGEX
     for params in paramslist:
-        qry = {}
+        qry = {"$and": []}
         if params["network"] != "*":
-            qry["net"] = {"$regex": _query_params_to_regex(params["network"])}
+            qry["$and"].append(
+                {"$or": [{"net": n} for n in params["network"].split(",")]}
+            )
         if params["station"] != "*":
-            qry["sta"] = {"$regex": _query_params_to_regex(params["station"])}
+            qry["$and"].append(
+                {"$or": [{"sta": s} for s in params["station"].split(",")]}
+            )
         if params["location"] != "*":
-            qry["loc"] = {"$regex": _query_params_to_regex(params["location"])}
+            qry["$and"].append(
+                {"$or": [{"loc": l} for l in params["location"].split(",")]}
+            )
         if params["channel"] != "*":
-            qry["cha"] = {"$regex": _query_params_to_regex(params["channel"])}
+            qry["$and"].append(
+                {"$or": [{"cha": c} for c in params["channel"].split(",")]}
+            )
         if params["quality"] != "*":
-            qry["qlt"] = {"$regex": _query_params_to_regex(params["quality"])}
+            qry["$and"].append(
+                {"$or": [{"qlt": q} for q in params["quality"].split(",")]}
+            )
         if params["start"]:
             ts = {"$gte": params["start"]}
             qry["ts"] = ts
         if params["end"]:
             te = {"$lte": params["end"]}
             qry["te"] = te
+
+    # WITH REGEX
+    # for params in paramslist:
+    #     qry = {}
+    #     if params["network"] != "*":
+    #         qry["net"] = {"$regex": _query_params_to_regex(params["network"])}
+    #     if params["station"] != "*":
+    #         qry["sta"] = {"$regex": _query_params_to_regex(params["station"])}
+    #     if params["location"] != "*":
+    #         qry["loc"] = {"$regex": _query_params_to_regex(params["location"])}
+    #     if params["channel"] != "*":
+    #         qry["cha"] = {"$regex": _query_params_to_regex(params["channel"])}
+    #     if params["quality"] != "*":
+    #         qry["qlt"] = {"$regex": _query_params_to_regex(params["quality"])}
+    #     if params["start"]:
+    #         ts = {"$gte": params["start"]}
+    #         qry["ts"] = ts
+    #     if params["end"]:
+    #         te = {"$lte": params["end"]}
+    #         qry["te"] = te
 
         # Let's memorize this new query for logging purposes
         qries.append(qry)
@@ -77,18 +108,19 @@ def mongo_request(paramslist):
             authSource=db_name,
         ).get_database(db_name)
 
-        cursor = db.availability.find(qry, batch_size=25000, projection=PROJ)
+        cursor = db.availability.find(qry, batch_size=2500, projection=PROJ)
         result = list(cursor)
 
         # Assign restricted data information from cache
         # for c in cursor:
-            # c["restr"] = _get_restricted_status(c)
-            # result.append([c[key] for key in c.keys()])
+        # c["restr"] = _get_restricted_status(c)
+        # result.append([c[key] for key in c.keys()])
 
     # Result needs to be sorted, this seems to be required by the fusion step
-    result.sort(key=lambda x: (x['net'], x['sta'], x['loc'], x['cha'], x['ts']))
+    result.sort(key=lambda x: (x["net"], x["sta"], x["loc"], x["cha"], x["ts"]))
 
     return qries, result
+
 
 def _query_params_to_regex(str):
     """Parse list of params into a regular expression
@@ -107,7 +139,8 @@ def _query_params_to_regex(str):
     regex = "|".join(split)
     # Compile and return
     # return re.compile(regex, re.IGNORECASE)
-    return f"/{regex}/"
+    return f"{regex}"
+
 
 def _get_restricted_status(segment):
     """Gets the restricted status of provided daily stream.

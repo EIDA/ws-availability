@@ -5,13 +5,17 @@ SCHEMAVERSION = 1.0
 SCHEMA = "wsavailability"
 
 # Response
-QUALITY = 4
-SAMPLERATE = 5
-START = 6
-END = 7
-UPDATED = 8
-STATUS = 9
-COUNT = 10  # timespancount
+NETWORK = "net"  # 0
+STATION = "sta"  # 1
+LOCATION = "loc"  # 2
+CHANNEL = "cha"  # 3
+QUALITY = "qlt"  # 4
+SAMPLERATE = "srate"  # 5
+START = "ts"  # 6
+END = "te"  # 7
+UPDATED = "created"  # 8
+STATUS = "restr"  # 9
+COUNT = "count"  # 10
 
 # limitations
 TIMEOUT = 600
