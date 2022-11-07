@@ -17,5 +17,16 @@
             },
             "args": ["--workers", "1", "--timeout", "600", "--bind", "0.0.0.0:9001", "start:app"]
         },
+        {
+            "name": "Launch (Cache)",
+            "type": "python",
+            "python": "${workspaceFolder}/env/bin/python",
+            "request": "launch",
+            "program": "${workspaceFolder}/cache.py",
+            "env": {
+                "URL": "${workspaceFolder}/start.py",
+            },
+        }
+        
     ]
 }
