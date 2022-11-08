@@ -7,22 +7,9 @@ from tempfile import NamedTemporaryFile
 
 from flask import make_response
 
-from apps.globals import (
-    COUNT,
-    END,
-    MAX_DATA_ROWS,
-    NETWORK,
-    STATION,
-    LOCATION,
-    CHANNEL,
-    QUALITY,
-    SAMPLERATE,
-    SCHEMAVERSION,
-    START,
-    STATUS,
-    UPDATED,
-    Error,
-)
+from apps.globals import (CHANNEL, COUNT, END, LOCATION, MAX_DATA_ROWS,
+                          NETWORK, QUALITY, SAMPLERATE, SCHEMAVERSION, START,
+                          STATION, STATUS, UPDATED, Error)
 from apps.utils import error_request, overflow_error, tictac
 from apps.wfcatalog_client import collect_data
 
@@ -80,18 +67,15 @@ def records_to_text(params, data, sep=" "):
         sizes = get_column_widths(data, header)
         # pad header and rows according to the maximum column width
         header = [val.ljust(sz) for val, sz in zip(header, sizes)]
-        # for idx, row in enumerate(data):
-        #     row[:] = [val.ljust(sz) for val, sz in zip(row, sizes)]
+        for idx, row in enumerate(data):
+            data[idx] = [str(row[val]).ljust(sz) for val, sz in zip(row, sizes)]
 
     if params["format"] in ["geocsv", "zip"]:
         text = get_geocsv_header(params)
     elif params["format"] != "request":
         text = sep.join(header) + "\n"
 
-    data = [
-        sep.join([str(data[idx][key]) for key in data[idx].keys()]) + "\n"
-        for idx, _ in enumerate(data)
-    ]
+    data = [f"{sep.join(row)}\n" for row in data]
     text += "".join(data)
     return text
 
