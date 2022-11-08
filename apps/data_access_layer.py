@@ -75,7 +75,8 @@ def records_to_text(params, data, sep=" "):
     elif params["format"] != "request":
         text = sep.join(header) + "\n"
 
-    data = [f"{sep.join(row)}\n" for row in data]
+    # data = [f"{sep.join(row)}\n" for row in data]
+    data = [sep.join([str(row[k]) for k in row.keys()]) + "\n" for row in data]
     text += "".join(data)
     return text
 
@@ -90,7 +91,7 @@ def records_to_dictlist(params, data):
     if params["extent"]:
         header[header.index("timespans")] = "timespanCount"
         for row in data:
-            dictlist.append(dict(zip(header, row)))
+            dictlist.append(dict(zip(header, [row[k] for k in row.keys()])))
     else:
         start = -3 if params["showlastupdate"] else -2
         prev_row = [data[0][k] for k in list(data[0].keys())[:8]]
@@ -197,9 +198,9 @@ def fusion(params, data, indexes):
                 if row[END] > merge[-1][END]:
                     merge[-1][END] = row[END]
             else:
-                merge.append(list(row))
+                merge += [{i: row[i] for i in indexes}]
         else:
-            merge.append(row)
+            merge += [{i: row[i] for i in indexes}]
             timespancount = 1
             merge[-1][COUNT] = 1
 
@@ -212,13 +213,13 @@ def get_indexes(params):
     :param params: parameter dictionary (network, station, ...)
     :returns: indexes : list of column indexes"""
 
-    indexes = [NETWORK, STATION, LOCATION, CHANNEL, QUALITY, SAMPLERATE]
+    indexes = [NETWORK, STATION, LOCATION, CHANNEL, QUALITY, SAMPLERATE, START, END, UPDATED]
     if "quality" in params["merge"] and "samplerate" in params["merge"]:
-        indexes = [NETWORK, STATION, LOCATION, CHANNEL]
+        indexes = [NETWORK, STATION, LOCATION, CHANNEL, START, END]
     elif "quality" in params["merge"]:
-        indexes = [NETWORK, STATION, LOCATION, CHANNEL, SAMPLERATE]
+        indexes = [NETWORK, STATION, LOCATION, CHANNEL, SAMPLERATE, START, END]
     elif "samplerate" in params["merge"]:
-        indexes = [NETWORK, STATION, LOCATION, CHANNEL, QUALITY]
+        indexes = [NETWORK, STATION, LOCATION, CHANNEL, QUALITY, START, END]
     return indexes
 
 

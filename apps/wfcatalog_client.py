@@ -20,8 +20,8 @@ PROJ = {
     "ts": 1,
     "te": 1,
     "created": 1,
-    "restr": 1,
     "count": 1,
+    "restr": 1,
 }
 
 
