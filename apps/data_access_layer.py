@@ -93,8 +93,9 @@ def records_to_dictlist(params, data):
             dictlist.append(dict(zip(header, row)))
     else:
         start = -3 if params["showlastupdate"] else -2
-        prev_row = data[0]
-        for row in data:
+        prev_row = [data[0][k] for k in list(data[0].keys())[:8]]
+        for idx, row in enumerate(data):
+            row = [data[idx][k] for k in list(data[0].keys())[:8]]
             if not dictlist or row[:start] != prev_row[:start]:
                 dictlist.append(dict(zip(header[:start], row[:start])))
                 dictlist[-1]["timespans"] = list()
@@ -176,7 +177,7 @@ def fusion(params, data, indexes):
     #    data.sort(key=lambda x: x[:UPDATED]) # done by postgres
 
     for row in data:
-        if merge and [row[i] for i in indexes] == [merge[-1][i] for i in indexes]:
+        if merge and row == merge[-1]:
             sample_size = 1.0 / float(merge[-1][SAMPLERATE])
             tol2 = timedelta(seconds=max([tol, sample_size]))
             sametrace = (
@@ -198,7 +199,7 @@ def fusion(params, data, indexes):
             else:
                 merge.append(list(row))
         else:
-            merge.append(list(row))
+            merge.append(row)
             timespancount = 1
             merge[-1][COUNT] = 1
 
