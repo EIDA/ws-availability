@@ -40,18 +40,21 @@ class Epoch:
     def __str__(self):
         return f"{self.seed_id} {self.start} --- {self.end} {self.restriction}"
 
-class RestrictionInventory():
+
+class RestrictionInventory:
     def __init__(self):
         self._inv = {}
 
-        cache_host = current_app.config["CACHE_HOST"]
-        cache_port = current_app.config["CACHE_PORT"]
+        self._cache_host = current_app.config["CACHE_HOST"]
+        self._cache_port = current_app.config["CACHE_PORT"]
+        self._cache_inventory_key = current_app.config["CACHE_INVENTORY_KEY"]
 
-        client = base.Client((cache_host, cache_port), serde=serde.pickle_serde)
-        CACHED_INVENTORY_KEY = "inventory"
+        client = base.Client(
+            (self._cache_host, self._cache_port), serde=serde.pickle_serde
+        )
 
         # Try to get cached inventory from shared memcache instance
-        cached_inventory = client.get(CACHED_INVENTORY_KEY)
+        cached_inventory = client.get(self._cache_inventory_key)
         if cached_inventory:
             self._inv = cached_inventory
             logging.info(f"Loaded inventory from cache...")

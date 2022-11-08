@@ -24,7 +24,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/cache.py",
             "env": {
-                "URL": "${workspaceFolder}/start.py",
+                "RUNMODE": "test"
             },
         }
         

@@ -10,16 +10,15 @@ from pymemcache.client import base
 from requests import HTTPError
 
 from apps.restriction import Epoch, Restriction
+from config import Config
 
-CACHE_INV_PERIOD = 0 # No expire
-CACHE_HOST = "localhost"
-CACHE_PORT = 11211
-URL = "https://orfeus-eu.org/fdsnws/station/1/query"
-CACHED_INVENTORY_KEY = "inventory"
 
 class Cache:
     def __init__(self):
-        self.client = base.Client((CACHE_HOST, CACHE_PORT), serde=serde.pickle_serde)
+        self._config = Config()
+        self._client = base.Client(
+            (self._config.CACHE_HOST, self._config.CACHE_PORT), serde=serde.pickle_serde
+        )
         self._inv = {}
 
     @staticmethod
@@ -36,7 +35,9 @@ class Cache:
         inventory = Inventory()
 
         try:
-            networks = read_inventory(f"{URL}?level=network")
+            networks = read_inventory(
+                f"{self._config.FDSNWS_STATION_URL}?level=network"
+            )
         except HTTPError as err:
             logging.exception(err)
             return
@@ -44,8 +45,10 @@ class Cache:
         try:
             for n in networks:
                 # Get inventory from FDSN:
-                i = read_inventory(f"{URL}?network={n.code}&level=channel")
-                inventory.networks += (i.networks)
+                i = read_inventory(
+                    f"{self._config.FDSNWS_STATION_URL}?network={n.code}&level=channel"
+                )
+                inventory.networks += i.networks
         except HTTPError as err:
             logging.exception(err)
             return
@@ -100,8 +103,13 @@ class Cache:
                     ].start - timedelta(days=1)
 
         # Store inventory in shared memcache instance
-        self.client.set(CACHED_INVENTORY_KEY, self._inv, CACHE_INV_PERIOD)
+        self._client.set(
+            self._config.CACHE_INVENTORY_KEY,
+            self._inv,
+            self._config.CACHE_INVENTORY_PERIOD,
+        )
         logging.warning(f"Completed caching inventory from FDSNWS-Station")
+
 
 if __name__ == "__main__":
     cache = Cache()

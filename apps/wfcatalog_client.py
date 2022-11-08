@@ -77,29 +77,6 @@ def mongo_request(paramslist):
             te = {"$lte": params["end"]}
             qry["te"] = te
 
-    # WITH REGEX
-    # for params in paramslist:
-    #     qry = {}
-    #     if params["network"] != "*":
-    #         qry["net"] = {"$regex": _query_params_to_regex(params["network"])}
-    #     if params["station"] != "*":
-    #         qry["sta"] = {"$regex": _query_params_to_regex(params["station"])}
-    #     if params["location"] != "*":
-    #         qry["loc"] = {"$regex": _query_params_to_regex(params["location"])}
-    #     if params["channel"] != "*":
-    #         qry["cha"] = {"$regex": _query_params_to_regex(params["channel"])}
-    #     if params["quality"] != "*":
-    #         qry["qlt"] = {"$regex": _query_params_to_regex(params["quality"])}
-    #     if params["start"]:
-    #         ts = {"$gte": params["start"]}
-    #         qry["ts"] = ts
-    #     if params["end"]:
-    #         te = {"$lte": params["end"]}
-    #         qry["te"] = te
-
-        # Let's memorize this new query for logging purposes
-        qries.append(qry)
-
         db = MongoClient(
             db_host,
             db_port,
@@ -108,7 +85,7 @@ def mongo_request(paramslist):
             authSource=db_name,
         ).get_database(db_name)
 
-        cursor = db.availability.find(qry, batch_size=2500, projection=PROJ)
+        cursor = db.availability.find(qry, projection=PROJ)
         result = list(cursor)
 
         # Assign restricted data information from cache
@@ -173,7 +150,7 @@ def collect_data(params):
     """Get the result of the Mongo query."""
     cache_host = current_app.config["CACHE_HOST"]
     cache_port = current_app.config["CACHE_PORT"]
-    cache_short_inv_period = current_app.config["CACHE_SHORT_INV_PERIOD"]
+    cache_resp_period = current_app.config["CACHE_RESP_PERIOD"]
 
     client = base.Client((cache_host, cache_port), serde=serde.pickle_serde)
     CACHED_REQUEST_KEY = str(hash(str(params)))
@@ -185,7 +162,7 @@ def collect_data(params):
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
     qry, data = mongo_request(params)
-    client.set(CACHED_REQUEST_KEY, data, cache_short_inv_period)
+    client.set(CACHED_REQUEST_KEY, data, cache_resp_period)
 
     logging.debug(qry)
 
