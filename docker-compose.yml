@@ -14,7 +14,7 @@ services:
     build:
       dockerfile: Dockerfile.cacher
       network: host
-    container_name: fdsn-availability-cacher
+    container_name: fdsnws-availability-cacher
     depends_on:
       - cache
     environment:

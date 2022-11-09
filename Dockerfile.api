@@ -8,6 +8,5 @@ WORKDIR /appli
 COPY start.py config.py ./
 COPY apps ./apps/
 COPY templates ./templates/
-COPY static ./static/
 
 CMD ["/bin/bash", "-c", "gunicorn --workers 2 --timeout 60 --bind 0.0.0.0:9001 start:app"]
