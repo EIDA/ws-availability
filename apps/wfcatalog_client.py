@@ -132,6 +132,14 @@ def _query_params_to_regex(str):
 
 
 def _expand_wildcards(params):
+    """Expand generic query parameters to actual ones based on cached inventory.
+
+    Args:
+        params (list): List of query parameters.
+
+    Returns:
+        list: List of expanded query parameters.
+    """
     global RESTRICTED_INVENTORY
 
     if not RESTRICTED_INVENTORY:
@@ -142,18 +150,23 @@ def _expand_wildcards(params):
     _loc = []
     _cha = []
 
+    # Filter the cached inventory on network level.
     for net in params["network"].split(","):
         _net += [e for e in RESTRICTED_INVENTORY._inv if fnmatch(e.split(".")[0], net)]
 
+    # Filter the cached inventory on station level.
     for sta in params["station"].split(","):
         _sta += [e for e in _net if fnmatch(e.split(".")[1], sta)]
 
+    # Filter the cached inventory on location level.
     for loc in params["location"].split(","):
         _loc += [e for e in _sta if fnmatch(e.split(".")[2], loc)]
 
+    # Filter the cached inventory on channel level.
     for cha in params["channel"].split(","):
         _cha += [e for e in _loc if fnmatch(e.split(".")[3], cha)]
 
+    # Replace original query parameters with ones filtered out from the cached inventory.
     params["network"] = ",".join(set([e.split(".")[0] for e in _cha]))
     params["station"] = (
         "*"
