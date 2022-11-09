@@ -47,7 +47,6 @@ def mongo_request(paramslist):
     # List of queries executed agains the DB, let's keep it for logging
     qries = []
 
-    # NO REGEX
     for params in paramslist:
         qry = {"$and": []}
         if params["network"] != "*":
@@ -85,6 +84,7 @@ def mongo_request(paramslist):
             authSource=db_name,
         ).get_database(db_name)
 
+        qries.append(qry)
         cursor = db.availability.find(qry, projection=PROJ)
         result = list(cursor)
 
@@ -94,7 +94,8 @@ def mongo_request(paramslist):
         # result.append([c[key] for key in c.keys()])
 
     # Result needs to be sorted, this seems to be required by the fusion step
-    result.sort(key=lambda x: (x["net"], x["sta"], x["loc"], x["cha"], x["ts"]))
+    result = [[row[k] for k in row.keys()] for row in result]
+    result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
 
     return qries, result
 

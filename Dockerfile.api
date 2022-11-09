@@ -1,4 +1,4 @@
-FROM gricad-registry.univ-grenoble-alpes.fr/osug/resif/resif_docker/obspy:1.2.1-python-3.8-slim
+FROM python:3.10-slim
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir gunicorn
 COPY requirements.txt /

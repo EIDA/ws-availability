@@ -46,7 +46,7 @@ WS-Availability implements the FDSN specification of the availability webservice
 1. Build the containers:
 
     ```bash
-    docker-compose up --build -d
+    docker-compose -p 'fdsnws-availability' up -d --no-deps --build
     ```
 
 ## Backend

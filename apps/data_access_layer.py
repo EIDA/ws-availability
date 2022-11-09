@@ -2,16 +2,20 @@ import json
 import logging
 import time
 import zipfile
-from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
+from datetime import datetime, timedelta
 
-from flask import make_response
+from flask import current_app, make_response
 
-from apps.globals import (CHANNEL, COUNT, END, LOCATION, MAX_DATA_ROWS,
-                          NETWORK, QUALITY, SAMPLERATE, SCHEMAVERSION, START,
-                          STATION, STATUS, UPDATED, Error)
-from apps.utils import error_request, overflow_error, tictac
-from apps.wfcatalog_client import collect_data
+from apps.globals import Error
+from apps.globals import MAX_DATA_ROWS
+from apps.globals import SCHEMAVERSION
+from apps.globals import QUALITY, SAMPLERATE, START, END, UPDATED, STATUS, COUNT
+from apps.utils import error_request
+from apps.utils import overflow_error
+from apps.utils import tictac
+
+from apps.wfcatalog_client import collect_data as collect_data_wfcatalog
 
 
 def get_header(params):
@@ -53,8 +57,8 @@ def get_geocsv_header(params):
 
 def get_column_widths(data, header=None):
     """Find the maximum width of each column"""
-    keys = data[0].keys()
-    colwidths = [max([len(str(r[i])) for r in data]) for i in keys]
+    ncols = range(len(data[0]))
+    colwidths = [max([len(r[i]) for r in data]) for i in ncols]
     if header:
         colwidths = [max(len(h), cw) for h, cw in zip(header, colwidths)]
     return colwidths
@@ -67,16 +71,15 @@ def records_to_text(params, data, sep=" "):
         sizes = get_column_widths(data, header)
         # pad header and rows according to the maximum column width
         header = [val.ljust(sz) for val, sz in zip(header, sizes)]
-        for idx, row in enumerate(data):
-            data[idx] = [str(row[val]).ljust(sz) for val, sz in zip(row, sizes)]
+        for row in data:
+            row[:] = [val.ljust(sz) for val, sz in zip(row, sizes)]
 
     if params["format"] in ["geocsv", "zip"]:
         text = get_geocsv_header(params)
     elif params["format"] != "request":
         text = sep.join(header) + "\n"
 
-    # data = [f"{sep.join(row)}\n" for row in data]
-    data = [sep.join([str(row[k]) for k in row.keys()]) + "\n" for row in data]
+    data = [f"{sep.join(row)}\n" for row in data]
     text += "".join(data)
     return text
 
@@ -91,12 +94,11 @@ def records_to_dictlist(params, data):
     if params["extent"]:
         header[header.index("timespans")] = "timespanCount"
         for row in data:
-            dictlist.append(dict(zip(header, [row[k] for k in row.keys()])))
+            dictlist.append(dict(zip(header, row)))
     else:
         start = -3 if params["showlastupdate"] else -2
-        prev_row = [data[0][k] for k in list(data[0].keys())[:8]]
-        for idx, row in enumerate(data):
-            row = [data[idx][k] for k in list(data[0].keys())[:8]]
+        prev_row = data[0]
+        for row in data:
             if not dictlist or row[:start] != prev_row[:start]:
                 dictlist.append(dict(zip(header[:start], row[:start])))
                 dictlist[-1]["timespans"] = list()
@@ -140,7 +142,7 @@ def select_columns(params, data, indexes):
     if params["extent"]:
         indexes = indexes + [COUNT, STATUS]
     if params["format"] == "request":
-        indexes = [NETWORK, STATION, LOCATION, CHANNEL] + [START, END]
+        indexes = [0, 1, 2, 3] + [START, END]
 
     for row in data:
         if params["start"] and row[START] < params["start"]:
@@ -153,11 +155,10 @@ def select_columns(params, data, indexes):
         if params["showlastupdate"] and params["format"] != "request":
             row[UPDATED] = row[UPDATED].isoformat(timespec="seconds") + "Z"
 
-        # TODO
-        # if params["format"] != "json":
-        #     row[:] = [str(row[i]) for i in indexes]
-        # else:
-        #     row[:] = [row[i] for i in indexes]
+        if params["format"] != "json":
+            row[:] = [str(row[i]) for i in indexes]
+        else:
+            row[:] = [row[i] for i in indexes]
 
     logging.debug(f"Columns selection in {tictac(tic)} seconds.")
     return data
@@ -178,7 +179,7 @@ def fusion(params, data, indexes):
     #    data.sort(key=lambda x: x[:UPDATED]) # done by postgres
 
     for row in data:
-        if merge and row == merge[-1]:
+        if merge and [row[i] for i in indexes] == [merge[-1][i] for i in indexes]:
             sample_size = 1.0 / float(merge[-1][SAMPLERATE])
             tol2 = timedelta(seconds=max([tol, sample_size]))
             sametrace = (
@@ -198,9 +199,9 @@ def fusion(params, data, indexes):
                 if row[END] > merge[-1][END]:
                     merge[-1][END] = row[END]
             else:
-                merge += [{i: row[i] for i in indexes}]
+                merge.append(list(row))
         else:
-            merge += [{i: row[i] for i in indexes}]
+            merge.append(list(row))
             timespancount = 1
             merge[-1][COUNT] = 1
 
@@ -213,13 +214,13 @@ def get_indexes(params):
     :param params: parameter dictionary (network, station, ...)
     :returns: indexes : list of column indexes"""
 
-    indexes = [NETWORK, STATION, LOCATION, CHANNEL, QUALITY, SAMPLERATE, START, END, UPDATED]
+    indexes = [0, 1, 2, 3, 4, 5]
     if "quality" in params["merge"] and "samplerate" in params["merge"]:
-        indexes = [NETWORK, STATION, LOCATION, CHANNEL, START, END]
+        indexes = [0, 1, 2, 3]
     elif "quality" in params["merge"]:
-        indexes = [NETWORK, STATION, LOCATION, CHANNEL, SAMPLERATE, START, END]
+        indexes = [0, 1, 2, 3, 5]
     elif "samplerate" in params["merge"]:
-        indexes = [NETWORK, STATION, LOCATION, CHANNEL, QUALITY, START, END]
+        indexes = [0, 1, 2, 3, 4]
     return indexes
 
 
@@ -267,7 +268,9 @@ def get_output(param_dic_list):
         response = None
         params = param_dic_list[0]
 
-        data = collect_data(param_dic_list)
+        # TODO: This is a candidate for dependency injection
+        if current_app.config["DB_BACKEND"] == "wfcatalog":
+            data = collect_data_wfcatalog(param_dic_list)
 
         if data is None:
             return data
