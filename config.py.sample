@@ -56,11 +56,15 @@ class Config:
         FDSNWS_STATION_URL = os.environ.get("FDSNWS_STATION_URL") or FDSNWS_STATION_URL
         CACHE_HOST = os.environ.get("CACHE_HOST") or CACHE_HOST
         CACHE_PORT = os.environ.get("CACHE_PORT") or CACHE_PORT
-        CACHE_INVENTORY_KEY = os.environ.get("CACHE_INVENTORY_KEY") or CACHE_INVENTORY_KEY
-        CACHE_INVENTORY_PERIOD = os.environ.get("CACHE_INVENTORY_PERIOD") or CACHE_INVENTORY_PERIOD
-        CACHE_RESP_PERIOD = os.environ.get("CACHE_SHORT_INV_PERIOD") or CACHE_RESP_PERIOD
-    except NameError:
-        print(
-            "Missing environment variables."
+        CACHE_INVENTORY_KEY = (
+            os.environ.get("CACHE_INVENTORY_KEY") or CACHE_INVENTORY_KEY
         )
+        CACHE_INVENTORY_PERIOD = (
+            os.environ.get("CACHE_INVENTORY_PERIOD") or CACHE_INVENTORY_PERIOD
+        )
+        CACHE_RESP_PERIOD = (
+            os.environ.get("CACHE_SHORT_INV_PERIOD") or CACHE_RESP_PERIOD
+        )
+    except NameError:
+        print("Missing environment variables.")
         raise

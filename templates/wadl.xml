@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <application>
-    <doc title="RESIF availability web service 1.0"/>
-    <resources base="http://ws.resif.fr/fdsnws/availability/1">
+    <doc title="Availability web service 1.0"/>
+    <resources base="https://orfeus-eu.org/fdsnws/availability/1/">
         <resource path="/">
             <method name="GET">
                 <response>
