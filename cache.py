@@ -128,7 +128,7 @@ class Cache:
             self._inv,
             self._config.CACHE_INVENTORY_PERIOD,
         )
-        logger.warning(f"Completed caching inventory from FDSNWS-Station")
+        logger.info(f"Completed caching inventory from FDSNWS-Station")
 
 
 if __name__ == "__main__":
