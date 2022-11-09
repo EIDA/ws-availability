@@ -1,11 +1,12 @@
 import logging
+from fnmatch import fnmatch
 
 from flask import current_app
 from pymemcache import serde
 from pymemcache.client import base
 from pymongo import MongoClient
 
-from .restriction import RestrictionInventory
+from .restriction import RestrictionInventory, Restriction
 
 RESTRICTED_INVENTORY = None
 
@@ -48,27 +49,22 @@ def mongo_request(paramslist):
     qries = []
 
     for params in paramslist:
-        qry = {"$and": []}
+        params = _expand_wildcards(params)
+        qry = {}
         if params["network"] != "*":
-            qry["$and"].append(
-                {"$or": [{"net": n} for n in params["network"].split(",")]}
-            )
+            network = {"$in": params["network"].split(",")}
+            qry["net"] = network
         if params["station"] != "*":
-            qry["$and"].append(
-                {"$or": [{"sta": s} for s in params["station"].split(",")]}
-            )
+            station = {"$in": params["station"].split(",")}
+            qry["sta"] = station
         if params["location"] != "*":
-            qry["$and"].append(
-                {"$or": [{"loc": l} for l in params["location"].split(",")]}
-            )
+            location = {"$in": params["location"].split(",")}
+            qry["loc"] = location
         if params["channel"] != "*":
-            qry["$and"].append(
-                {"$or": [{"cha": c} for c in params["channel"].split(",")]}
-            )
+            qry["cha"] = {"$in": params["channel"].split(",")}
         if params["quality"] != "*":
-            qry["$and"].append(
-                {"$or": [{"qlt": q} for q in params["quality"].split(",")]}
-            )
+            quality = {"$in": params["quality"].split(",")}
+            qry["qlt"] = quality
         if params["start"]:
             ts = {"$gte": params["start"]}
             qry["ts"] = ts
@@ -86,18 +82,30 @@ def mongo_request(paramslist):
 
         qries.append(qry)
         cursor = db.availability.find(qry, projection=PROJ)
-        result = list(cursor)
+        data = list(cursor)
 
         # Assign restricted data information from cache
-        # for c in cursor:
-        # c["restr"] = _get_restricted_status(c)
-        # result.append([c[key] for key in c.keys()])
+        for d in data:
+            d["restr"] = _get_restricted_status(d)
+            result.append([d[key] for key in d.keys()])
 
     # Result needs to be sorted, this seems to be required by the fusion step
-    result = [[row[k] for k in row.keys()] for row in result]
+    # result = [[row[k] for k in row.keys()] for row in result]
     result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
 
     return qries, result
+
+
+def _apply_restricted_bit(data):
+    restricted = [
+        RESTRICTED_INVENTORY._inv[r]
+        for r in RESTRICTED_INVENTORY._inv
+        if r in set([f"{r['net']}.{r['sta']}.{r['loc']}.{r['cha']}" for r in data])
+    ]
+    restricted = [
+        [d for d in r if d.restriction == Restriction.RESTRICTED] for r in restricted
+    ]
+    raise NotImplementedError
 
 
 def _query_params_to_regex(str):
@@ -120,6 +128,49 @@ def _query_params_to_regex(str):
     return f"{regex}"
 
 
+def _expand_wildcards(params):
+    global RESTRICTED_INVENTORY
+
+    if not RESTRICTED_INVENTORY:
+        RESTRICTED_INVENTORY = RestrictionInventory()
+
+    _net = []
+    _sta = []
+    _loc = []
+    _cha = []
+
+    for net in params["network"].split(","):
+        _net += [e for e in RESTRICTED_INVENTORY._inv if fnmatch(e.split(".")[0], net)]
+
+    for sta in params["station"].split(","):
+        _sta += [e for e in _net if fnmatch(e.split(".")[1], sta)]
+
+    for loc in params["location"].split(","):
+        _loc += [e for e in _sta if fnmatch(e.split(".")[2], loc)]
+
+    for cha in params["channel"].split(","):
+        _cha += [e for e in _loc if fnmatch(e.split(".")[3], cha)]
+
+    params["network"] = ",".join(set([e.split(".")[0] for e in _cha]))
+    params["station"] = (
+        "*"
+        if params["station"] == "*"
+        else ",".join(set([e.split(".")[1] for e in _cha]))
+    )
+    params["location"] = (
+        "*"
+        if params["location"] == "*"
+        else ",".join(set([e.split(".")[2] for e in _cha]))
+    )
+    params["channel"] = (
+        "*"
+        if params["channel"] == "*"
+        else ",".join(set([e.split(".")[3] for e in _cha]))
+    )
+
+    return params
+
+
 def _get_restricted_status(segment):
     """Gets the restricted status of provided daily stream.
 
@@ -132,8 +183,7 @@ def _get_restricted_status(segment):
     global RESTRICTED_INVENTORY
 
     if not RESTRICTED_INVENTORY:
-        fdsnws_station_url = current_app.config["FDSNWS_STATION_URL"]
-        RESTRICTED_INVENTORY = RestrictionInventory(fdsnws_station_url)
+        RESTRICTED_INVENTORY = RestrictionInventory()
 
     r = RESTRICTED_INVENTORY.is_restricted(
         f"{segment['net']}.{segment['sta']}..{segment['cha']}",
@@ -144,7 +194,7 @@ def _get_restricted_status(segment):
     if r:
         return r.name
     else:
-        return None
+        return "UNKNOWN"
 
 
 def collect_data(params):
