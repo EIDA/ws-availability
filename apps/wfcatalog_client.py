@@ -87,7 +87,10 @@ def mongo_request(paramslist):
         # Assign restricted data information from cache
         for d in data:
             d["restr"] = _get_restricted_status(d)
-            result.append([d[key] for key in d.keys()])
+            if d["restr"]:
+                result.append([d[key] for key in d.keys()])
+            else:
+                logging.debug(f"Metadata mismatch for {d=}")
 
     # Result needs to be sorted, this seems to be required by the fusion step
     # result = [[row[k] for k in row.keys()] for row in result]
@@ -194,7 +197,7 @@ def _get_restricted_status(segment):
     if r:
         return r.name
     else:
-        return "UNKNOWN"
+        return None
 
 
 def collect_data(params):
