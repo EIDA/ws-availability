@@ -6,7 +6,5 @@ RUN pip install --no-cache-dir -r /requirements.txt
 WORKDIR /appli
 COPY cache.py config.py ./
 COPY apps ./apps/
-COPY templates ./templates/
-COPY static ./static/
 
 CMD ["/bin/bash", "-c", "python3 cache.py"]
