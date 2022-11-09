@@ -15,7 +15,7 @@ from apps.utils import error_request
 from apps.utils import overflow_error
 from apps.utils import tictac
 
-from apps.wfcatalog_client import collect_data as collect_data_wfcatalog
+from apps.wfcatalog_client import collect_data
 
 
 def get_header(params):
@@ -268,9 +268,7 @@ def get_output(param_dic_list):
         response = None
         params = param_dic_list[0]
 
-        # TODO: This is a candidate for dependency injection
-        if current_app.config["DB_BACKEND"] == "wfcatalog":
-            data = collect_data_wfcatalog(param_dic_list)
+        data = collect_data(param_dic_list)
 
         if data is None:
             return data
