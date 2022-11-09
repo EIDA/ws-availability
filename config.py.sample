@@ -15,21 +15,19 @@ class Config:
         # wfcatalog for MongoDB
         DB_BACKEND = "wfcatalog"
         # WFCatalog MongoDB
-        MONGODB_HOST = "localhost"
+        MONGODB_HOST = "host.docker.internal"
         MONGODB_PORT = 27017
         MONGODB_USR = ""
         MONGODB_PWD = ""
         MONGODB_NAME = "wfrepo"
-        MONGODB_MAX_ROWS = 50000
         # FDSNWS-Station cache source
-        FDSNWS_STATION_URL = "http://www.orfeus-eu.org/fdsnws/station/1/query?level=channel"
+        FDSNWS_STATION_URL = "https://orfeus-eu.org/fdsnws/station/1/query"
         # Cache host (localhost or container name)
         CACHE_HOST = "cache"
         CACHE_PORT = 11211
-        # Cache long invalidation period in seconds
-        CACHE_LONG_INV_PERIOD = 604800
-        # Cache short invalidation period in seconds
-        CACHE_SHORT_INV_PERIOD = 1200
+        CACHE_INVENTORY_KEY = "inventory"
+        CACHE_INVENTORY_PERIOD = 0
+        CACHE_RESP_PERIOD = 1200
     elif RUNMODE == "test":
         # wfcatalog for MongoDB
         DB_BACKEND = "wfcatalog"
@@ -39,16 +37,14 @@ class Config:
         MONGODB_USR = ""
         MONGODB_PWD = ""
         MONGODB_NAME = "wfrepo"
-        MONGODB_MAX_ROWS = 50000
         # FDSNWS-Station cache source
-        FDSNWS_STATION_URL = "http://www.orfeus-eu.org/fdsnws/station/1/query?level=channel"
+        FDSNWS_STATION_URL = "https://orfeus-eu.org/fdsnws/station/1/query"
         # Cache host (localhost or container name)
         CACHE_HOST = "localhost"
         CACHE_PORT = 11211
-        # Cache long invalidation period in seconds
-        CACHE_LONG_INV_PERIOD = 604800
-        # Cache short invalidation period in seconds
-        CACHE_SHORT_INV_PERIOD = 1200
+        CACHE_INVENTORY_KEY = "inventory"
+        CACHE_INVENTORY_PERIOD = 0
+        CACHE_RESP_PERIOD = 1200
 
     try:
         DB_BACKEND = os.environ.get("DB_BACKEND") or DB_BACKEND
@@ -57,14 +53,14 @@ class Config:
         MONGODB_USR = os.environ.get("MONGODB_USR") or MONGODB_USR
         MONGODB_PWD = os.environ.get("MONGODB_PWD") or MONGODB_PWD
         MONGODB_NAME = os.environ.get("MONGODB_NAME") or MONGODB_NAME
-        MONGODB_MAX_ROWS = os.environ.get("MONGODB_MAX_ROWS") or MONGODB_MAX_ROWS
         FDSNWS_STATION_URL = os.environ.get("FDSNWS_STATION_URL") or FDSNWS_STATION_URL
         CACHE_HOST = os.environ.get("CACHE_HOST") or CACHE_HOST
         CACHE_PORT = os.environ.get("CACHE_PORT") or CACHE_PORT
-        CACHE_LONG_INV_PERIOD = os.environ.get("CACHE_LONG_INV_PERIOD") or CACHE_LONG_INV_PERIOD
-        CACHE_SHORT_INV_PERIOD = os.environ.get("CACHE_SHORT_INV_PERIOD") or CACHE_SHORT_INV_PERIOD
+        CACHE_INVENTORY_KEY = os.environ.get("CACHE_INVENTORY_KEY") or CACHE_INVENTORY_KEY
+        CACHE_INVENTORY_PERIOD = os.environ.get("CACHE_INVENTORY_PERIOD") or CACHE_INVENTORY_PERIOD
+        CACHE_RESP_PERIOD = os.environ.get("CACHE_SHORT_INV_PERIOD") or CACHE_RESP_PERIOD
     except NameError:
         print(
-            "Missing environment variables. Either RUNMODE=(test|production) or PGHOST, PGUSER, PGPORT and PGDATABASE should be set."
+            "Missing environment variables."
         )
         raise
