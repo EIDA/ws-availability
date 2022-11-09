@@ -12,6 +12,14 @@ from requests import HTTPError
 from apps.restriction import Epoch, Restriction
 from config import Config
 
+logging.basicConfig(
+    handlers=[logging.StreamHandler()],
+    level=logging.INFO,
+    format=f"[%(asctime)s] [0] [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S +0000",
+)
+logger = logging.getLogger(__name__)
+
 
 class Cache:
     def __init__(self):
@@ -31,26 +39,38 @@ class Cache:
             return None
 
     def build_cache(self):
-        logging.info(f"Getting inventory from FDSNWS-Station...")
+        logger.info(f"Getting inventory from FDSNWS-Station...")
         inventory = Inventory()
 
         try:
-            networks = read_inventory(
-                f"{self._config.FDSNWS_STATION_URL}?level=network"
+            url = f"{self._config.FDSNWS_STATION_URL}?level=network"
+            cat = read_inventory(url)
+            logger.info(
+                "Harvesting {} from {}: {}".format(
+                    len(cat.networks), url, ",".join([n.code for n in cat.networks])
+                )
             )
         except HTTPError as err:
-            logging.exception(err)
+            logger.exception(err)
             return
 
         try:
-            for n in networks:
+            for n in cat:
                 # Get inventory from FDSN:
-                i = read_inventory(
+                url = (
                     f"{self._config.FDSNWS_STATION_URL}?network={n.code}&level=channel"
                 )
+                i = read_inventory(url)
                 inventory.networks += i.networks
+                logger.info(
+                    "Added network {} with {} stations: {}".format(
+                        i.networks[0].code,
+                        len(i.networks[0].stations),
+                        ",".join([s.code for s in i.networks[0].stations]),
+                    )
+                )
         except HTTPError as err:
-            logging.exception(err)
+            logger.exception(err)
             return
 
         # Read ObsPy inventory
@@ -70,7 +90,7 @@ class Cache:
                         self._inv[seed_id] = []
 
                     if seed_id in self._inv:
-                        logging.debug(
+                        logger.debug(
                             "Repeated channel: %s %s %s",
                             seed_id,
                             epoch.start,
@@ -86,7 +106,7 @@ class Cache:
                         if net_status is not None:
                             epoch.restriction = net_status
                         else:
-                            logging.debug("%s defaulting to OPEN", seed_id)
+                            logger.debug("%s defaulting to OPEN", seed_id)
                             epoch.restriction = Restriction.OPEN
 
                     self._inv[seed_id].append(epoch)
@@ -108,7 +128,7 @@ class Cache:
             self._inv,
             self._config.CACHE_INVENTORY_PERIOD,
         )
-        logging.warning(f"Completed caching inventory from FDSNWS-Station")
+        logger.warning(f"Completed caching inventory from FDSNWS-Station")
 
 
 if __name__ == "__main__":
