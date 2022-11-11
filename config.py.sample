@@ -24,7 +24,7 @@ class Config:
         FDSNWS_STATION_URL = "https://orfeus-eu.org/fdsnws/station/1/query"
         # Cache host (localhost or container name)
         CACHE_HOST = "cache"
-        CACHE_PORT = 11211
+        CACHE_PORT = 6379
         CACHE_INVENTORY_KEY = "inventory"
         CACHE_INVENTORY_PERIOD = 0
         CACHE_RESP_PERIOD = 1200
@@ -41,7 +41,7 @@ class Config:
         FDSNWS_STATION_URL = "https://orfeus-eu.org/fdsnws/station/1/query"
         # Cache host (localhost or container name)
         CACHE_HOST = "localhost"
-        CACHE_PORT = 11211
+        CACHE_PORT = 6379
         CACHE_INVENTORY_KEY = "inventory"
         CACHE_INVENTORY_PERIOD = 0
         CACHE_RESP_PERIOD = 1200

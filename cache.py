@@ -1,6 +1,4 @@
 import logging
-import redis
-import pickle
 from datetime import timedelta
 from typing import Union
 
