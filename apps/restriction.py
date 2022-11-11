@@ -5,8 +5,6 @@ from datetime import date
 from enum import Flag, auto
 from functools import reduce
 
-from flask import current_app
-
 
 class Restriction(Flag):
     OPEN = auto()
@@ -42,16 +40,16 @@ class Epoch:
 
 
 class RestrictionInventory:
-    def __init__(self):
+    def __init__(self, host: str, port: int, key: str):
         self._inv = {}
         self._pool = redis.ConnectionPool(
-            host=current_app.config["CACHE_HOST"],
-            port=current_app.config["CACHE_PORT"],
+            host=host,
+            port=port,
             db=0,
         )
         self._redis = redis.Redis(connection_pool=self._pool)
 
-        cached_inventory = self._redis.get(current_app.config["CACHE_INVENTORY_KEY"])
+        cached_inventory = self._redis.get(key)
         # Try to get cached inventory from shared memcache instance
         if cached_inventory:
             self._inv = pickle.loads(cached_inventory)

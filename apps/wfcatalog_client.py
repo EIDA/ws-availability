@@ -141,7 +141,11 @@ def _expand_wildcards(params):
     global RESTRICTED_INVENTORY
 
     if not RESTRICTED_INVENTORY:
-        RESTRICTED_INVENTORY = RestrictionInventory()
+        RESTRICTED_INVENTORY = RestrictionInventory(
+            current_app.config["CACHE_HOST"],
+            current_app.config["CACHE_PORT"],
+            current_app.config["CACHE_INVENTORY_KEY"]
+        )
 
     _net = []
     _sta = []
