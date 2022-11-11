@@ -1,6 +1,5 @@
 import redis
 import pickle
-from datetime import timedelta
 
 
 class RedisClient:
@@ -19,4 +18,4 @@ class RedisClient:
         if expiration == 0:
             self._redis.set(key, pickle.dumps(obj))
         else:
-            self._redis.setex(key, timedelta(seconds=expiration), pickle.dumps(obj))
+            self._redis.setex(key, expiration, pickle.dumps(obj))

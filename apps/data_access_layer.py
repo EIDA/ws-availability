@@ -5,7 +5,7 @@ import zipfile
 from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
 
-from flask import current_app, make_response
+from flask import make_response
 
 from apps.globals import Error
 from apps.globals import MAX_DATA_ROWS

@@ -7,7 +7,6 @@ from typing import Union
 from obspy import read_inventory
 from obspy.core.inventory import Channel, Network
 from obspy.core.inventory.inventory import Inventory
-from pymemcache.client import base
 from requests import HTTPError
 
 from apps.restriction import Epoch, Restriction
