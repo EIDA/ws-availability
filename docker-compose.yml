@@ -3,13 +3,11 @@ version: '3'
 services:
   cache:
     restart: always
-    image: memcached
+    image: redis:7.0-alpine
     container_name: fdsnws-availability-cache
     ports:
-      - 11211:11211
-    entrypoint:
-      - memcached
-      - -m 64
+      - 6379:6379
+    command: redis-server --save 20 1 --loglevel warning
   cacher:
     build:
       dockerfile: Dockerfile.cacher

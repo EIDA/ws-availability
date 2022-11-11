@@ -1,11 +1,12 @@
 import logging
+import redis
+import pickle
 from datetime import timedelta
 from typing import Union
 
 from obspy import read_inventory
 from obspy.core.inventory import Channel, Network
 from obspy.core.inventory.inventory import Inventory
-from pymemcache import serde
 from pymemcache.client import base
 from requests import HTTPError
 
@@ -24,9 +25,10 @@ logger = logging.getLogger(__name__)
 class Cache:
     def __init__(self):
         self._config = Config()
-        self._client = base.Client(
-            (self._config.CACHE_HOST, self._config.CACHE_PORT), serde=serde.pickle_serde
+        self._pool = redis.ConnectionPool(
+            host=self._config.CACHE_HOST, port=self._config.CACHE_PORT, db=0
         )
+        self._redis = redis.Redis(connection_pool=self._pool)
         self._inv = {}
 
     @staticmethod
@@ -123,11 +125,7 @@ class Cache:
                     ].start - timedelta(days=1)
 
         # Store inventory in shared memcache instance
-        self._client.set(
-            self._config.CACHE_INVENTORY_KEY,
-            self._inv,
-            self._config.CACHE_INVENTORY_PERIOD,
-        )
+        self._redis.set(self._config.CACHE_INVENTORY_KEY, pickle.dumps(self._inv))
         logger.info(f"Completed caching inventory from FDSNWS-Station")
 
 

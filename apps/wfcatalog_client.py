@@ -1,9 +1,9 @@
 import logging
+import redis
+import pickle
 from fnmatch import fnmatch
 
 from flask import current_app
-from pymemcache import serde
-from pymemcache.client import base
 from pymongo import MongoClient
 
 from .restriction import RestrictionInventory, Restriction
@@ -219,17 +219,22 @@ def collect_data(params):
     cache_port = current_app.config["CACHE_PORT"]
     cache_resp_period = current_app.config["CACHE_RESP_PERIOD"]
 
-    client = base.Client((cache_host, cache_port), serde=serde.pickle_serde)
+    _pool = redis.ConnectionPool(
+            host=cache_host, port=cache_port, db=0
+        )
+    _redis = redis.Redis(connection_pool=_pool)
+
     CACHED_REQUEST_KEY = str(hash(str(params)))
 
     # Try to get cached response for given params
-    if client.get(CACHED_REQUEST_KEY):
-        return client.get(CACHED_REQUEST_KEY)
+    cached = _redis.get(CACHED_REQUEST_KEY)
+    if cached:
+        return pickle.loads(cached)
 
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
     qry, data = mongo_request(params)
-    client.set(CACHED_REQUEST_KEY, data, cache_resp_period)
+    _redis.set(CACHED_REQUEST_KEY, pickle.dumps(data), cache_resp_period)
 
     logging.debug(qry)
 

@@ -1,11 +1,11 @@
 import logging
+import redis
+import pickle
 from datetime import date
 from enum import Flag, auto
 from functools import reduce
 
 from flask import current_app
-from pymemcache import serde
-from pymemcache.client import base
 
 
 class Restriction(Flag):
@@ -49,14 +49,15 @@ class RestrictionInventory:
         self._cache_port = current_app.config["CACHE_PORT"]
         self._cache_inventory_key = current_app.config["CACHE_INVENTORY_KEY"]
 
-        client = base.Client(
-            (self._cache_host, self._cache_port), serde=serde.pickle_serde
+        self._pool = redis.ConnectionPool(
+            host=self._cache_host, port=self._cache_port, db=0
         )
+        self._redis = redis.Redis(connection_pool=self._pool)
 
+        cached_inventory = self._redis.get(self._cache_inventory_key)
         # Try to get cached inventory from shared memcache instance
-        cached_inventory = client.get(self._cache_inventory_key)
         if cached_inventory:
-            self._inv = cached_inventory
+            self._inv = pickle.loads(cached_inventory)
             logging.info(f"Loaded inventory from cache...")
             return
         else:
