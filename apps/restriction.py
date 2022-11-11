@@ -61,7 +61,9 @@ class RestrictionInventory:
             logging.info(f"Loaded inventory from cache...")
             return
         else:
-            logging.exception("Inventory information is not cached and needs to be rebuilt.")
+            logging.exception(
+                "Inventory information is not cached and needs to be rebuilt."
+            )
 
     @property
     def is_populated(self):

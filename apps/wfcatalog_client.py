@@ -1,9 +1,7 @@
 import logging
-import redis
-import pickle
 from fnmatch import fnmatch
-
 from flask import current_app
+from .redis_client import RedisClient
 from pymongo import MongoClient
 
 from .restriction import RestrictionInventory, Restriction
@@ -215,26 +213,19 @@ def _get_restricted_status(segment):
 
 def collect_data(params):
     """Get the result of the Mongo query."""
-    cache_host = current_app.config["CACHE_HOST"]
-    cache_port = current_app.config["CACHE_PORT"]
-    cache_resp_period = current_app.config["CACHE_RESP_PERIOD"]
-
-    _pool = redis.ConnectionPool(
-            host=cache_host, port=cache_port, db=0
-        )
-    _redis = redis.Redis(connection_pool=_pool)
+    rc = RedisClient(current_app.config["CACHE_HOST"], current_app.config["CACHE_PORT"])
 
     CACHED_REQUEST_KEY = str(hash(str(params)))
 
     # Try to get cached response for given params
-    cached = _redis.get(CACHED_REQUEST_KEY)
+    cached = rc.get(CACHED_REQUEST_KEY)
     if cached:
-        return pickle.loads(cached)
+        return cached
 
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
     qry, data = mongo_request(params)
-    _redis.set(CACHED_REQUEST_KEY, pickle.dumps(data), cache_resp_period)
+    rc.set(CACHED_REQUEST_KEY, data, current_app.config["CACHE_RESP_PERIOD"])
 
     logging.debug(qry)
 

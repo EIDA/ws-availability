@@ -11,6 +11,7 @@ from pymemcache.client import base
 from requests import HTTPError
 
 from apps.restriction import Epoch, Restriction
+from apps.redis_client import RedisClient
 from config import Config
 
 logging.basicConfig(
@@ -25,10 +26,6 @@ logger = logging.getLogger(__name__)
 class Cache:
     def __init__(self):
         self._config = Config()
-        self._pool = redis.ConnectionPool(
-            host=self._config.CACHE_HOST, port=self._config.CACHE_PORT, db=0
-        )
-        self._redis = redis.Redis(connection_pool=self._pool)
         self._inv = {}
 
     @staticmethod
@@ -125,7 +122,8 @@ class Cache:
                     ].start - timedelta(days=1)
 
         # Store inventory in shared memcache instance
-        self._redis.set(self._config.CACHE_INVENTORY_KEY, pickle.dumps(self._inv))
+        rc = RedisClient(self._config.CACHE_HOST, self._config.CACHE_PORT)
+        rc.set(self._config.CACHE_INVENTORY_KEY, self._inv)
         logger.info(f"Completed caching inventory from FDSNWS-Station")
 
 
