@@ -24,10 +24,10 @@ WS-Availability implements the FDSN specification of the availability webservice
     pip install -r requirements.txt
     ```
 
-1. Create memcache instance (mandatory for WFCatalog-based deployment):
+1. Create Redis instance (mandatory for WFCatalog-based deployment):
 
     ```bash
-    docker run -d --restart=always --net=host memcached
+    docker run -p 6379:6379 --name cache -d redis:7.0-alpine redis-server --save 20 1 --loglevel warning
     ```
 
 1. Build the cache:
