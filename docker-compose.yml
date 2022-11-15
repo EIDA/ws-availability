@@ -1,23 +1,36 @@
 version: '3'
 
 services:
-  fdsnws-availability:
-    build: .
+  cache:
     restart: always
-    container_name: fdsnws-availability
-    command: gunicorn --workers 2 --timeout 60 --bind 0.0.0.0:9001 start:app
+    image: redis:7.0-alpine
+    container_name: fdsnws-availability-cache
     ports:
-      - "9001:9001"
+      - 6379:6379
+    command: redis-server --save 20 1 --loglevel warning
+  cacher:
+    build:
+      dockerfile: Dockerfile.cacher
+      network: host
+    container_name: fdsnws-availability-cacher
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 30s
     depends_on:
       - cache
     environment:
-      RUNMODE: "production" 
-  cache:
+      RUNMODE: production
+  api:
+    build:
+      dockerfile: Dockerfile.api
     restart: always
-    image: memcached
-    container_name: fdsnws-availability-cache
+    container_name: fdsnws-availability-api
     ports:
-      - "11211:11211"
-    entrypoint:
-      - memcached
-      - -m 64
+      - 9001:9001
+    depends_on:
+      - cache
+    environment:
+      RUNMODE: production

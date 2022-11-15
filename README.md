@@ -24,10 +24,16 @@ WS-Availability implements the FDSN specification of the availability webservice
     pip install -r requirements.txt
     ```
 
-1. Create memcache instance (mandatory for WFCatalog-based deployment):
+1. Create Redis instance (mandatory for WFCatalog-based deployment):
 
     ```bash
-    docker run -d --restart=always --net=host memcached
+    docker run -p 6379:6379 --name cache -d redis:7.0-alpine redis-server --save 20 1 --loglevel warning
+    ```
+
+1. Build the cache:
+
+    ```bash
+    python3 cache.py
     ```
 
 1. Now you can either:
@@ -35,9 +41,12 @@ WS-Availability implements the FDSN specification of the availability webservice
 
         ```bash
         RUNMODE=test FLASK_APP=start.py flask run
+
+        # Or with gunicorn:
+        RUNMODE=test gunicorn --workers 2 --timeout 60 --bind 0.0.0.0:9001 start:app
         ```
 
-    1. Debug it in VS Code (F5)
+    1. Debug it in VS Code (F5) after selecting "Launch (Flask)" config.
 
 ## Running in Docker
 
@@ -46,51 +55,18 @@ WS-Availability implements the FDSN specification of the availability webservice
 1. Build the containers:
 
     ```bash
-    docker-compose up --build -d
+    docker-compose -p 'fdsnws-availability' up -d --no-deps --build
     ```
 
-## Backend
+### Cache rebuild
 
-`ws-availability` relies on the seedtree5 database used at RESIF-DC.
-
-The file `update_wsavailability_schema.sql` can be used to build the necessary materialized view.
-
-This is RESIF-DC inners and is not detailed here.
-
-## Play around with docker
+The inventory cache will be constructed directly after containers are up. To refresh the cache, simply restart the `fdsn-availability-cacher` container:
 
 ```bash
-$ docker build -t ws-availability:latest .
-# Run with bridged network
-$ docker run -d --restart=always -e RUNMODE=production -p 9001:9001 --name ws-availability ws-availability:latest
-# Or
-$ docker run --rm -e RUNMODE=test -p 9001:9001 --name ws-availability ws-availability:latest
-# Run with shared host network
-$ docker run -d --restart=always -e RUNMODE=production --net=host --name ws-availability ws-availability:latest
-# Or
-$ docker run --rm --net=host -e RUNMODE=test --name ws-availability ws-availability:latest
-```
+docker restart fdsn-availability-cacher
 
-## Memcache
-
-⚠️ EIDA deployment requires a memcache instance, it can be easily deployed using Docker:
-
-```bash
-docker run -d --restart=always --net=host memcached
-# or
-docker run -d --restart=always -p 11211:11211 memcached
-```
-
-Then :
-
-```bash
-wget -O - http://localhost:9001/1/application.wadl
-```
-
-Run it in debug mode with flask:
-
-```bash
-RUNMODE=test FLASK_APP=start.py flask run
+# To see the logs
+docker logs --follow fdsn-availability-cacher
 ```
 
 ## RUNMODE builtin values

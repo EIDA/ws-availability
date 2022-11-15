@@ -1,29 +1,26 @@
 import logging
-import re
-
-from pymemcache.client import base
-from pymemcache import serde
-
+from fnmatch import fnmatch
 from flask import current_app
-
+from .redis_client import RedisClient
 from pymongo import MongoClient
-from bson.objectid import ObjectId
 
-from .restriction import RestrictionInventory
+from .restriction import RestrictionInventory, Restriction
 
 RESTRICTED_INVENTORY = None
 
 PROJ = {
+    "_id": 0,
     "net": 1,
     "sta": 1,
     "loc": 1,
     "cha": 1,
-    "avail": 1,
     "qlt": 1,
     "srate": 1,
     "ts": 1,
     "te": 1,
     "created": 1,
+    "count": 1,
+    "restr": 1,
 }
 
 
@@ -42,31 +39,27 @@ def mongo_request(paramslist):
     db_usr = current_app.config["MONGODB_USR"]
     db_pwd = current_app.config["MONGODB_PWD"]
     db_name = current_app.config["MONGODB_NAME"]
-    db_max_rows = current_app.config["MONGODB_MAX_ROWS"]
+    # db_max_rows = current_app.config["MONGODB_MAX_ROWS"]
 
     result = []
-    network = "*"
-    station = "*"
-    location = "*"
-    # channel = "*"
-    quality = "*"
 
     # List of queries executed agains the DB, let's keep it for logging
     qries = []
 
     for params in paramslist:
+        params = _expand_wildcards(params)
         qry = {}
         if params["network"] != "*":
             network = {"$in": params["network"].split(",")}
             qry["net"] = network
         if params["station"] != "*":
-            station = _query_params_to_regex(params["station"])
+            station = {"$in": params["station"].split(",")}
             qry["sta"] = station
         if params["location"] != "*":
-            location = _query_params_to_regex(params["location"])
+            location = {"$in": params["location"].split(",")}
             qry["loc"] = location
         if params["channel"] != "*":
-            qry["cha"] = _query_params_to_regex(params["channel"])
+            qry["cha"] = {"$in": params["channel"].split(",")}
         if params["quality"] != "*":
             quality = {"$in": params["quality"].split(",")}
             qry["qlt"] = quality
@@ -77,9 +70,6 @@ def mongo_request(paramslist):
             te = {"$lte": params["end"]}
             qry["te"] = te
 
-        # Let's memorize this new query for logging purposes
-        qries.append(qry)
-
         db = MongoClient(
             db_host,
             db_port,
@@ -88,51 +78,41 @@ def mongo_request(paramslist):
             authSource=db_name,
         ).get_database(db_name)
 
-        d_streams = db.daily_streams.find(qry, batch_size=1000, projection=PROJ)
-        # Eagerly execute query instead of using a cursor
-        # d_streams = list(d_streams)
+        qries.append(qry)
+        cursor = db.availability.find(qry, projection=PROJ)
+        data = list(cursor)
 
-        for ds in d_streams:
-            ds_id = ObjectId(ds["_id"])
-            ds_avail = float(ds["avail"])
-
-            if ds_avail >= 100:
-                # If availability = 100, just add it to the set (no c_segments present)
-                ds_elem, restr = _parse_daily_stream_to_list(ds)
-                # If user provided overlapping parameters in the HTTP POST
-                # it can be that the same stream or segment has been queried,
-                # so we need to make sure final dataset has no duplicates.
-                # Also, check if restricted status is known from FDSNWS-Station.
-                # Unknown restricted status is not supported yet.
-                if restr and ds_elem not in result:
-                    result.append(ds_elem)
+        # Assign restricted data information from cache
+        for d in data:
+            d["restr"] = _get_restricted_status(d)
+            if d["restr"]:
+                result.append([d[key] for key in d.keys()])
             else:
-                # If availability < 100, collect the continuous segments
-                c_segs = db.c_segments.find({"streamId": ds_id}, projection=PROJ)
-                # Eagerly execute query instead of using a cursor
-                c_segs = list(c_segs)
-                for cs in c_segs:
-                    c_seg_elem, restr = _parse_c_segment_to_list(ds, cs)
-                    # If user provided overlapping parameters in the HTTP POST
-                    # it can be that the same stream or segment has been queried,
-                    # so we need to make sure final dataset has no duplicates.
-                    # Also, check if restricted status is known from FDSNWS-Station.
-                    # Unknown restricted status is not supported yet.
-                    if restr and c_segs not in result:
-                        result.append(c_seg_elem)
+                logging.debug(f"Metadata mismatch for {d=}")
 
     # Result needs to be sorted, this seems to be required by the fusion step
-    result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7]))
+    # result = [[row[k] for k in row.keys()] for row in result]
+    result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
 
     return qries, result
 
 
+def _apply_restricted_bit(data):
+    restricted = [
+        RESTRICTED_INVENTORY._inv[r]
+        for r in RESTRICTED_INVENTORY._inv
+        if r in set([f"{r['net']}.{r['sta']}.{r['loc']}.{r['cha']}" for r in data])
+    ]
+    restricted = [
+        [d for d in r if d.restriction == Restriction.RESTRICTED] for r in restricted
+    ]
+    raise NotImplementedError
+
+
 def _query_params_to_regex(str):
     """Parse list of params into a regular expression
-
     Args:
         str (string): Comma-separated parameters
-
     Returns:
         obj: Compiled regular expression
     """
@@ -143,12 +123,73 @@ def _query_params_to_regex(str):
     # Replace wildcards marks with regexp equivalent
     split = [s.replace("*", ".*") for s in split]
     # Add start and end of string
-    regex = "^" + "|".join(split) + "$"
+    regex = "|".join(split)
     # Compile and return
-    return re.compile(regex, re.IGNORECASE)
+    # return re.compile(regex, re.IGNORECASE)
+    return f"{regex}"
 
 
-def _get_restricted_status(daily_stream):
+def _expand_wildcards(params):
+    """Expand generic query parameters to actual ones based on cached inventory.
+
+    Args:
+        params (list): List of query parameters.
+
+    Returns:
+        list: List of expanded query parameters.
+    """
+    global RESTRICTED_INVENTORY
+
+    if not RESTRICTED_INVENTORY:
+        RESTRICTED_INVENTORY = RestrictionInventory(
+            current_app.config["CACHE_HOST"],
+            current_app.config["CACHE_PORT"],
+            current_app.config["CACHE_INVENTORY_KEY"]
+        )
+
+    _net = []
+    _sta = []
+    _loc = []
+    _cha = []
+
+    # Filter the cached inventory on network level.
+    for net in params["network"].split(","):
+        _net += [e for e in RESTRICTED_INVENTORY._inv if fnmatch(e.split(".")[0], net)]
+
+    # Filter the cached inventory on station level.
+    for sta in params["station"].split(","):
+        _sta += [e for e in _net if fnmatch(e.split(".")[1], sta)]
+
+    # Filter the cached inventory on location level.
+    for loc in params["location"].split(","):
+        _loc += [e for e in _sta if fnmatch(e.split(".")[2], loc)]
+
+    # Filter the cached inventory on channel level.
+    for cha in params["channel"].split(","):
+        _cha += [e for e in _loc if fnmatch(e.split(".")[3], cha)]
+
+    # Replace original query parameters with ones filtered out from the cached inventory.
+    params["network"] = ",".join(set([e.split(".")[0] for e in _cha]))
+    params["station"] = (
+        "*"
+        if params["station"] == "*"
+        else ",".join(set([e.split(".")[1] for e in _cha]))
+    )
+    params["location"] = (
+        "*"
+        if params["location"] == "*"
+        else ",".join(set([e.split(".")[2] for e in _cha]))
+    )
+    params["channel"] = (
+        "*"
+        if params["channel"] == "*"
+        else ",".join(set([e.split(".")[3] for e in _cha]))
+    )
+
+    return params
+
+
+def _get_restricted_status(segment):
     """Gets the restricted status of provided daily stream.
 
     Args:
@@ -160,13 +201,12 @@ def _get_restricted_status(daily_stream):
     global RESTRICTED_INVENTORY
 
     if not RESTRICTED_INVENTORY:
-        fdsnws_station_url = current_app.config["FDSNWS_STATION_URL"]
-        RESTRICTED_INVENTORY = RestrictionInventory(fdsnws_station_url)
+        RESTRICTED_INVENTORY = RestrictionInventory()
 
     r = RESTRICTED_INVENTORY.is_restricted(
-        f"{daily_stream['net']}.{daily_stream['sta']}..{daily_stream['cha']}",
-        daily_stream["ts"].date(),
-        daily_stream["te"].date(),
+        f"{segment['net']}.{segment['sta']}..{segment['cha']}",
+        segment["ts"].date(),
+        segment["te"].date(),
     )
 
     if r:
@@ -175,80 +215,21 @@ def _get_restricted_status(daily_stream):
         return None
 
 
-def _parse_daily_stream_to_list(daily_stream):
-    """Parse the daily stream JSON document.
-
-    Args:
-        daily_stream (string): Daily stream representation in JSON format.
-
-    Returns:
-        list: List with daily stream metrics.
-        str: Restricted status information, `None` if unknown.
-    """
-    restr = _get_restricted_status(daily_stream)
-
-    result = [
-        daily_stream["net"],
-        daily_stream["sta"],
-        daily_stream["loc"],
-        daily_stream["cha"],
-        daily_stream["qlt"],
-        daily_stream["srate"][0],
-        daily_stream["ts"],
-        daily_stream["te"],
-        daily_stream["created"],
-        restr,
-        1,
-    ]
-    return result, restr
-
-
-def _parse_c_segment_to_list(daily_stream, c_segment):
-    """Parse the daily stream and continuous segments JSON documents.
-
-    Args:
-        daily_stream (string): Daily stream representation in JSON format.
-        c_segment (string): Continuous segment representation in JSON format.
-
-    Returns:
-        list: List with continuous segment metrics wrapped around daily stream.
-        str: Restricted status information, `None` if unknown.
-    """
-    restr = _get_restricted_status(daily_stream)
-
-    result = [
-        daily_stream["net"],
-        daily_stream["sta"],
-        daily_stream["loc"],
-        daily_stream["cha"],
-        daily_stream["qlt"],
-        c_segment["srate"],
-        c_segment["ts"],
-        c_segment["te"],
-        daily_stream["created"],
-        restr,
-        1,
-    ]
-    return result, restr
-
-
 def collect_data(params):
     """Get the result of the Mongo query."""
-    cache_host = current_app.config["CACHE_HOST"]
-    cache_port = current_app.config["CACHE_PORT"]
-    cache_short_inv_period = current_app.config["CACHE_SHORT_INV_PERIOD"]
+    rc = RedisClient(current_app.config["CACHE_HOST"], current_app.config["CACHE_PORT"])
 
-    client = base.Client((cache_host, cache_port), serde=serde.pickle_serde)
     CACHED_REQUEST_KEY = str(hash(str(params)))
 
     # Try to get cached response for given params
-    if client.get(CACHED_REQUEST_KEY):
-        return client.get(CACHED_REQUEST_KEY)
+    cached = rc.get(CACHED_REQUEST_KEY)
+    if cached:
+        return cached
 
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
     qry, data = mongo_request(params)
-    client.set(CACHED_REQUEST_KEY, data, cache_short_inv_period)
+    rc.set(CACHED_REQUEST_KEY, data, current_app.config["CACHE_RESP_PERIOD"])
 
     logging.debug(qry)
 

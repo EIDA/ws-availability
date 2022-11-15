@@ -1,7 +1,7 @@
 import logging
 import os
 
-from flask import current_app, Flask, make_response, render_template
+from flask import Flask, make_response, render_template
 
 from apps.globals import VERSION
 from apps.root import output
@@ -17,7 +17,6 @@ logging.basicConfig(format=FMT, level=LOGLEVEL)
 app.config.from_object(Config)
 if app.config["RUNMODE"]:
     app.logger.debug("Configuration set with RUNMODE=%s", app.config["RUNMODE"])
-app.logger.debug("Database URI: %s", app.config["DATABASE_URI"])
 
 # ************************************************************************
 # **************************** SERVICE ROUTES ****************************
@@ -49,33 +48,9 @@ def version():
     return response
 
 
-@app.route("/commit", strict_slashes=False)
-def commit():
-    try:
-        with open("./static/commit.txt") as commit_file:
-            COMMIT_SHORT_SHA = commit_file.readline()
-    except Exception:
-        COMMIT_SHORT_SHA = "unspecified"
-    response = make_response(COMMIT_SHORT_SHA)
-    response.headers["Content-Type"] = "text/plain"
-    return response
-
-
 @app.route("/")
-@app.route("/local=fr")
 def doc():
-    if current_app.config["DB_BACKEND"] == "wfcatalog":
-        return render_template("doc-eida.html")
-    else:
-        return render_template("doc.html")
-
-
-@app.route("/local=en")
-def doc_en():
-    if current_app.config["DB_BACKEND"] == "wfcatalog":
-        return render_template("doc-eida.html")
-    else:
-        return render_template("doc_en.html")
+    return render_template("doc.html")
 
 
 # **** MAIN ****

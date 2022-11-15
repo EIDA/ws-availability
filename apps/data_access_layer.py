@@ -5,7 +5,7 @@ import zipfile
 from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
 
-from flask import current_app, make_response
+from flask import make_response
 
 from apps.globals import Error
 from apps.globals import MAX_DATA_ROWS
@@ -15,8 +15,7 @@ from apps.utils import error_request
 from apps.utils import overflow_error
 from apps.utils import tictac
 
-from apps.wfcatalog_client import collect_data as collect_data_wfcatalog
-from apps.resif_client import collect_data as collect_data_resif
+from apps.wfcatalog_client import collect_data
 
 
 def get_header(params):
@@ -57,7 +56,7 @@ def get_geocsv_header(params):
 
 
 def get_column_widths(data, header=None):
-    """ Find the maximum width of each column"""
+    """Find the maximum width of each column"""
     ncols = range(len(data[0]))
     colwidths = [max([len(r[i]) for r in data]) for i in ncols]
     if header:
@@ -269,11 +268,7 @@ def get_output(param_dic_list):
         response = None
         params = param_dic_list[0]
 
-        # TODO: This is a candidate for dependency injection
-        if current_app.config["DB_BACKEND"] == "wfcatalog":
-            data = collect_data_wfcatalog(param_dic_list)
-        else:
-            data = collect_data_resif(param_dic_list)
+        data = collect_data(param_dic_list)
 
         if data is None:
             return data
