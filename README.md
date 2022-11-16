@@ -2,6 +2,18 @@
 
 WS-Availability implements the FDSN specification of the availability webservice.
 
+## Creating and populating the views
+
+In order to create and populate the views, simply run following script:
+
+```bash
+mongosh --eval "const daysBack=1" views/main.js
+```
+
+Remember to set `daysBack` to a suitable value. If you are making an initial build, it might be required to set it to a high value, e.g. `365` to scan last year. In regular production envoronment, it is recommended to scan in daily basis.
+
+MongoDB script from `views/main.js` file can be extracted and used in MongoDB Atlas if available.
+
 ## Running in development environment
 
 1. Go to the root directory.
@@ -60,7 +72,7 @@ WS-Availability implements the FDSN specification of the availability webservice
 
 ### Cache rebuild
 
-The inventory cache will be constructed directly after containers are up. To refresh the cache, simply restart the `fdsn-availability-cacher` container:
+The inventory cache will be constructed directly after containers are up. There is no expiration period enforced for the inventory information. To refresh the cache, simply start the `fdsn-availability-cacher` container which will harvest and overwite the cached information:
 
 ```bash
 docker restart fdsn-availability-cacher

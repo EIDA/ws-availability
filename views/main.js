@@ -1,8 +1,5 @@
-// Switch to `wfrepo` database
 use("wfrepo");
 
-// Define function filling `availability` view from `daily_streams` collection.
-// We select documents with 100% availability and merge them into the view.
 updateAvailabilityDaily = function (startDate) {
   db.daily_streams.aggregate([
     { $match: { ts: { $gte: startDate }, avail: { $gte: 100 } } },
@@ -26,9 +23,6 @@ updateAvailabilityDaily = function (startDate) {
   ]);
 };
 
-// Define function filling `availability` view from `c_segments` collection.
-// We select documents with <100% availability, join them on c_segments, unwind
-// the result and merge into the view.
 updateAvailabilityContinuous = function (startDate) {
   db.daily_streams.aggregate([
     { $match: { ts: { $gte: startDate }, avail: { $lt: 100 } } },
@@ -61,6 +55,26 @@ updateAvailabilityContinuous = function (startDate) {
   ]);
 };
 
-// Recalculate everything starting on YYYY-MM-DD:
-updateAvailabilityDaily(new ISODate("2022-01-01"));
-updateAvailabilityContinuous(new ISODate("2022-01-01"));
+const startTimestamp = new Date();
+startTimestamp.setDate(startTimestamp.getDate() - daysBack);
+
+function padTo2Digits(num) {
+  return num.toString().padStart(2, "0");
+}
+
+function formatDate(date) {
+  return [
+    date.getFullYear(),
+    padTo2Digits(date.getMonth() + 1),
+    padTo2Digits(date.getDate()),
+  ].join("-");
+}
+
+const startDate = formatDate(startTimestamp);
+
+console.log("Processing WFCatalog entries from", startDate);
+
+updateAvailabilityDaily(new ISODate(startDate));
+updateAvailabilityContinuous(new ISODate(startDate));
+
+console.log("Processing WFCatalog entries from", startDate, "completed!");
