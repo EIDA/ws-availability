@@ -72,7 +72,7 @@ MongoDB script from `views/main.js` file can be extracted and used in MongoDB At
 
 ### Cache rebuild
 
-The inventory cache will be constructed directly after containers are up. To refresh the cache, simply restart the `fdsn-availability-cacher` container:
+The inventory cache will be constructed directly after containers are up. There is no expiration period enforced for the inventory information. To refresh the cache, simply start the `fdsn-availability-cacher` container which will harvest and overwite the cached information:
 
 ```bash
 docker restart fdsn-availability-cacher
