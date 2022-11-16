@@ -42,17 +42,27 @@ class Epoch:
 class RestrictionInventory:
     def __init__(self, host: str, port: int, key: str):
         self._inv = {}
+        self._known_seedIDs = None
+        self._restricted_seedIDs = None
         self._pool = redis.ConnectionPool(
             host=host,
             port=port,
             db=0,
         )
         self._redis = redis.Redis(connection_pool=self._pool)
-
         cached_inventory = self._redis.get(key)
         # Try to get cached inventory from shared memcache instance
         if cached_inventory:
             self._inv = pickle.loads(cached_inventory)
+            self._restricted_seedIDs = [
+                seedId
+                for seedId in self._inv
+                if any(e.restriction != Restriction.OPEN for e in self._inv[seedId])
+            ]
+            self._known_seedIDs = [
+                seedId
+                for seedId in self._inv
+            ]
             logging.info(f"Loaded inventory from cache...")
             return
         else:

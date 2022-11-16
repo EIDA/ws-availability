@@ -79,54 +79,67 @@ def mongo_request(paramslist):
         ).get_database(db_name)
 
         qries.append(qry)
-        cursor = db.availability.find(qry, projection=PROJ)
-        data = list(cursor)
 
-        # Assign restricted data information from cache
-        for d in data:
-            d["restr"] = _get_restricted_status(d)
-            if d["restr"]:
-                result.append([d[key] for key in d.keys()])
-            else:
-                logging.debug(f"Metadata mismatch for {d=}")
+        cursor = db.availability.find(qry, projection=PROJ)
+
+        # Eager query execution instead of a cursor
+        data = list(cursor)
+        data = _apply_restricted_bit(data)
+        result += [
+            [data[idx][key] for key in data[idx].keys()] for idx, _ in enumerate(data)
+        ]
 
     # Result needs to be sorted, this seems to be required by the fusion step
-    # result = [[row[k] for k in row.keys()] for row in result]
     result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
 
     return qries, result
 
 
-def _apply_restricted_bit(data):
-    restricted = [
-        RESTRICTED_INVENTORY._inv[r]
-        for r in RESTRICTED_INVENTORY._inv
-        if r in set([f"{r['net']}.{r['sta']}.{r['loc']}.{r['cha']}" for r in data])
-    ]
-    restricted = [
-        [d for d in r if d.restriction == Restriction.RESTRICTED] for r in restricted
-    ]
-    raise NotImplementedError
+def _apply_restricted_bit(data: list) -> list:
+    """Removes entries which do not appear in the station inventory and applies
+    restricted bit information based on cross-section between rows obtained
+    from the DB and list of SEED Identifiers having restricted epochs.
 
-
-def _query_params_to_regex(str):
-    """Parse list of params into a regular expression
     Args:
-        str (string): Comma-separated parameters
+        data (list): List of entries obtained from the DB.
+
     Returns:
-        obj: Compiled regular expression
+        list: List of entries obtained from the DB, but filtered and having
+        restricted information applied from cache.
     """
-    # Split the string by comma and put in in a list
-    split = str.split(",")
-    # Replace question marks with regexp equivalent
-    split = [s.replace("?", ".") for s in split]
-    # Replace wildcards marks with regexp equivalent
-    split = [s.replace("*", ".*") for s in split]
-    # Add start and end of string
-    regex = "|".join(split)
-    # Compile and return
-    # return re.compile(regex, re.IGNORECASE)
-    return f"{regex}"
+
+    # Filter out SEED Identifiers not existing in station metadata.
+    data = [
+        r
+        for r in data
+        if f"{r['net']}.{r['sta']}..{r['cha']}"
+        in RESTRICTED_INVENTORY._known_seedIDs
+    ]
+
+    # Take the intersection between DB entries and restricted cached inventory.
+    intersection = set(
+        [f"{r['net']}.{r['sta']}.{r['loc']}.{r['cha']}" for r in data]
+    ) & set(RESTRICTED_INVENTORY._restricted_seedIDs)
+
+    # Apply the restricted bit information from the cached inventory side.
+    if len(intersection) > 0:
+        logging.info(f"Applying restricted bit for {intersection=}")
+        for seedId in intersection:
+            net, sta, loc, cha = seedId.split(".")
+            indexes = [
+                i
+                for i, e in enumerate(data)
+                if (
+                    e["net"] == net
+                    and e["sta"] == sta
+                    and e["loc"] == loc
+                    and e["cha"] == cha
+                )
+            ]
+            for index in indexes:
+                data[index]["restr"] = _get_restricted_status(data[index])
+
+    return data
 
 
 def _expand_wildcards(params):
@@ -144,7 +157,7 @@ def _expand_wildcards(params):
         RESTRICTED_INVENTORY = RestrictionInventory(
             current_app.config["CACHE_HOST"],
             current_app.config["CACHE_PORT"],
-            current_app.config["CACHE_INVENTORY_KEY"]
+            current_app.config["CACHE_INVENTORY_KEY"],
         )
 
     _net = []
