@@ -10,8 +10,8 @@ services:
     command: redis-server --save 20 1 --loglevel warning
   cacher:
     build:
+      context: ./
       dockerfile: Dockerfile.cacher
-      network: host
     container_name: fdsnws-availability-cacher
     deploy:
       restart_policy:
@@ -19,12 +19,15 @@ services:
         delay: 10s
         max_attempts: 5
         window: 30s
+    ports:
+      - 11211:11211
     depends_on:
       - cache
     environment:
       RUNMODE: production
   api:
     build:
+      context: ./
       dockerfile: Dockerfile.api
     restart: always
     container_name: fdsnws-availability-api
