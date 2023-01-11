@@ -25,7 +25,13 @@ updateAvailabilityDaily = function (startDate) {
 
 updateAvailabilityContinuous = function (startDate) {
   db.daily_streams.aggregate([
-    { $match: { ts: { $gte: startDate }, avail: { $lt: 100 } } },
+    {
+      $match: {
+        ts: { $gte: startDate },
+        avail: { $lt: 100 },
+        slen: { $gte: 60 },
+      },
+    },
     {
       $lookup: {
         from: "c_segments",
@@ -72,6 +78,7 @@ function formatDate(date) {
 
 const startDate = formatDate(startTimestamp);
 
+console.log(process.env["PWD"]);
 console.log("Processing WFCatalog entries from", startDate);
 
 updateAvailabilityDaily(new ISODate(startDate));
