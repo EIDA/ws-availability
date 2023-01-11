@@ -6,9 +6,9 @@ WS-Availability implements the FDSN specification of the availability webservice
 
 Following implementation requires MongoDB v4.2 or higher.
 
-## Creating and populating the views
+## Creating and populating the materialized view
 
-In order to create and populate the views, simply run following script:
+In order to create and populate the view, simply run following script:
 
 ```bash
 mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval "const daysBack=1" views/main.js
@@ -22,7 +22,7 @@ Materialized view filling can be automated using following cron entry. Please ke
 procedure should be executed after WFCatalog processing is completed.
 
 ```bash
-0 6 * * * cd /data/seismo/git/ws-availability/views && mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "const daysBack=2" main.js > /dev/null 2>&1
+0 6 * * * cd ~/git/ws-availability/views && mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "const daysBack=2" main.js > /dev/null 2>&1
 ```
 
 By default, materialized view is saved as `db.availability` in `wfcat` database.
