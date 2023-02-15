@@ -29,7 +29,7 @@ updateAvailabilityContinuous = function (startDate) {
       $match: {
         ts: { $gte: startDate },
         avail: { $lt: 100 },
-        slen: { $gte: 60 },
+        slen: { $gte: 0 },
       },
     },
     {
