@@ -103,6 +103,81 @@ Following implementation requires MongoDB v4.2 or higher.
         db.availability.createIndex({ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 })
         ```
 
+1. Validation
+
+    Now it is time to check if everything is running (remember to change the `net` query parameter). API is exposed by default on port `9001`, let's try to get the landing page:
+
+    ```bash
+    $ curl "127.0.0.1:9001"
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="author" content="gempa GmbH" />
+        <title>FDSNWS-Availability</title>
+      </head>
+      <body>
+        <h1>FDSNWS Availability Web Service</h1>
+        <p>
+          The availability web service returns detailed time span information about
+          available time series data. Please refer to
+          <a href="http://www.fdsn.org/webservices"
+            >http://www.fdsn.org/webservice</a
+          >
+          for a complete service description.
+        </p>
+    
+        <h2>Available URLs</h2>
+        <ul>
+          <li><a href="query">query</a></li>
+          <li><a href="extent">extent</a></li>
+          <li><a href="version">version</a></li>
+          <li><a href="application.wadl">application.wadl</a></li>
+        </ul>
+      </body>
+    ```
+
+    Get request to the `/extent` method:
+
+    ```bash
+    $ curl "127.0.0.1:9001/extent?net=NA&start=2023-02-01"
+    #Network Station Location Channel Quality SampleRate Earliest                    Latest                      Updated              TimeSpans Restriction
+    NA       SABA             BHE     D       40.0       2023-02-01T00:00:00.000000Z 2023-02-14T00:00:00.000000Z 2023-02-14T07:41:14Z 1         OPEN       
+    NA       SABA             BHN     D       40.0       2023-02-01T00:00:00.000000Z 2023-02-14T00:00:00.000000Z 2023-02-14T07:42:07Z 1         OPEN       
+    NA       SABA             BHZ     D       40.0       2023-02-01T00:00:00.000000Z 2023-02-14T00:00:00.000000Z 2023-02-14T07:41:41Z 1         OPEN       
+    # ...
+    ```
+
+    Get request to the `/query` method:
+
+    ```bash
+    $ curl "127.0.0.1:9001/query?net=NA&start=2023-02-01"
+    #Network Station Location Channel Quality SampleRate Earliest                    Latest                     
+    NA       SABA             BHE     D       40.0       2023-02-01T00:00:00.000000Z 2023-02-02T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-02T00:00:00.000000Z 2023-02-03T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-03T00:00:00.000000Z 2023-02-04T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-04T00:00:00.000000Z 2023-02-05T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-05T00:00:00.000000Z 2023-02-06T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-06T00:00:00.000000Z 2023-02-07T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-07T00:00:00.000000Z 2023-02-08T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-08T00:00:00.000000Z 2023-02-09T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-09T00:00:00.000000Z 2023-02-10T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-10T00:00:00.000000Z 2023-02-11T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-11T00:00:00.000000Z 2023-02-12T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-12T00:00:00.000000Z 2023-02-13T00:00:00.000000Z
+    NA       SABA             BHE     D       40.0       2023-02-13T00:00:00.000000Z 2023-02-14T00:00:00.000000Z
+    ```
+
+1. Reverse proxy example config
+
+    An example of Apache reverse proxy config:
+
+    ```bash
+    # FDSNWS-Availability (Docker)
+    ProxyPass /fdsnws/availability/1 <HOST>:9001 timeout=600
+    ProxyPassReverse /fdsnws/availability/1 <HOST>:9001 timeout=600
+    ```
+
 ## Running in development environment
 
 1. Go to the root directory.
