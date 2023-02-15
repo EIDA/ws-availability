@@ -8,7 +8,7 @@
 - FDSNWS-Availability Cacher (orange) - Python-based container to harvest and store restriction information.
 - FDSNWS-Availability Update (purple) - JS script to fill the `availability` materialized view using WFCatalog `daily_streams` and `c_segments` collections.
 
-![[deployment.png]]
+![FDSNWS-Availability deployment diagram](deployment.png)
 
 Following implementation requires MongoDB v4.2 or higher.
 
