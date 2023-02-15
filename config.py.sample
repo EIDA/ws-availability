@@ -12,8 +12,6 @@ class Config:
     RUNMODE = os.environ.get("RUNMODE")
 
     if RUNMODE == "production":
-        # wfcatalog for MongoDB
-        DB_BACKEND = "wfcatalog"
         # WFCatalog MongoDB
         MONGODB_HOST = "host.docker.internal"
         MONGODB_PORT = 27017
@@ -29,8 +27,6 @@ class Config:
         CACHE_INVENTORY_PERIOD = 0
         CACHE_RESP_PERIOD = 1200
     elif RUNMODE == "test":
-        # wfcatalog for MongoDB
-        DB_BACKEND = "wfcatalog"
         # WFCatalog MongoDB
         MONGODB_HOST = "localhost"
         MONGODB_PORT = 27017
@@ -47,7 +43,6 @@ class Config:
         CACHE_RESP_PERIOD = 1200
 
     try:
-        DB_BACKEND = os.environ.get("DB_BACKEND") or DB_BACKEND
         MONGODB_HOST = os.environ.get("MONGODB_HOST") or MONGODB_HOST
         MONGODB_PORT = os.environ.get("MONGODB_PORT") or MONGODB_PORT
         MONGODB_USR = os.environ.get("MONGODB_USR") or MONGODB_USR
