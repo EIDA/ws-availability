@@ -1,8 +1,16 @@
 use("wfrepo");
 
-updateAvailabilityDaily = function (startDate) {
+updateAvailabilityDaily = function (networks, stations, startDate, endDate) {
   db.daily_streams.aggregate([
-    { $match: { ts: { $gte: startDate }, avail: { $gte: 100 } } },
+    {
+      $match: {
+        net: { $regex: networks },
+        sta: { $regex: stations },
+        ts: { $gte: startDate },
+        te: { $lte: endDate },
+        avail: { $gte: 100 },
+      },
+    },
     {
       $group: {
         _id: "$_id",
@@ -19,17 +27,26 @@ updateAvailabilityDaily = function (startDate) {
         count: { $first: 1 },
       },
     },
-    { $merge: { into: "availability", on: "_id", whenMatched: "replace" } },
+    {
+      $merge: { into: "availability", on: "_id", whenMatched: "replace" },
+    },
   ]);
 };
 
-updateAvailabilityContinuous = function (startDate) {
+updateAvailabilityContinuous = function (
+  networks,
+  stations,
+  startDate,
+  endDate
+) {
   db.daily_streams.aggregate([
     {
       $match: {
+        net: { $regex: networks },
+        sta: { $regex: stations },
         ts: { $gte: startDate },
+        te: { $lte: endDate },
         avail: { $lt: 100 },
-        slen: { $gte: 0 },
       },
     },
     {
@@ -57,16 +74,11 @@ updateAvailabilityContinuous = function (startDate) {
         count: { $first: 1 },
       },
     },
-    { $merge: { into: "availability", on: "_id", whenMatched: "replace" } },
+    {
+      $merge: { into: "availability", on: "_id", whenMatched: "replace" },
+    },
   ]);
 };
-
-const startTimestamp = new Date();
-startTimestamp.setDate(startTimestamp.getDate() - daysBack);
-
-function padTo2Digits(num) {
-  return num.toString().padStart(2, "0");
-}
 
 function formatDate(date) {
   return [
@@ -76,12 +88,34 @@ function formatDate(date) {
   ].join("-");
 }
 
-const startDate = formatDate(startTimestamp);
+function padTo2Digits(num) {
+  return num.toString().padStart(2, "0");
+}
 
-console.log(process.env["PWD"]);
-console.log("Processing WFCatalog entries from", startDate);
+function getPastDate(daysBack) {
+  const timestamp = new Date();
+  timestamp.setDate(timestamp.getDate() - daysBack);
+  return formatDate(timestamp);
+}
 
-updateAvailabilityDaily(new ISODate(startDate));
-updateAvailabilityContinuous(new ISODate(startDate));
+// Pass command line params
+var net = typeof networks == "undefined" ? "^.*$" : `^${networks}$`;
+var sta = typeof stations == "undefined" ? "^.*$" : `^${stations}$`;
+var ts = typeof start == "undefined" ? getPastDate(1) : start;
+var te = typeof end == "undefined" ? getPastDate(0) : end;
 
-console.log("Processing WFCatalog entries from", startDate, "completed!");
+// If provided, `daysBack` overwrites `ts`
+if (typeof daysBack !== "undefined") {
+  ts = getPastDate(daysBack);
+}
+
+console.log(
+  `Processing WFCatalog entries using networks: '${net}', stations: '${sta}', start: '${ts}', end: '${te}' started!`
+);
+
+updateAvailabilityDaily(net, sta, new ISODate(ts), new ISODate(te));
+updateAvailabilityContinuous(net, sta, new ISODate(ts), new ISODate(te));
+
+console.log(
+  `Processing WFCatalog entries using networks: '${net}', stations: '${sta}', start: '${ts}', end: '${te}' completed!`
+);

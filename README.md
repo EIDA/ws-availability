@@ -79,7 +79,9 @@ Following implementation requires MongoDB v4.2 or higher.
         When the stack is initially deployed, the materialized view is not yet in place. To build it, issue the following command:
 
         ```bash
-        mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval "const daysBack=365" views/main.js
+        # Script started on 2023-02-24
+        $ mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=365" views/main.js
+        Processing WFCatalog entries using networks: '^.*$', stations: '^.*$', start: '2022-03-24', end: '2023-03-24' completed!
         ```
 
         It will go throught the documents in `daily_streams` and `c_segments` from last year, extract availability information and store it in the `availability` materialized view.
@@ -89,10 +91,51 @@ Following implementation requires MongoDB v4.2 or higher.
         To automate availability information appension, add following line to `cron`:
 
         ```bash
-        0 6 * * * cd ~/ws-availability/views && mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "const daysBack=2" main.js > /dev/null 2>&1
+        0 6 * * * cd ~/ws-availability/views && mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo main.js > /dev/null 2>&1
         ```
 
-        It will go throught the documents in `daily_streams` and `c_segments` from last 2 days, extract availability information and append it to the `availability` materialized view. We use 2 days here simply to process data with small overlap.
+        It will go throught the documents in `daily_streams` and `c_segments` from last day, extract availability information and append it to the `availability` materialized view. If additional parameters are not provided, script processes data from last day:
+
+        ```bash
+        # Script started on 2023-02-24
+        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo main.js
+        Loading file: main.js
+        Processing WFCatalog entries using networks: *, stations: *, start: 2023-03-23, end: 2023-03-24 started!
+        Processing WFCatalog entries using networks: *, stations: *, start: 2023-03-23, end: 2023-03-24 completed!
+        ```
+
+    1. Back-processing
+
+        Processing can be also executed on a predefined subset of data using `networks`, `stations`, `start` and `end` parameters.
+
+        ```bash
+        # Last week
+        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=7;" main.js
+        Processing WFCatalog entries using networks: '^.*$', stations: '^.*$', start: '2023-03-17', end: '2023-03-24' completed!
+
+        # January 2023
+        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "start='2023-01-01'; end='2023-01-31'" main.js
+        Processing WFCatalog entries using networks: '^.*$', stations: '^.*$', start: '2023-01-01', end: '2023-01-31' completed!
+
+        # NL.HGN data between December 2022 and January 2023
+        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "networks='NL'; stations='HGN'; start='2022-12-01'; end='2023-01-31'" main.js
+        Processing WFCatalog entries using networks: '^NL$', stations: '^HGN$', start: '2022-12-01', end: '2023-01-31' completed!
+
+        # You can also use regular expressiosn for `networks` and `stations` params
+        # Please refer to [docs](https://www.mongodb.com/docs/manual/reference/operator/query/regex/) for details
+
+        # Stations from NL network matching `G*4` template with timespan from 2023-03-01 till 2023-03-02
+        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "networks='NL'; stations='G.*4'; start='2023-03-01'; end='2023-03-02'" main.js
+        Processing WFCatalog entries using networks: '^NL$', stations: '^G.*4$', start: '2023-03-01', end: '2023-03-02' completed!
+
+        # Stations from `NL` or `NA` networks with station codes `HGN` or `SABA` and timespan from 2023-03-01 till 2023-03-02
+        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "networks='NL|NA'; stations='HGN|SABA'; start='2023-03-01'; end='2023-03-02'" main.js
+        Processing WFCatalog entries using networks: '^NL|NA$', stations: '^HGN|SABA$', start: '2023-03-01', end: '2023-03-02' completed!
+
+        # All stations from networks `NL` and `NA` with timespan from 2023-03-01 till 2023-03-02
+        $ mongosh -u jarek -p password123 --authenticationDatabase wfrepo --eval "networks='NL|NA'; start='2023-03-01'; end='2023-03-02'" main.js
+        Processing WFCatalog entries using networks: '^NL|NA$', stations: '^.*$', start: '2023-03-01', end: '2023-03-02' completed!
+        ```
 
     1. Indexes
 
