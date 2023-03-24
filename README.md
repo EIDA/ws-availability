@@ -99,9 +99,7 @@ Following implementation requires MongoDB v4.2 or higher.
         ```bash
         # Script started on 2023-02-24
         $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo main.js
-        Loading file: main.js
-        Processing WFCatalog entries using networks: *, stations: *, start: 2023-03-23, end: 2023-03-24 started!
-        Processing WFCatalog entries using networks: *, stations: *, start: 2023-03-23, end: 2023-03-24 completed!
+        Processing WFCatalog entries using networks: '^.*$', stations: '^.*$', start: '2023-03-23', end: '2023-03-24' completed!
         ```
 
     1. Back-processing
