@@ -28,7 +28,7 @@ updateAvailabilityDaily = function (networks, stations, startDate, endDate) {
       },
     },
     {
-      $merge: { into: "availability_test", on: "_id", whenMatched: "replace" },
+      $merge: { into: "availability", on: "_id", whenMatched: "replace" },
     },
   ]);
 };
@@ -75,7 +75,7 @@ updateAvailabilityContinuous = function (
       },
     },
     {
-      $merge: { into: "availability_test", on: "_id", whenMatched: "replace" },
+      $merge: { into: "availability", on: "_id", whenMatched: "replace" },
     },
   ]);
 };

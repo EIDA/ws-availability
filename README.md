@@ -124,13 +124,17 @@ Following implementation requires MongoDB v4.2 or higher.
         # You can also use regular expressiosn for `networks` and `stations` params
         # Please refer to [docs](https://www.mongodb.com/docs/manual/reference/operator/query/regex/) for details
 
-        # Stations from NL network matching `G*4` template
+        # Stations from NL network matching `G*4` template with timespan from 2023-03-01 till 2023-03-02
         $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "networks='NL'; stations='G.*4'; start='2023-03-01'; end='2023-03-02'" main.js
         Processing WFCatalog entries using networks: '^NL$', stations: '^G.*4$', start: '2023-03-01', end: '2023-03-02' completed!
 
-        # Stations from `NL` or `NA` networks with station codes `HGN` or `SABA`
+        # Stations from `NL` or `NA` networks with station codes `HGN` or `SABA` with timespan from 2023-03-01 till 2023-03-02
         $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "networks='NL|NA'; stations='HGN|SABA'; start='2023-03-01'; end='2023-03-02'" main.js
         Processing WFCatalog entries using networks: '^NL|NA$', stations: '^HGN|SABA$', start: '2023-03-01', end: '2023-03-02' completed!
+
+        # All stations from networks `NL` and `NA` with timespan from 2023-03-01 till 2023-03-02
+        $ mongosh -u jarek -p password123 --authenticationDatabase wfrepo --eval "networks='NL|NA'; start='2023-03-01'; end='2023-03-02'" main.js
+        Processing WFCatalog entries using networks: '^NL|NA$', stations: '^.*$', start: '2023-03-01', end: '2023-03-02' completed!
         ```
 
     1. Indexes
