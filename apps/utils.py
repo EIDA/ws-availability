@@ -41,7 +41,7 @@ def is_valid_float(dimension, mini=sys.float_info.epsilon, maxi=sys.float_info.m
 def is_valid_datetime(date):
     for df in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f"):
         try:
-            return datetime.strptime(date, df)
+            return datetime.strptime(date.replace("Z", ""), df)
         except (ValueError, TypeError):
             pass
 
