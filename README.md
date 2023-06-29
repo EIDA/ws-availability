@@ -215,6 +215,10 @@ Following implementation requires MongoDB v4.2 or higher.
 
     ```bash
     # FDSNWS-Availability (Docker)
+    <Location /fdsnws/availability/1>
+      # in order to omit CORS error
+      Header add Access-Control-Allow-Origin "*"
+    </Location>
     ProxyPass /fdsnws/availability/1 <HOST>:9001 timeout=600
     ProxyPassReverse /fdsnws/availability/1 <HOST>:9001 timeout=600
     ```
