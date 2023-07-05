@@ -76,6 +76,7 @@ class Cache:
                     epoch = Epoch(
                         net.code,
                         sta.code,
+                        cha.location_code,
                         cha.code,
                         (cha.start_date.date if cha.start_date else None),
                         (cha.end_date.date if cha.end_date else None),
