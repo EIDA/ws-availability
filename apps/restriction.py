@@ -20,12 +20,14 @@ class Epoch:
         self,
         net_code: str,
         sta_code: str,
+        loc_code: str,
         cha_code: str,
         start_date: date,
         end_date: date,
     ):
         self.network = net_code
         self.station = sta_code
+        self.location = loc_code
         self.channel = cha_code
         self.start = start_date
         self.end = end_date
@@ -33,7 +35,7 @@ class Epoch:
 
     @property
     def seed_id(self) -> str:
-        return f"{self.network}.{self.station}..{self.channel}"
+        return f"{self.network}.{self.station}.{self.location}.{self.channel}"
 
     def __str__(self):
         return f"{self.seed_id} {self.start} --- {self.end} {self.restriction}"
