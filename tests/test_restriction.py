@@ -24,6 +24,7 @@ class TestIsRestricted(TestCase):
 
         self.inv = RestrictionInventory(host="", port=0, key="")
 
+        # Inject fake epoch to easily test `PARTIAL` restriction
         self.inv._inv["XX.YYY.00.BHE"] = []
         start_list = [date(2000, 1, 1), date(2002, 1, 1), date(2004, 1, 1)]
         end_list = [date(2001, 12, 31), date(2003, 12, 31), None]
