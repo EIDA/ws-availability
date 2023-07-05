@@ -270,6 +270,14 @@ Following implementation requires MongoDB v4.2 or higher.
 - `production`
 - `test`
 
+## Tests
+
+Tests can be executed from the respository root using following command:
+
+```bash
+PYTHONPATH=./apps/ python3 -m unittest discover tests/
+```
+
 ## Ideas for improvements
 
 1. Move restriction information from Redis cache directly to the `db.availability` materialized view. This would imply modifying the `views/main.js` script with code harvesting this information directly from the FDSNWS-Station instance.
