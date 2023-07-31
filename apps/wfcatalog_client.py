@@ -112,7 +112,7 @@ def _apply_restricted_bit(data: list) -> list:
     data = [
         r
         for r in data
-        if f"{r['net']}.{r['sta']}..{r['cha']}"
+        if f"{r['net']}.{r['sta']}.{r['loc']}.{r['cha']}"
         in RESTRICTED_INVENTORY._known_seedIDs
     ]
 
@@ -217,7 +217,7 @@ def _get_restricted_status(segment):
         RESTRICTED_INVENTORY = RestrictionInventory()
 
     r = RESTRICTED_INVENTORY.is_restricted(
-        f"{segment['net']}.{segment['sta']}..{segment['cha']}",
+        f"{segment['net']}.{segment['sta']}.{segment['loc']}.{segment['cha']}",
         segment["ts"].date(),
         segment["te"].date(),
     )
