@@ -4,7 +4,7 @@ from flask import current_app
 from .redis_client import RedisClient
 from pymongo import MongoClient
 
-from .restriction import RestrictionInventory, Restriction
+from .restriction import RestrictionInventory
 
 RESTRICTED_INVENTORY = None
 
