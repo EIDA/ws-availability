@@ -56,15 +56,15 @@ class RestrictionInventory:
         # Try to get cached inventory from shared memcache instance
         if cached_inventory:
             self._inv = pickle.loads(cached_inventory)
-            self._restricted_seedIDs = [
+            self._restricted_seedIDs = set([
                 seedId
                 for seedId in self._inv
                 if any(e.restriction != Restriction.OPEN for e in self._inv[seedId])
-            ]
-            self._known_seedIDs = [
+            ])
+            self._known_seedIDs = set([
                 seedId
                 for seedId in self._inv
-            ]
+            ])
             logging.info(f"Loaded inventory from cache...")
             return
         else:
