@@ -1,5 +1,4 @@
 import logging
-import time
 from fnmatch import fnmatch
 from flask import current_app
 from .redis_client import RedisClient
