@@ -45,7 +45,6 @@ def mongo_request(paramslist):
 
     # List of queries executed agains the DB, let's keep it for logging
     qries = []
-
     for params in paramslist:
         params = _expand_wildcards(params)
         qry = {}
@@ -83,17 +82,12 @@ def mongo_request(paramslist):
         cursor = db.availability.find(qry, projection=PROJ)
 
         # Eager query execution instead of a cursor
-        data = list(cursor)
-        data = _apply_restricted_bit(data)
-        result += [
-            [data[idx][key] for key in data[idx].keys()] for idx, _ in enumerate(data)
-        ]
+        result += _apply_restricted_bit(cursor)
 
     # Result needs to be sorted, this seems to be required by the fusion step
     result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
 
     return qries, result
-
 
 def _apply_restricted_bit(data: list) -> list:
     """Removes entries which do not appear in the station inventory and applies
@@ -108,39 +102,33 @@ def _apply_restricted_bit(data: list) -> list:
         restricted information applied from cache.
     """
 
-    # Filter out SEED Identifiers not existing in station metadata.
-    data = [
-        r
-        for r in data
-        if f"{r['net']}.{r['sta']}.{r['loc']}.{r['cha']}"
-        in RESTRICTED_INVENTORY._known_seedIDs
-    ]
+    results = []
 
-    # Take the intersection between DB entries and restricted cached inventory.
-    intersection = set(
-        [f"{r['net']}.{r['sta']}.{r['loc']}.{r['cha']}" for r in data]
-    ) & set(RESTRICTED_INVENTORY._restricted_seedIDs)
+    for segment in data:
 
-    # Apply the restricted bit information from the cached inventory side.
-    if len(intersection) > 0:
-        logging.info(f"Applying restricted bit for {intersection=}")
-        for seedId in intersection:
-            net, sta, loc, cha = seedId.split(".")
-            indexes = [
-                i
-                for i, e in enumerate(data)
-                if (
-                    e["net"] == net
-                    and e["sta"] == sta
-                    and e["loc"] == loc
-                    and e["cha"] == cha
-                )
-            ]
-            for index in indexes:
-                data[index]["restr"] = _get_restricted_status(data[index])
+      sid = ".".join([segment["net"], segment["sta"], segment["loc"], segment["cha"]])
 
-    return data
+      if sid not in RESTRICTED_INVENTORY._known_seedIDs:
+        continue
 
+      if sid in RESTRICTED_INVENTORY._restricted_seedIDs:
+        segment["restr"] = _get_restricted_status(segment)
+
+      results.append([
+        segment["net"],
+        segment["sta"],
+        segment["loc"],
+        segment["cha"],
+        segment["qlt"],
+        segment["srate"],
+        segment["ts"],
+        segment["te"],
+        segment["created"],
+        segment["restr"],
+        segment["count"]
+    ])
+
+    return results
 
 def _expand_wildcards(params):
     """Expand generic query parameters to actual ones based on cached inventory.
