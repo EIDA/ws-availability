@@ -112,10 +112,8 @@ def _apply_restricted_bit(data: list) -> list:
       if sid not in RESTRICTED_INVENTORY._known_seedIDs:
         continue
 
-      status = "OPEN"
-
       if sid in RESTRICTED_INVENTORY._restricted_seedIDs:
-        status = _get_restricted_status(segment)
+        segment["restr"] = _get_restricted_status(segment)
 
       results.append([
         segment["net"],
@@ -127,7 +125,7 @@ def _apply_restricted_bit(data: list) -> list:
         segment["ts"],
         segment["te"],
         segment["created"],
-        status,
+        segment["restr"],
         segment["count"]
     ])
 
