@@ -48,6 +48,9 @@ def mongo_request(paramslist):
     qries = []
     for params in paramslist:
         params = _expand_wildcards(params)
+        # Crop datetimes to accomodate sub-segment queries.
+        # e.g. net=NL&sta=HGN&start=2018-01-06T06:00:00&end=2018-01-06T12:00:00
+        # when we have one 24h segment for 2018-01-06
         start, end = crop_datetimes(params)
         qry = {}
         if params["network"] != "*":
@@ -92,7 +95,15 @@ def mongo_request(paramslist):
     return qries, result
 
 
-def crop_datetimes(params):
+def crop_datetimes(params: dict):
+    """Extract and crop start/end query parameters.
+
+    Args:
+        params (dict): Dictionary containing original query parameters.
+
+    Returns:
+        tuple: Tuple containing cropped start/end parameters.
+    """
     start_cropped, end_cropped = None, None
 
     if params["start"]:
