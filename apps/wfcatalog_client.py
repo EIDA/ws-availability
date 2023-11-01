@@ -3,6 +3,7 @@ from fnmatch import fnmatch
 from flask import current_app
 from .redis_client import RedisClient
 from pymongo import MongoClient
+from datetime import timedelta
 
 from .restriction import RestrictionInventory
 
@@ -47,6 +48,10 @@ def mongo_request(paramslist):
     qries = []
     for params in paramslist:
         params = _expand_wildcards(params)
+        # Crop datetimes to accomodate sub-segment queries.
+        # e.g. net=NL&sta=HGN&start=2018-01-06T06:00:00&end=2018-01-06T12:00:00
+        # when we have one 24h segment for 2018-01-06
+        start, end = crop_datetimes(params)
         qry = {}
         if params["network"] != "*":
             network = {"$in": params["network"].split(",")}
@@ -62,11 +67,11 @@ def mongo_request(paramslist):
         if params["quality"] != "*":
             quality = {"$in": params["quality"].split(",")}
             qry["qlt"] = quality
-        if params["start"]:
-            ts = {"$gte": params["start"]}
+        if start:
+            ts = {"$gte": start}
             qry["ts"] = ts
-        if params["end"]:
-            te = {"$lte": params["end"]}
+        if end:
+            te = {"$lte": end}
             qry["te"] = te
 
         db = MongoClient(
@@ -89,6 +94,30 @@ def mongo_request(paramslist):
 
     return qries, result
 
+
+def crop_datetimes(params: dict):
+    """Extract and crop start/end query parameters.
+
+    Args:
+        params (dict): Dictionary containing original query parameters.
+
+    Returns:
+        tuple: Tuple containing cropped start/end parameters.
+    """
+    start_cropped, end_cropped = None, None
+
+    if params["start"]:
+        start_cropped = params["start"].replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+
+    if params["end"]:
+        end_cropped = params["end"].replace(hour=0, minute=0, second=0, microsecond=0)
+        end_cropped += timedelta(days=1)
+
+    return start_cropped, end_cropped
+
+
 def _apply_restricted_bit(data: list) -> list:
     """Removes entries which do not appear in the station inventory and applies
     restricted bit information based on cross-section between rows obtained
@@ -105,30 +134,32 @@ def _apply_restricted_bit(data: list) -> list:
     results = []
 
     for segment in data:
+        sid = ".".join([segment["net"], segment["sta"], segment["loc"], segment["cha"]])
 
-      sid = ".".join([segment["net"], segment["sta"], segment["loc"], segment["cha"]])
+        if sid not in RESTRICTED_INVENTORY._known_seedIDs:
+            continue
 
-      if sid not in RESTRICTED_INVENTORY._known_seedIDs:
-        continue
+        if sid in RESTRICTED_INVENTORY._restricted_seedIDs:
+            segment["restr"] = _get_restricted_status(segment)
 
-      if sid in RESTRICTED_INVENTORY._restricted_seedIDs:
-        segment["restr"] = _get_restricted_status(segment)
-
-      results.append([
-        segment["net"],
-        segment["sta"],
-        segment["loc"],
-        segment["cha"],
-        segment["qlt"],
-        segment["srate"],
-        segment["ts"],
-        segment["te"],
-        segment["created"],
-        segment["restr"],
-        segment["count"]
-    ])
+        results.append(
+            [
+                segment["net"],
+                segment["sta"],
+                segment["loc"],
+                segment["cha"],
+                segment["qlt"],
+                segment["srate"],
+                segment["ts"],
+                segment["te"],
+                segment["created"],
+                segment["restr"],
+                segment["count"],
+            ]
+        )
 
     return results
+
 
 def _expand_wildcards(params):
     """Expand generic query parameters to actual ones based on cached inventory.
