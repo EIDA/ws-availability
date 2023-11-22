@@ -38,7 +38,7 @@ ORDERBY = (
 # error message constants
 DOCUMENTATION_URI = "http://www.fdsn.org/webservices/fdsnws-availability-1.0.pdf"
 SERVICE = "fdsnws-availability"
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 
 class Error:
