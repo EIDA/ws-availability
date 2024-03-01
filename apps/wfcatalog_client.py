@@ -194,6 +194,8 @@ def _expand_wildcards(params):
 
     # Filter the cached inventory on location level.
     for loc in params["location"].split(","):
+        if loc == '--':
+            loc = ''
         _loc += [e for e in _sta if fnmatch(e.split(".")[2], loc)]
 
     # Filter the cached inventory on channel level.
