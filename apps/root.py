@@ -126,13 +126,13 @@ def checks_post(params):
     return check_parameters(params)
 
 
-def get_post_params():
+def get_():
     rows = list()
     params = dict()
     paramslist = list()
     code = ("network", "station", "location", "channel")
     exclude = ("net", "sta", "cha", "loc", "starttime", "endtime", "constraints")
-    post_params = [(k for k in Parameters().todict() if k not in exclude]
+    post_params = [k for k in Parameters().todict() if k not in exclude]
 
     # Universal newline decoding :
     stream = io.StringIO(request.stream.read().decode("UTF8"), newline=None)
