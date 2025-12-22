@@ -87,7 +87,7 @@ def mongo_request(paramslist):
         cursor = db.availability.find(qry, projection=PROJ)
 
         # Eager query execution instead of a cursor
-        result += _apply_restricted_bit(cursor)
+        result += _apply_restricted_bit(cursor, params.get("includerestricted", False))
 
     # Result needs to be sorted, this seems to be required by the fusion step
     result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
@@ -118,13 +118,14 @@ def crop_datetimes(params: dict):
     return start_cropped, end_cropped
 
 
-def _apply_restricted_bit(data: list) -> list:
+def _apply_restricted_bit(data: list, include_restricted: bool = False) -> list:
     """Removes entries which do not appear in the station inventory and applies
     restricted bit information based on cross-section between rows obtained
     from the DB and list of SEED Identifiers having restricted epochs.
 
     Args:
         data (list): List of entries obtained from the DB.
+        include_restricted (bool): If True, return all data. If False, return only open data.
 
     Returns:
         list: List of entries obtained from the DB, but filtered and having
@@ -141,6 +142,8 @@ def _apply_restricted_bit(data: list) -> list:
 
         if sid in RESTRICTED_INVENTORY._restricted_seedIDs:
             segment["restr"] = _get_restricted_status(segment)
+            if segment["restr"] == "RESTRICTED" and not include_restricted:
+                continue
 
         results.append(
             [
