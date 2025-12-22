@@ -125,7 +125,10 @@ def _apply_restricted_bit(data: list, include_restricted: bool = False) -> list:
 
     Args:
         data (list): List of entries obtained from the DB.
-        include_restricted (bool): If True, return all data. If False, return only open data.
+        include_restricted (bool): If True, return all data regardless of restriction
+            status. If False, return only "open" data, i.e. entries whose restriction
+            status is "OPEN" (entries marked as "RESTRICTED" or "PARTIAL" are
+            excluded once such statuses are applied).
 
     Returns:
         list: List of entries obtained from the DB, but filtered and having
