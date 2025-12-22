@@ -15,7 +15,6 @@ sys.modules["redis"] = MagicMock()
 sys.modules["apps.redis_client"] = MagicMock()
 
 from apps import wfcatalog_client
-from apps.restriction import Restriction
 
 class TestWFCatalogFiltering(unittest.TestCase):
     
