@@ -227,22 +227,16 @@ Following implementation requires MongoDB v4.2 or higher.
 
 1. Go to the root directory.
 1. Copy `config.py.sample` to `config.py` and adjust it as needed.
-1. Create the virtual environment:
+1. Install `uv`:
 
     ```bash
-    python3 -m venv env
+    curl -LsSf https://astral.sh/uv/install.sh | sh
     ```
 
-1. Activate the virtual environment:
+1. Sync dependencies:
 
     ```bash
-    source env/bin/activate
-    ```
-
-1. Install the dependencies:
-
-    ```bash
-    pip install -r requirements.txt
+    uv sync
     ```
 
 1. Create Redis instance (mandatory for WFCatalog-based deployment):
