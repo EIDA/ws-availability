@@ -142,7 +142,7 @@ def _apply_restricted_bit(data: list, include_restricted: bool = False) -> list:
 
         if sid in RESTRICTED_INVENTORY._restricted_seedIDs:
             segment["restr"] = _get_restricted_status(segment)
-            if segment["restr"] == "RESTRICTED" and not include_restricted:
+            if segment["restr"] in ["RESTRICTED", "PARTIAL"] and not include_restricted:
                 continue
 
         results.append(
