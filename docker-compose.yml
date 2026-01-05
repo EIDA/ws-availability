@@ -25,6 +25,9 @@ services:
       - cache
     environment:
       RUNMODE: production
+      MONGODB_HOST: host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   api:
     build:
       context: ./
@@ -37,3 +40,6 @@ services:
       - cache
     environment:
       RUNMODE: production
+      MONGODB_HOST: host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
