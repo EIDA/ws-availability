@@ -19,8 +19,7 @@ services:
         delay: 10s
         max_attempts: 5
         window: 30s
-    ports:
-      - 11211:11211
+    network_mode: "host"
     depends_on:
       - cache
     environment:
@@ -31,8 +30,7 @@ services:
       dockerfile: Dockerfile.api
     restart: always
     container_name: fdsnws-availability-api
-    ports:
-      - 9001:9001
+    network_mode: "host"
     depends_on:
       - cache
     environment:
