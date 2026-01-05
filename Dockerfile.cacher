@@ -11,4 +11,4 @@ COPY apps ./apps/
 # Place executables in the environment at the front of the path
 ENV PATH="/appli/.venv/bin:$PATH"
 
-CMD ["/bin/bash", "-c", "python cache.py"]
+CMD ["uv", "run", "python", "cache.py"]
