@@ -227,13 +227,7 @@ Following implementation requires MongoDB v4.2 or higher.
 
 1. Go to the root directory.
 1. Copy `config.py.sample` to `config.py` and adjust it as needed.
-1. Install `uv`:
-
-    ```bash
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    ```
-
-1. Sync dependencies:
+1. Install dependencies using `uv`:
 
     ```bash
     uv sync
@@ -248,17 +242,17 @@ Following implementation requires MongoDB v4.2 or higher.
 1. Build the cache:
 
     ```bash
-    python3 cache.py
+    uv run python cache.py
     ```
 
 1. Now you can either:
     1. Run it:
 
         ```bash
-        RUNMODE=test FLASK_APP=start.py flask run
+        RUNMODE=test FLASK_APP=start.py uv run flask run
 
         # Or with gunicorn:
-        RUNMODE=test gunicorn --workers 2 --timeout 60 --bind 0.0.0.0:9001 start:app
+        RUNMODE=test uv run gunicorn --workers 2 --timeout 60 --bind 0.0.0.0:9001 start:app
         ```
 
     1. Debug it in VS Code (F5) after selecting "Launch (Flask)" config.
@@ -273,7 +267,7 @@ Following implementation requires MongoDB v4.2 or higher.
 Tests can be executed from the respository root using following command:
 
 ```bash
-PYTHONPATH=./apps/ python3 -m unittest discover tests/
+uv run pytest
 ```
 
 ## Ideas for improvements
