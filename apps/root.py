@@ -7,11 +7,11 @@ data retrieval to the data access layer.
 """
 import io
 import logging
-import multiprocessing as mp
-import queue
 import re
 import traceback
 from typing import Any
+
+from flask import request
 
 from flask import request
 
@@ -27,7 +27,7 @@ from apps.utils import (
     error_request,
 )
 
-mp.set_start_method("fork")
+
 
 
 def check_parameters(params: dict) -> tuple[dict, dict]:
@@ -233,7 +233,6 @@ def output() -> Any:
     """
 
     try:
-        process = None
         valid_param_dicts = list()
         result = {"msg": HTTP._400_, "details": Error.UNKNOWN_PARAM, "code": 400}
         logging.debug(request.url)
@@ -251,29 +250,19 @@ def output() -> Any:
 
         if valid_param_dicts:
 
-            def put_response(q):
-                q.put(get_output(valid_param_dicts))
-
-            q = mp.Queue()
-            process = mp.Process(target=put_response, args=(q,))
-            process.start()
-            resp = q.get(timeout=TIMEOUT)
-
+            # Direct call to get_output, relying on Gunicorn workers for concurrency
+            resp = get_output(valid_param_dicts)
             if resp:
                 return resp
             else:
-                raise Exception
-
-    except queue.Empty:
-        result = {"msg": HTTP._408_, "details": Error.TIMEOUT, "code": 408}
+                # Fallthrough to exception handler if None
+                raise Exception("get_output returned empty response")
 
     except Exception as excep:
         result = {"msg": HTTP._500_, "details": Error.UNSPECIFIED, "code": 500}
         logging.exception(str(excep))
 
-    finally:
-        if process:
-            process.terminate()
+    # finally block removed as process is gone
 
     return error_request(
         msg=result["msg"], details=result["details"], code=result["code"]
