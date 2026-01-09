@@ -94,6 +94,9 @@ class QueryParameters(BaseModel):
     def validate_datetime(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return None
+        # If it's already a datetime object (from check_base_parameters), it's valid.
+        if isinstance(v, datetime):
+            return v
         if v == "currentutcday":
             return v
         # Try to parse to verify format, then return original string (or datetime obj if we prefer)
