@@ -8,6 +8,7 @@ RUN uv sync --frozen --no-dev
 COPY start.py config.py ./
 COPY apps ./apps/
 COPY templates ./templates/
+COPY tests ./tests/
 
 # Place executables in the environment at the front of the path
 ENV PATH="/appli/.venv/bin:$PATH"

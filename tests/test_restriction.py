@@ -1,10 +1,10 @@
 from unittest import TestCase, mock
 from datetime import date
-from restriction import Restriction, RestrictionInventory, Epoch
+from apps.restriction import Restriction, RestrictionInventory, Epoch
 
 
 class TestInventoryLoad(TestCase):
-    @mock.patch("restriction.redis")
+    @mock.patch("apps.restriction.redis")
     def test_init(self, mock_redis):
         with open("tests/data/cache.pickle", "rb") as handle:
             mock_redis.Redis().get.return_value = handle.read()
@@ -17,7 +17,7 @@ class TestInventoryLoad(TestCase):
 
 
 class TestIsRestricted(TestCase):
-    @mock.patch("restriction.redis")
+    @mock.patch("apps.restriction.redis")
     def setUp(self, mock_redis):
         with open("tests/data/cache.pickle", "rb") as handle:
             mock_redis.Redis().get.return_value = handle.read()

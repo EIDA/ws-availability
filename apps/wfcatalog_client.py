@@ -1,9 +1,18 @@
+"""
+WFCatalog Client Module for ws-availability.
+
+This module handles interactions with the WFCatalog (MongoDB) and the Station
+Inventory (for restriction checks). It constructs MongoDB queries, retrieves
+availability metrics, and applies access restrictions based on cached inventory data.
+It also manages caching logic using Redis.
+"""
 import logging
 from fnmatch import fnmatch
 from flask import current_app
 from .redis_client import RedisClient
 from pymongo import MongoClient
-from datetime import timedelta
+from datetime import datetime, timedelta
+from typing import Any
 
 from .restriction import RestrictionInventory
 
@@ -25,15 +34,17 @@ PROJ = {
 }
 
 
-def mongo_request(paramslist):
-    """Build and run WFCatalog MongoDB queries using request query parameters
+def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
+    """
+    Constructs and executes MongoDB queries to retrieve availability metrics.
 
     Args:
-        paramslist ([]): List of lists containing URL query parameters
+        paramslist: List of dictionaries containing URL query parameters.
 
     Returns:
-        []: MongoDB queries used to obtain data
-        []: List of metrics extracted from the MongoDB
+        A tuple containing:
+        - qries (list): List of executed MongoDB query objects (for logging).
+        - result (list): Aggregated list of metric records extracted from the DB.
     """
     db_host = current_app.config["MONGODB_HOST"]
     db_port = current_app.config["MONGODB_PORT"]
@@ -95,14 +106,18 @@ def mongo_request(paramslist):
     return qries, result
 
 
-def crop_datetimes(params: dict):
-    """Extract and crop start/end query parameters.
+def crop_datetimes(params: dict) -> tuple[datetime | None, datetime | None]:
+    """
+    Extracts and normalizes start/end datetimes for querying.
+
+    Crops time by rounding to the nearest day start/end if necessary, 
+    to accommodate sub-segment queries logic.
 
     Args:
-        params (dict): Dictionary containing original query parameters.
+        params: Dictionary containing original query parameters.
 
     Returns:
-        tuple: Tuple containing cropped start/end parameters.
+        A tuple containing cropped (start, end) datetimes.
     """
     start_cropped, end_cropped = None, None
 
@@ -118,21 +133,20 @@ def crop_datetimes(params: dict):
     return start_cropped, end_cropped
 
 
-def _apply_restricted_bit(data: list, include_restricted: bool = False) -> list:
-    """Removes entries which do not appear in the station inventory and applies
-    restricted bit information based on cross-section between rows obtained
-    from the DB and list of SEED Identifiers having restricted epochs.
+def _apply_restricted_bit(data: Any, include_restricted: bool = False) -> list[list[Any]]:
+    """
+    Filters data based on restricted status from the inventory.
+
+    Checks each data segment against the restricted inventory cache. If data
+    is restricted and `include_restricted` is False, it is excluded.
 
     Args:
-        data (list): List of entries obtained from the DB.
-        include_restricted (bool): If True, return all data regardless of restriction
-            status. If False, return only "open" data, i.e. entries whose restriction
-            status is "OPEN" (entries marked as "RESTRICTED" or "PARTIAL" are
-            excluded once such statuses are applied).
+        data: Cursor or list of availability documents from MongoDB.
+        include_restricted: If True, restricted data is included. 
+                           If False, only "OPEN" data is returned.
 
     Returns:
-        list: List of entries obtained from the DB, but filtered and having
-        restricted information applied from cache.
+        List of filtered availability records with restriction status applied.
     """
 
     results = []
@@ -167,14 +181,18 @@ def _apply_restricted_bit(data: list, include_restricted: bool = False) -> list:
     return results
 
 
-def _expand_wildcards(params):
-    """Expand generic query parameters to actual ones based on cached inventory.
+def _expand_wildcards(params: dict) -> dict:
+    """
+    Expands wildcard query parameters based on cached inventory.
+
+    Matches wildcards (e.g., "H?N", "*") against the known inventory to produce
+    explicit lists of networks, stations, etc., for the database query.
 
     Args:
-        params (list): List of query parameters.
+        params: Dictionary of query parameters.
 
     Returns:
-        list: List of expanded query parameters.
+        Dictionary with expanded parameters (wildcards replaced by concrete lists).
     """
     global RESTRICTED_INVENTORY
 
@@ -229,14 +247,16 @@ def _expand_wildcards(params):
     return params
 
 
-def _get_restricted_status(segment):
-    """Gets the restricted status of provided daily stream.
+def _get_restricted_status(segment: dict) -> str | None:
+    """
+    Retrieves the restricted status for a specific data segment.
 
     Args:
-        daily_stream (dict): Daily stream dictionary from WFCatalog DB.
+        segment: Dictionary representing a data segment (must contain 'net',
+                 'sta', 'loc', 'cha', 'ts', 'te').
 
     Returns:
-        string: Restricted status, `None` if unknown.
+        String status ("OPEN", "RESTRICTED", etc.) or None if unknown.
     """
     global RESTRICTED_INVENTORY
 
@@ -255,8 +275,19 @@ def _get_restricted_status(segment):
         return None
 
 
-def collect_data(params):
-    """Get the result of the Mongo query."""
+def collect_data(params: dict) -> list[list[Any]] | None:
+    """
+    Orchestrates the data collection process with caching.
+
+    First checks Redis cache for the given parameters. If not found, executes
+    the MongoDB query, caches the result, and returns it.
+
+    Args:
+        params: list of parameter dictionaries.
+
+    Returns:
+        List of data records or None.
+    """
     rc = RedisClient(current_app.config["CACHE_HOST"], current_app.config["CACHE_PORT"])
 
     CACHED_REQUEST_KEY = str(hash(str(params)))

@@ -1,33 +1,33 @@
 # version string of the json format
-SCHEMAVERSION = 1.0
+SCHEMAVERSION: float = 1.0
 
 # postgresql schema
-SCHEMA = "wsavailability"
+SCHEMA: str = "wsavailability"
 
 # Response
-QUALITY = 4
-SAMPLERATE = 5
-START = 6
-END = 7
-UPDATED = 8
-STATUS = 9
-COUNT = 10  # timespancount
+QUALITY: int = 4
+SAMPLERATE: int = 5
+START: int = 6
+END: int = 7
+UPDATED: int = 8
+STATUS: int = 9
+COUNT: int = 10  # timespancount
 
 # limitations
-TIMEOUT = 600
-MAX_DAYS = None
-MAX_ROWS = "2_500_000"
-MAX_DATA_ROWS = int(MAX_ROWS.replace(",", ""))
-MAX_MERGEGAPS = 10000000000
+TIMEOUT: int = 600
+MAX_DAYS: int | None = None
+MAX_ROWS: str = "2_500_000"
+MAX_DATA_ROWS: int = int(MAX_ROWS.replace(",", ""))
+MAX_MERGEGAPS: int = 10000000000
 
 # available parameter values
-OUTPUT = ("geocsv", "json", "request", "text", "zip")
-NODATA_CODE = ("204", "404")
-STRING_TRUE = ("yes", "true", "t", "y", "1", "")
-STRING_FALSE = ("no", "false", "f", "n", "0")
-SHOW = "latestupdate"
-MERGE = ("quality", "samplerate", "overlap")
-ORDERBY = (
+OUTPUT: tuple[str, ...] = ("geocsv", "json", "request", "text", "zip")
+NODATA_CODE: tuple[str, ...] = ("204", "404")
+STRING_TRUE: tuple[str, ...] = ("yes", "true", "t", "y", "1", "")
+STRING_FALSE: tuple[str, ...] = ("no", "false", "f", "n", "0")
+SHOW: str = "latestupdate"
+MERGE: tuple[str, ...] = ("quality", "samplerate", "overlap")
+ORDERBY: tuple[str, ...] = (
     "nslc_time_quality_samplerate",
     "timespancount",
     "timespancount_desc",
@@ -36,9 +36,9 @@ ORDERBY = (
 )
 
 # error message constants
-DOCUMENTATION_URI = "http://www.fdsn.org/webservices/fdsnws-availability-1.0.pdf"
-SERVICE = "fdsnws-availability"
-VERSION = "1.0.3"
+DOCUMENTATION_URI: str = "http://www.fdsn.org/webservices/fdsnws-availability-1.0.pdf"
+SERVICE: str = "fdsnws-availability"
+VERSION: str = "1.0.3"
 
 
 class Error:
