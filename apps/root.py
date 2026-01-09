@@ -87,28 +87,13 @@ def check_parameters(params: dict) -> tuple[dict, dict]:
         #    Let's handle split manually here to be safe and match legacy `params` structure exactly.
         
         # Pydantic cleanup for specific List types the app expects:
-        if isinstance(params["quality"], str):
-             params["quality"] = params["quality"].split(",") # Is this expected? 
-             # Original code L40: `quality = params["quality"].split(",")` -> loop.
-             # But it didn't assign back to params["quality"] usually? 
-             # L40 is local var `quality`.
-             # Apps logic uses `params["quality"]` later?
-             # `wfcatalog_client.py`: `quality = params["quality"]`.
-             # `_expand_wildcards`: `for q in quality.split(","):`.
-             # So `params["quality"]` stays STRING.
-        
-        # Show:
-        # Original L64: `params["show"] = params["show"].split(",")`.
-        # So `params["show"]` becomes LIST.
-        # My Pydantic `show: str`. 
-        # I must convert it to list if the app expects list.
-        if params["show"] and isinstance(params["show"], str):
-            params["show"] = params["show"].split(",")
 
-        # Merge:
-        # Original L79: `params["merge"] = params["merge"].split(",")`.
-        if params["merge"] and isinstance(params["merge"], str):
-            params["merge"] = params["merge"].split(",")
+        # Legacy logic note:
+        # Original code split 'quality', 'show', 'merge' into lists here.
+        # However, downstream logic (wfcatalog_client.py, data_access_layer.py)
+        # expects these to be STRINGS and performs the split itself (e.g. .split(",")).
+        # Therefore, we keep them as strings from the Pydantic model.
+
 
         # Derived logic
         if params["extent"]:
