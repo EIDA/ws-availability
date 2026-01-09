@@ -10,6 +10,7 @@ import logging
 import multiprocessing as mp
 import queue
 import re
+import traceback
 from typing import Any
 
 from flask import request
@@ -108,7 +109,9 @@ def check_parameters(params: dict) -> tuple[dict, dict]:
             return error_param(params, Error.MERGEGAPS_QUERY_ONLY)
             
         # Defaults
-        if params["limit"] is None:
+        if params["limit"]:
+             params["limit"] = int(params["limit"])
+        elif params["limit"] is None:
              params["limit"] = MAX_DATA_ROWS
 
         return (params, {"msg": HTTP._200_, "details": Error.VALID_PARAM, "code": 200})
@@ -125,6 +128,8 @@ def check_parameters(params: dict) -> tuple[dict, dict]:
 
         return error_param(params, msg)
     except Exception as e:
+        # Log the full traceback so we can see it in Docker logs
+        logging.error(traceback.format_exc())
         # Must return a tuple to match signature, not a Response object
         return (params, {"msg": HTTP._500_, "details": str(e), "code": 500})
 
