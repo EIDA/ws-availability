@@ -114,11 +114,15 @@ def check_parameters(params: dict) -> tuple[dict, dict]:
         return (params, {"msg": HTTP._200_, "details": Error.VALID_PARAM, "code": 200})
 
     except ValidationError as e:
-        # Extract first error message
-        msg = e.errors()[0]["msg"]
-        # Remove "Value error, " prefix if present
-        if "Value error," in msg:
-            msg = msg.split("Value error,")[1].strip()
+        # Format Pydantic errors to match FDSN style
+        msg = []
+        for err in e.errors():
+            # Get the field name. 'loc' is a tuple like ('network',)
+            field = str(err["loc"][0])
+            msg.append(f"Invalid value for {field}: {err['msg']}")
+        
+        msg = "; ".join(msg)
+
         return error_param(params, msg)
     except Exception as e:
         return error_request(msg=str(e))
