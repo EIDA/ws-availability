@@ -125,7 +125,8 @@ def check_parameters(params: dict) -> tuple[dict, dict]:
 
         return error_param(params, msg)
     except Exception as e:
-        return error_request(msg=str(e))
+        # Must return a tuple to match signature, not a Response object
+        return (params, {"msg": HTTP._500_, "details": str(e), "code": 500})
 
 
 def checks_get() -> tuple[dict, dict]:
