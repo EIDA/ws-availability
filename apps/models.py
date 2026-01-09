@@ -17,9 +17,10 @@ class QueryParameters(BaseModel):
     location: Optional[str] = Field(default="*", alias="loc")
     channel: Optional[str] = Field(default="*", alias="cha")
 
-    # Time inputs (can be string or datetime, validator handles conversion)
-    starttime: Optional[str] = Field(default=None, alias="start")
-    endtime: Optional[str] = Field(default=None, alias="end")
+    # Time inputs (can be string or datetime)
+    # Note: check_base_parameters might convert these to datetime objects BEFORE Pydantic sees them.
+    starttime: Optional[str | datetime] = Field(default=None, alias="start")
+    endtime: Optional[str | datetime] = Field(default=None, alias="end")
 
     # Options
     quality: str = Field(default="*")
