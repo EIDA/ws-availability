@@ -7,12 +7,11 @@ import os
 # Ensure we can import modules from parent directory
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# MOCK DEPENDENCIES BEFORE IMPORT
-# This allows running tests locally without flask/pymongo installed
-sys.modules["flask"] = MagicMock()
-sys.modules["pymongo"] = MagicMock()
-sys.modules["redis"] = MagicMock()
-sys.modules["apps.redis_client"] = MagicMock()
+
+# MOCK DEPENDENCIES
+# We use patch in setUp/test methods instead of global sys.modules hacking
+# to avoid breaking other tests that need real modules.
+
 
 from apps import wfcatalog_client
 
