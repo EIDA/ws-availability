@@ -37,3 +37,9 @@ services:
       - cache
     environment:
       RUNMODE: production
+      # Gateway IP (Update if needed)
+      MONGODB_HOST: ${MONGODB_HOST:-172.17.0.1}
+      MONGODB_PORT: ${MONGODB_PORT:-27017}
+      MONGODB_USR: ${MONGODB_USR:-wfrepouser}
+      MONGODB_PWD: ${MONGODB_PWD:-2023wf}
+      MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
