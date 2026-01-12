@@ -5,18 +5,25 @@ from flask import Flask, make_response, render_template
 
 from apps.globals import VERSION
 from apps.root import output
-from config import Config
+from apps.settings import settings
+# from config import Config
 
 
 app = Flask(__name__)
 
 FMT = "[%(asctime)s] %(levelname)s [%(filename)s:%(lineno)d] [%(funcName)s] %(message)s"
-LOGLEVEL = logging.INFO if os.environ.get("RUNMODE") == "production" else logging.DEBUG
+# Use 'runmode' from validated settings
+LOGLEVEL = logging.INFO if settings.runmode == "production" else logging.DEBUG
 logging.basicConfig(format=FMT, level=LOGLEVEL)
 
-app.config.from_object(Config)
-if app.config["RUNMODE"]:
-    app.logger.debug("Configuration set with RUNMODE=%s", app.config["RUNMODE"])
+# Load validated settings into Flask config (for compatibility)
+# This allows 'current_app.config["KEY"]' to still work during transition if needed,
+# though we plan to replace usages with 'settings' logic.
+# settings.model_dump() requires pydantic V2
+app.config.from_mapping(settings.model_dump())
+
+if app.config.get("runmode"):
+    app.logger.debug("Configuration set with RUNMODE=%s", app.config["runmode"])
 
 # ************************************************************************
 # **************************** SERVICE ROUTES ****************************

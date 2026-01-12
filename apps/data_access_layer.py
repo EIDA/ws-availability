@@ -406,8 +406,8 @@ def get_output(param_dic_list: list[dict]) -> Any:
             return overflow_error(Error.TOO_MUCH_ROWS)
 
         indexes = get_indexes(params)
-        if params["mergegaps"] is not None or params["extent"]:
-            data = fusion(params, data, indexes)
+        # Always run fusion to clean up DB overlaps/fragmentation
+        data = fusion(params, data, indexes)
         data = data[: params["limit"]]
 
         if params["orderby"] != "nslc_time_quality_samplerate":

@@ -5,7 +5,7 @@ WORKDIR /appli
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
-COPY start.py config.py ./
+COPY start.py ./
 COPY apps ./apps/
 COPY templates ./templates/
 COPY tests ./tests/

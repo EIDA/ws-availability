@@ -8,7 +8,7 @@ It also manages caching logic using Redis.
 """
 import logging
 from fnmatch import fnmatch
-from flask import current_app
+# from flask import current_app (Removed)
 from .redis_client import RedisClient
 from pymongo import MongoClient
 from datetime import datetime, timedelta
@@ -34,6 +34,8 @@ PROJ = {
 }
 
 
+from apps.settings import settings
+
 def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
     """
     Constructs and executes MongoDB queries to retrieve availability metrics.
@@ -46,17 +48,27 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
         - qries (list): List of executed MongoDB query objects (for logging).
         - result (list): Aggregated list of metric records extracted from the DB.
     """
-    db_host = current_app.config["MONGODB_HOST"]
-    db_port = current_app.config["MONGODB_PORT"]
-    db_usr = current_app.config["MONGODB_USR"]
-    db_pwd = current_app.config["MONGODB_PWD"]
-    db_name = current_app.config["MONGODB_NAME"]
-    # db_max_rows = current_app.config["MONGODB_MAX_ROWS"]
+    db_host = settings.mongodb_host
+    db_port = settings.mongodb_port
+    db_usr = settings.mongodb_usr
+    db_pwd = settings.mongodb_pwd
+    db_name = settings.mongodb_name
 
     result = []
 
     # List of queries executed agains the DB, let's keep it for logging
     qries = []
+    
+    # Initialize DB connection ONCE (Fix for Connection Churn)
+    client = MongoClient(
+        db_host,
+        db_port,
+        username=db_usr,
+        password=db_pwd,
+        authSource=db_name,
+    )
+    db = client.get_database(db_name)
+    
     for params in paramslist:
         params = _expand_wildcards(params)
         # Crop datetimes to accomodate sub-segment queries.
@@ -84,14 +96,6 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
         if end:
             te = {"$lte": end}
             qry["te"] = te
-
-        db = MongoClient(
-            db_host,
-            db_port,
-            username=db_usr,
-            password=db_pwd,
-            authSource=db_name,
-        ).get_database(db_name)
 
         qries.append(qry)
 
@@ -198,9 +202,9 @@ def _expand_wildcards(params: dict) -> dict:
 
     if not RESTRICTED_INVENTORY:
         RESTRICTED_INVENTORY = RestrictionInventory(
-            current_app.config["CACHE_HOST"],
-            current_app.config["CACHE_PORT"],
-            current_app.config["CACHE_INVENTORY_KEY"],
+            settings.cache_host,
+            settings.cache_port,
+            settings.cache_inventory_key,
         )
 
     _net = []
@@ -288,7 +292,7 @@ def collect_data(params: dict) -> list[list[Any]] | None:
     Returns:
         List of data records or None.
     """
-    rc = RedisClient(current_app.config["CACHE_HOST"], current_app.config["CACHE_PORT"])
+    rc = RedisClient(settings.cache_host, settings.cache_port)
 
     CACHED_REQUEST_KEY = str(hash(str(params)))
 
@@ -300,7 +304,7 @@ def collect_data(params: dict) -> list[list[Any]] | None:
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
     qry, data = mongo_request(params)
-    rc.set(CACHED_REQUEST_KEY, data, current_app.config["CACHE_RESP_PERIOD"])
+    rc.set(CACHED_REQUEST_KEY, data, settings.cache_resp_period)
 
     logging.debug(qry)
 
