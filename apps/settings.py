@@ -42,8 +42,8 @@ class Settings(BaseSettings):
             # Legacy config logic: if production, DB host is host.docker.internal
             # We match this behavior if the value is currently 'localhost' (the test default)
             
-            if self.mongodb_host == "localhost":
-                self.mongodb_host = "host.docker.internal"
+            # if self.mongodb_host == "localhost":
+            #     self.mongodb_host = "host.docker.internal"
                 
             if self.cache_host == "localhost":
                 self.cache_host = "cache" 
