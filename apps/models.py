@@ -62,7 +62,7 @@ class QueryParameters(BaseModel):
         if not v:
             return "*"
         for part in v.split(','):
-            if not re.match(r"([A-Za-z0-9*?-]{1,2})$", part):
+            if not re.match(r"([A-Za-z0-9*?-]{1,5})$", part):
                  raise ValueError(f"Invalid location code: {part}")
         return v
 
