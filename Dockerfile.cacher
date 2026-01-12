@@ -5,7 +5,7 @@ WORKDIR /appli
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
-COPY cache.py ./
+COPY cache.py config.py ./
 COPY apps ./apps/
 
 # Place executables in the environment at the front of the path

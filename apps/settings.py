@@ -50,4 +50,29 @@ class Settings(BaseSettings):
 
         return self
 
-settings = Settings()
+def load_legacy_config():
+    """Attempt to import Config from config.py and return as dict."""
+    try:
+        from config import Config
+        return {
+            "RUNMODE": getattr(Config, "RUNMODE", "test"),
+            "MONGODB_HOST": getattr(Config, "MONGODB_HOST", None),
+            "MONGODB_PORT": getattr(Config, "MONGODB_PORT", None),
+            "MONGODB_USR": getattr(Config, "MONGODB_USR", None),
+            "MONGODB_PWD": getattr(Config, "MONGODB_PWD", None),
+            "MONGODB_NAME": getattr(Config, "MONGODB_NAME", None),
+            "FDSNWS_STATION_URL": getattr(Config, "FDSNWS_STATION_URL", None),
+            "CACHE_HOST": getattr(Config, "CACHE_HOST", None),
+            "CACHE_PORT": getattr(Config, "CACHE_PORT", None),
+            "CACHE_INVENTORY_KEY": getattr(Config, "CACHE_INVENTORY_KEY", None),
+            "CACHE_INVENTORY_PERIOD": getattr(Config, "CACHE_INVENTORY_PERIOD", None),
+            "CACHE_RESP_PERIOD": getattr(Config, "CACHE_RESP_PERIOD", None),
+        }
+    except ImportError:
+        return {}
+
+# Load legacy config options and filter out None values
+legacy_defaults = {k: v for k, v in load_legacy_config().items() if v is not None}
+
+# Instantiate settings with legacy defaults (they override default fields but are overriden by env vars)
+settings = Settings(**legacy_defaults)
