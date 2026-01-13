@@ -21,7 +21,8 @@ class TestSettings:
         
         settings = Settings()
         assert settings.runmode == "production"
-        assert settings.mongodb_host == "host.docker.internal"
+        # We removed the auto-switch to host.docker.internal for Linux compatibility
+        assert settings.mongodb_host == "localhost" 
         assert settings.cache_host == "cache"
         
         del os.environ["RUNMODE"]
