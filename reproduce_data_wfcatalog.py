@@ -46,5 +46,36 @@ def reproduce():
     db.c_segments.insert_many([seg1, seg2])
     print("Inserted overlapping c_segments.")
 
+    # 3. Insert into Redis Inventory (Required for API to recognize the station)
+    # 3. Insert into Redis Inventory (Required for API to recognize the station)
+    from apps.redis_client import RedisClient
+    from apps.restriction import Epoch, Restriction
+    from datetime import date
+    
+    print(f"Injecting {settings.cache_inventory_key} into Redis...")
+    rc = RedisClient(settings.cache_host, settings.cache_port)
+    
+    # Retrieve existing inventory (if any) using RedisClient (which handles unpickling)
+    # Note: RedisClient.get returns the unpickled object (Dict) or None
+    inv = rc.get(settings.cache_inventory_key)
+    if not inv or not isinstance(inv, dict):
+        print("Inventory empty or invalid, initializing new Dict.")
+        inv = {}
+        
+    test_seed = "NL.BHAR.HGN.D"
+    if test_seed not in inv:
+        # Create a fake OPEN epoch for this station
+        # Epoch(net, sta, loc, cha, start, end)
+        ep = Epoch("NL", "BHAR", "HGN", "D", date(2000, 1, 1), date(2030, 1, 1))
+        ep.restriction = Restriction.OPEN
+        
+        inv[test_seed] = [ep]
+        
+        # Save back to Redis (RedisClient handles pickling)
+        rc.set(settings.cache_inventory_key, inv)
+        print(f"Added {test_seed} to Redis inventory (as Epoch object).")
+    else:
+        print(f"{test_seed} already in Redis inventory.")
+
 if __name__ == "__main__":
     reproduce()
