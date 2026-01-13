@@ -46,6 +46,51 @@ def reproduce():
     db.c_segments.insert_many([seg1, seg2])
     print("Inserted overlapping c_segments.")
 
+    # 3. Insert into 'availability' collection (Simulating main.js aggregation)
+    # The API queries 'availability', not 'daily_streams' directly.
+    # main.js usually populates this. We will do it manually to ensure data exists.
+    
+    avail_doc1 = {
+        "_id": seg1["_id"], # Same ID as c_segment
+        "net": stream_doc["net"],
+        "sta": stream_doc["sta"],
+        "loc": stream_doc["loc"],
+        "cha": stream_doc["cha"],
+        "qlt": stream_doc["qlt"],
+        "srate": [seg1["srate"]] if isinstance(seg1["srate"], float) else seg1["srate"], # main.js creates array? No, main.js takes first $srate. Wait, main.js says: srate: { $first: "$c_segments.srate" }. In my seg1 it is float. In availability schema it might be float or list? API expects what?
+        # API models.py doesn't strictly validate srate type in response, but typical usage is float.
+        # main.js: srate: { $first: "$c_segments.srate" } -> float. 
+        # But wait, updateAvailabilityDaily does: srate: { $first: { $arrayElemAt: ["$srate", 0] } } which implies daily_streams has list.
+        # daily_streams has list [200.0]. c_segments has float 200.0.
+        # So continuous view has float.
+        "srate": 200.0,
+        "ts": seg1["ts"],
+        "te": seg1["te"],
+        "created": stream_doc["created"],
+        "restr": "OPEN",
+        "count": 1
+    }
+    
+    avail_doc2 = {
+        "_id": seg2["_id"],
+        "net": stream_doc["net"],
+        "sta": stream_doc["sta"],
+        "loc": stream_doc["loc"],
+        "cha": stream_doc["cha"],
+        "qlt": stream_doc["qlt"],
+        "srate": 200.0,
+        "ts": seg2["ts"],
+        "te": seg2["te"],
+        "created": stream_doc["created"],
+        "restr": "OPEN",
+        "count": 1
+    }
+
+    # Use replace_one to allow re-running without duplicate key error
+    db.availability.replace_one({"_id": avail_doc1["_id"]}, avail_doc1, upsert=True)
+    db.availability.replace_one({"_id": avail_doc2["_id"]}, avail_doc2, upsert=True)
+    print("Inserted/Updated 'availability' collection (Manual Aggregation).")
+
     # 3. Insert into Redis Inventory (Required for API to recognize the station)
     # 3. Insert into Redis Inventory (Required for API to recognize the station)
     from apps.redis_client import RedisClient
