@@ -26,5 +26,10 @@ We successfully modernized the `fdsnws-availability` service, resolving critical
 - **Fix**: Exposed explicit `MONGODB_HOST` configuration for reliable connectivity in any network topology.
 - **Fix**: Relaxed validation rules to support legacy data formats (e.g., 5-character Location codes).
 
+### 5. Modern Tooling & Standards
+- **Adoption of `uv`**: Replaced standard pip with `uv` for lightning-fast dependency resolution and lockfile management (`uv.lock`).
+- **Docker Optimization**: Updated Dockerfiles to use multi-stage builds with `uv`, significantly reducing build times and image layers.
+- **Code Hygiene**: Removed legacy `multiprocessing` code in favor of Gunicorn's native worker management, simplifying the codebase.
+
 ## Summary
 The codebase is now cleaner, faster, and more reliable, while retaining backward compatibility for existing deployment workflows.
