@@ -158,13 +158,16 @@ def _apply_restricted_bit(data: Any, include_restricted: bool = False) -> list[l
     for segment in data:
         sid = ".".join([segment["net"], segment["sta"], segment["loc"], segment["cha"]])
 
-        if sid not in RESTRICTED_INVENTORY._known_seedIDs:
-            continue
+        # If inventory is properly loaded, enforce restriction check.
+        # Otherwise, trust the DB result (fail-open)
+        if RESTRICTED_INVENTORY.is_populated:
+            if sid not in RESTRICTED_INVENTORY._known_seedIDs:
+                 continue
 
-        if sid in RESTRICTED_INVENTORY._restricted_seedIDs:
-            segment["restr"] = _get_restricted_status(segment)
-            if segment["restr"] in ["RESTRICTED", "PARTIAL"] and not include_restricted:
-                continue
+            if sid in RESTRICTED_INVENTORY._restricted_seedIDs:
+                segment["restr"] = _get_restricted_status(segment)
+                if segment["restr"] in ["RESTRICTED", "PARTIAL"] and not include_restricted:
+                    continue
 
         results.append(
             [
@@ -206,6 +209,12 @@ def _expand_wildcards(params: dict) -> dict:
             settings.cache_port,
             settings.cache_inventory_key,
         )
+
+    # If inventory is missing/empty, we cannot expand wildcards or filter.
+    # Return params as-is to allow querying the DB directly (fail-open).
+    if not RESTRICTED_INVENTORY.is_populated:
+        logging.warning("Inventory is empty/missing. Skipping wildcard expansion and filtering.")
+        return params
 
     _net = []
     _sta = []
