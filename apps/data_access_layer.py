@@ -126,6 +126,9 @@ def records_to_text(params: dict, data: list[list[Any]], sep: str = " ") -> str:
         # pad header and rows according to the maximum column width
         header = [val.ljust(sz) for val, sz in zip(header, sizes)]
         for row in data:
+            # Replace empty location code with "--"
+            if row[2] == "":
+                row[2] = "--"
             row[:] = [val.ljust(sz) for val, sz in zip(row, sizes)]
 
     if params["format"] in ["geocsv", "zip"]:
