@@ -180,7 +180,7 @@ def _apply_restricted_bit(data: Any, include_restricted: bool = False) -> list[l
                 segment["ts"],
                 segment["te"],
                 segment["created"],
-                segment["restr"],
+                segment.get("restr", "OPEN"),
                 segment["count"],
             ]
         )

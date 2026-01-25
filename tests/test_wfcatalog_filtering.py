@@ -93,5 +93,22 @@ class TestWFCatalogFiltering(unittest.TestCase):
             self.assertEqual(len(results), 1)
             self.assertEqual(results[0][9], "RESTRICTED")
 
+    def test_empty_inventory_fail_open(self):
+        """Test that if inventory is empty/missing, data is returned (fail-open)"""
+        # Set inventory to not populated
+        self.mock_inventory.is_populated = False
+        
+        data = [{
+            "net": "NET", "sta": "STA", "loc": "LOC", "cha": "CHA",
+            "qlt": "D", "srate": 100, "ts": "2024-01-01", "te": "2024-01-02",
+            "created": "now", "count": 100
+        }]
+        
+        # Even if data is technically unknown (since inventory is empty), it should pass
+        results = wfcatalog_client._apply_restricted_bit(data, include_restricted=False)
+        
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0], "NET")
+
 if __name__ == '__main__':
     unittest.main()

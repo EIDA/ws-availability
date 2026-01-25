@@ -294,8 +294,8 @@ def fusion(
             if params["extent"] or sametrace:
                 if row[UPDATED] > merge[-1][UPDATED]:
                     merge[-1][UPDATED] = row[UPDATED]
-                # if row[START] < merge[-1][START]:  # never occurs if sorted
-                #    merge[-1][START] = row[START]
+                if row[START] < merge[-1][START]:
+                   merge[-1][START] = row[START]
                 if row[END] > merge[-1][END]:
                     merge[-1][END] = row[END]
             else:
@@ -409,8 +409,13 @@ def get_output(param_dic_list: list[dict]) -> Any:
             return overflow_error(Error.TOO_MUCH_ROWS)
 
         indexes = get_indexes(params)
-        # Always run fusion to clean up DB overlaps/fragmentation
-        data = fusion(params, data, indexes)
+        
+        # Sort by NSLC + Quality + SampleRate + StartTime to ensure fusion works correctly
+        # This fixes issues where out-of-order segments caused data loss or failed merges
+        data.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4], x[5], x[START]))
+
+        if params["mergegaps"] is not None or params["extent"] or "overlap" in params["merge"]:
+             data = fusion(params, data, indexes)
         data = data[: params["limit"]]
 
         if params["orderby"] != "nslc_time_quality_samplerate":

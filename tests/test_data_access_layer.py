@@ -62,6 +62,26 @@ class TestDataAccessLayer(unittest.TestCase):
         self.assertIn("NL", text)
         self.assertIn("#Network", text)
 
+    def test_records_to_text_empty_location(self):
+        """Test that empty location code is converted to '--' in text format"""
+        params = self.base_params.copy()
+        # Row with empty location
+        row = ["NL", "HGN", "", "BHZ", "D", 40.0, 
+               datetime(2022, 1, 1, 12, 0, 0), 
+               datetime(2022, 1, 1, 13, 0, 0),
+               self.now, "OPEN", 100]
+        str_data = [[str(x) for x in row]]
+        
+        text = dal.records_to_text(params, str_data)
+        
+        # Check that proper header is present
+        self.assertIn("#Network", text)
+        # Check that the empty location is represented as --
+        # We look for the line. Since we don't know exact padding, checking that -- exists 
+        # is good, but let's be more specific if possible.
+        # The row usually prints like: NL HGN -- BHZ ...
+        self.assertRegex(text, r"NL\s+HGN\s+--\s+BHZ")
+
     def test_records_to_dictlist(self):
         params = self.base_params.copy()
         params["format"] = "json"
