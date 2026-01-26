@@ -1,18 +1,9 @@
-"""
-WFCatalog Client Module for ws-availability.
-
-This module handles interactions with the WFCatalog (MongoDB) and the Station
-Inventory (for restriction checks). It constructs MongoDB queries, retrieves
-availability metrics, and applies access restrictions based on cached inventory data.
-It also manages caching logic using Redis.
-"""
 import logging
 from fnmatch import fnmatch
-# from flask import current_app (Removed)
+from flask import current_app
 from .redis_client import RedisClient
 from pymongo import MongoClient
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import timedelta
 
 from .restriction import RestrictionInventory
 
@@ -34,41 +25,27 @@ PROJ = {
 }
 
 
-from apps.settings import settings
-
-def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
-    """
-    Constructs and executes MongoDB queries to retrieve availability metrics.
+def mongo_request(paramslist):
+    """Build and run WFCatalog MongoDB queries using request query parameters
 
     Args:
-        paramslist: List of dictionaries containing URL query parameters.
+        paramslist ([]): List of lists containing URL query parameters
 
     Returns:
-        A tuple containing:
-        - qries (list): List of executed MongoDB query objects (for logging).
-        - result (list): Aggregated list of metric records extracted from the DB.
+        []: MongoDB queries used to obtain data
+        []: List of metrics extracted from the MongoDB
     """
-    db_host = settings.mongodb_host
-    db_port = settings.mongodb_port
-    db_usr = settings.mongodb_usr
-    db_pwd = settings.mongodb_pwd
-    db_name = settings.mongodb_name
+    db_host = current_app.config["MONGODB_HOST"]
+    db_port = current_app.config["MONGODB_PORT"]
+    db_usr = current_app.config["MONGODB_USR"]
+    db_pwd = current_app.config["MONGODB_PWD"]
+    db_name = current_app.config["MONGODB_NAME"]
+    # db_max_rows = current_app.config["MONGODB_MAX_ROWS"]
 
     result = []
 
     # List of queries executed agains the DB, let's keep it for logging
     qries = []
-    
-    # Initialize DB connection ONCE (Fix for Connection Churn)
-    client = MongoClient(
-        db_host,
-        db_port,
-        username=db_usr,
-        password=db_pwd,
-        authSource=db_name,
-    )
-    db = client.get_database(db_name)
-    
     for params in paramslist:
         params = _expand_wildcards(params)
         # Crop datetimes to accomodate sub-segment queries.
@@ -97,12 +74,20 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
             te = {"$lte": end}
             qry["te"] = te
 
+        db = MongoClient(
+            db_host,
+            db_port,
+            username=db_usr,
+            password=db_pwd,
+            authSource=db_name,
+        ).get_database(db_name)
+
         qries.append(qry)
 
         cursor = db.availability.find(qry, projection=PROJ)
 
         # Eager query execution instead of a cursor
-        result += _apply_restricted_bit(cursor, params.get("includerestricted", False))
+        result += _apply_restricted_bit(cursor)
 
     # Result needs to be sorted, this seems to be required by the fusion step
     result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
@@ -110,18 +95,14 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
     return qries, result
 
 
-def crop_datetimes(params: dict) -> tuple[datetime | None, datetime | None]:
-    """
-    Extracts and normalizes start/end datetimes for querying.
-
-    Crops time by rounding to the nearest day start/end if necessary, 
-    to accommodate sub-segment queries logic.
+def crop_datetimes(params: dict):
+    """Extract and crop start/end query parameters.
 
     Args:
-        params: Dictionary containing original query parameters.
+        params (dict): Dictionary containing original query parameters.
 
     Returns:
-        A tuple containing cropped (start, end) datetimes.
+        tuple: Tuple containing cropped start/end parameters.
     """
     start_cropped, end_cropped = None, None
 
@@ -137,20 +118,17 @@ def crop_datetimes(params: dict) -> tuple[datetime | None, datetime | None]:
     return start_cropped, end_cropped
 
 
-def _apply_restricted_bit(data: Any, include_restricted: bool = False) -> list[list[Any]]:
-    """
-    Filters data based on restricted status from the inventory.
-
-    Checks each data segment against the restricted inventory cache. If data
-    is restricted and `include_restricted` is False, it is excluded.
+def _apply_restricted_bit(data: list) -> list:
+    """Removes entries which do not appear in the station inventory and applies
+    restricted bit information based on cross-section between rows obtained
+    from the DB and list of SEED Identifiers having restricted epochs.
 
     Args:
-        data: Cursor or list of availability documents from MongoDB.
-        include_restricted: If True, restricted data is included. 
-                           If False, only "OPEN" data is returned.
+        data (list): List of entries obtained from the DB.
 
     Returns:
-        List of filtered availability records with restriction status applied.
+        list: List of entries obtained from the DB, but filtered and having
+        restricted information applied from cache.
     """
 
     results = []
@@ -158,16 +136,11 @@ def _apply_restricted_bit(data: Any, include_restricted: bool = False) -> list[l
     for segment in data:
         sid = ".".join([segment["net"], segment["sta"], segment["loc"], segment["cha"]])
 
-        # If inventory is properly loaded, enforce restriction check.
-        # Otherwise, trust the DB result (fail-open)
-        if RESTRICTED_INVENTORY.is_populated:
-            if sid not in RESTRICTED_INVENTORY._known_seedIDs:
-                 continue
+        if sid not in RESTRICTED_INVENTORY._known_seedIDs:
+            continue
 
-            if sid in RESTRICTED_INVENTORY._restricted_seedIDs:
-                segment["restr"] = _get_restricted_status(segment)
-                if segment["restr"] in ["RESTRICTED", "PARTIAL"] and not include_restricted:
-                    continue
+        if sid in RESTRICTED_INVENTORY._restricted_seedIDs:
+            segment["restr"] = _get_restricted_status(segment)
 
         results.append(
             [
@@ -180,7 +153,7 @@ def _apply_restricted_bit(data: Any, include_restricted: bool = False) -> list[l
                 segment["ts"],
                 segment["te"],
                 segment["created"],
-                segment.get("restr", "OPEN"),
+                segment["restr"],
                 segment["count"],
             ]
         )
@@ -188,33 +161,23 @@ def _apply_restricted_bit(data: Any, include_restricted: bool = False) -> list[l
     return results
 
 
-def _expand_wildcards(params: dict) -> dict:
-    """
-    Expands wildcard query parameters based on cached inventory.
-
-    Matches wildcards (e.g., "H?N", "*") against the known inventory to produce
-    explicit lists of networks, stations, etc., for the database query.
+def _expand_wildcards(params):
+    """Expand generic query parameters to actual ones based on cached inventory.
 
     Args:
-        params: Dictionary of query parameters.
+        params (list): List of query parameters.
 
     Returns:
-        Dictionary with expanded parameters (wildcards replaced by concrete lists).
+        list: List of expanded query parameters.
     """
     global RESTRICTED_INVENTORY
 
     if not RESTRICTED_INVENTORY:
         RESTRICTED_INVENTORY = RestrictionInventory(
-            settings.cache_host,
-            settings.cache_port,
-            settings.cache_inventory_key,
+            current_app.config["CACHE_HOST"],
+            current_app.config["CACHE_PORT"],
+            current_app.config["CACHE_INVENTORY_KEY"],
         )
-
-    # If inventory is missing/empty, we cannot expand wildcards or filter.
-    # Return params as-is to allow querying the DB directly (fail-open).
-    if not RESTRICTED_INVENTORY.is_populated:
-        logging.warning("Inventory is empty/missing. Skipping wildcard expansion and filtering.")
-        return params
 
     _net = []
     _sta = []
@@ -260,16 +223,14 @@ def _expand_wildcards(params: dict) -> dict:
     return params
 
 
-def _get_restricted_status(segment: dict) -> str | None:
-    """
-    Retrieves the restricted status for a specific data segment.
+def _get_restricted_status(segment):
+    """Gets the restricted status of provided daily stream.
 
     Args:
-        segment: Dictionary representing a data segment (must contain 'net',
-                 'sta', 'loc', 'cha', 'ts', 'te').
+        daily_stream (dict): Daily stream dictionary from WFCatalog DB.
 
     Returns:
-        String status ("OPEN", "RESTRICTED", etc.) or None if unknown.
+        string: Restricted status, `None` if unknown.
     """
     global RESTRICTED_INVENTORY
 
@@ -288,20 +249,9 @@ def _get_restricted_status(segment: dict) -> str | None:
         return None
 
 
-def collect_data(params: dict) -> list[list[Any]] | None:
-    """
-    Orchestrates the data collection process with caching.
-
-    First checks Redis cache for the given parameters. If not found, executes
-    the MongoDB query, caches the result, and returns it.
-
-    Args:
-        params: list of parameter dictionaries.
-
-    Returns:
-        List of data records or None.
-    """
-    rc = RedisClient(settings.cache_host, settings.cache_port)
+def collect_data(params):
+    """Get the result of the Mongo query."""
+    rc = RedisClient(current_app.config["CACHE_HOST"], current_app.config["CACHE_PORT"])
 
     CACHED_REQUEST_KEY = str(hash(str(params)))
 
@@ -313,7 +263,7 @@ def collect_data(params: dict) -> list[list[Any]] | None:
     data = None
     logging.debug("Start collecting data from WFCatalog DB...")
     qry, data = mongo_request(params)
-    rc.set(CACHED_REQUEST_KEY, data, settings.cache_resp_period)
+    rc.set(CACHED_REQUEST_KEY, data, current_app.config["CACHE_RESP_PERIOD"])
 
     logging.debug(qry)
 

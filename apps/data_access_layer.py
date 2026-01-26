@@ -4,7 +4,6 @@ import time
 import zipfile
 from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
-from typing import Any
 
 from flask import make_response
 
@@ -19,26 +18,7 @@ from apps.utils import tictac
 from apps.wfcatalog_client import collect_data
 
 
-"""
-Data Access Layer for ws-availability.
-
-This module is responsible for formatting and transforming the data retrieved
-from the backend (MongoDB via wfcatalog_client). It handles:
-- Generating headers for various output formats (Text, GeoCSV).
-- Converting raw data records into target formats (Text, JSON, Zip).
-- Sorting, filtering columns, and merging time spans.
-"""
-
-def get_header(params: dict) -> list[str]:
-    """
-    Generates the column header list based on request parameters.
-
-    Args:
-        params: Dictionary of request parameters.
-
-    Returns:
-        List of header strings (e.g., ["Network", "Station", ...]).
-    """
+def get_header(params):
     header = ["Network", "Station", "Location", "Channel"]
     if params["format"] == "text":
         header[0] = "#" + header[0]
@@ -55,19 +35,7 @@ def get_header(params: dict) -> list[str]:
     return header
 
 
-def get_geocsv_header(params: dict) -> str:
-    """
-    Generates the GeoCSV header string.
-
-    Constructs the metadata headers (#dataset, #field_unit, #field_type) required
-    by the GeoCSV 2.0 specification.
-
-    Args:
-        params: Dictionary of request parameters.
-
-    Returns:
-        The formatted GeoCSV header string including column names.
-    """
+def get_geocsv_header(params):
     geocsv_header = [("unitless", "string") for i in range(4)]
     if "quality" not in params["merge"]:
         geocsv_header.append(("unitless", "string"))
@@ -87,17 +55,8 @@ def get_geocsv_header(params: dict) -> str:
     return text
 
 
-def get_column_widths(data: list[list[str]], header: list[str] | None = None) -> list[int]:
-    """
-    Calculates the maximum width for each column to align text output.
-
-    Args:
-        data: List of data rows (strings).
-        header: Optional list of header strings.
-
-    Returns:
-        List of integers representing the maximum width for each column.
-    """
+def get_column_widths(data, header=None):
+    """Find the maximum width of each column"""
     ncols = range(len(data[0]))
     colwidths = [max([len(r[i]) for r in data]) for i in ncols]
     if header:
@@ -105,20 +64,7 @@ def get_column_widths(data: list[list[str]], header: list[str] | None = None) ->
     return colwidths
 
 
-def records_to_text(params: dict, data: list[list[Any]], sep: str = " ") -> str:
-    """
-    Converts data records into a formatted text string.
-
-    Handles 'text', 'geocsv', 'zip', and 'request' formats.
-
-    Args:
-        params: Dictionary of request parameters.
-        data: List of data records.
-        sep: Separator string (default " ").
-
-    Returns:
-        The complete formatted response body as a string.
-    """
+def records_to_text(params, data, sep=" "):
     text = ""
     header = get_header(params)
     if params["format"] == "text":
@@ -126,9 +72,6 @@ def records_to_text(params: dict, data: list[list[Any]], sep: str = " ") -> str:
         # pad header and rows according to the maximum column width
         header = [val.ljust(sz) for val, sz in zip(header, sizes)]
         for row in data:
-            # Replace empty location code with "--"
-            if row[2] == "":
-                row[2] = "--"
             row[:] = [val.ljust(sz) for val, sz in zip(row, sizes)]
 
     if params["format"] in ["geocsv", "zip"]:
@@ -141,20 +84,9 @@ def records_to_text(params: dict, data: list[list[Any]], sep: str = " ") -> str:
     return text
 
 
-def records_to_dictlist(params: dict, data: list[list[Any]]) -> dict:
-    """
-    Converts data records into a dictionary structure (JSON).
-
-    Follows the FDSNWS-Availability 1.0 schema specification.
-    http://www.fdsn.org/webservices/fdsnws-availability-1.0.schema.json
-
-    Args:
-        params: Dictionary of request parameters.
-        data: List of data records.
-
-    Returns:
-        A dictionary containing version, creation time, and the list of datasources.
-    """
+def records_to_dictlist(params, data):
+    """Create json output according to the fdsnws specification schema:
+    http://www.fdsn.org/webservices/fdsnws-availability-1.0.schema.json"""
 
     dictlist = list()
     header = get_header(params)
@@ -182,14 +114,7 @@ def records_to_dictlist(params: dict, data: list[list[Any]]) -> dict:
     }
 
 
-def sort_records(params: dict, data: list[list[Any]]) -> None:
-    """
-    Sorts data records in-place based on the 'orderby' parameter.
-
-    Args:
-        params: Dictionary of request parameters.
-        data: List of data records (modified in-place).
-    """
+def sort_records(params, data):
     if params["orderby"] != "nslc_time_quality_samplerate":
         if params["extent"] and params["orderby"] == "timespancount":
             data.sort(key=lambda x: x[COUNT])
@@ -209,23 +134,7 @@ def sort_records(params: dict, data: list[list[Any]]) -> None:
 #        data.sort(key=lambda x: x[:UPDATED])
 
 
-def select_columns(
-    params: dict, data: list[list[Any]], indexes: list[int]
-) -> list[list[Any]]:
-    """
-    Filters and formats columns in the data records.
-
-    Selects specific columns based on 'indexes' and formats datetime objects
-    to ISO8601 strings.
-
-    Args:
-        params: Dictionary of request parameters.
-        data: List of data records.
-        indexes: List of column indexes to keep.
-
-    Returns:
-        The processed data list with selected and formatted columns.
-    """
+def select_columns(params, data, indexes):
     tic = time.time()
     indexes = indexes + [START, END]
     if params["showlastupdate"]:
@@ -255,20 +164,11 @@ def select_columns(
     return data
 
 
-def fusion(
-    params: dict, data: list[list[Any]], indexes: list[int]
-) -> list[list[Any]]:
-    """
-    Merges adjacent time spans or groups data based on strict parameter equality.
-
-    Args:
-        params: Dictionary of request parameters (used for 'mergegaps' tolerance).
-        data: List of ordered data records.
-        indexes: List of column indexes to check for equality when grouping.
-
-    Returns:
-        A new list of merged data records.
-    """
+def fusion(params, data, indexes):
+    """:param data: ordered data list
+    :k: list or range of indexes of the parameters to be grouped
+    :tol: timespans which are separated by gaps smaller than or equal to tol are merged together (query)
+    :returns: produces a list of available time extents (extent) or contiguous time spans (query)"""
 
     tic = time.time()
     merge = list()
@@ -294,8 +194,8 @@ def fusion(
             if params["extent"] or sametrace:
                 if row[UPDATED] > merge[-1][UPDATED]:
                     merge[-1][UPDATED] = row[UPDATED]
-                if row[START] < merge[-1][START]:
-                   merge[-1][START] = row[START]
+                # if row[START] < merge[-1][START]:  # never occurs if sorted
+                #    merge[-1][START] = row[START]
                 if row[END] > merge[-1][END]:
                     merge[-1][END] = row[END]
             else:
@@ -309,16 +209,10 @@ def fusion(
     return merge
 
 
-def get_indexes(params: dict) -> list[int]:
-    """
-    Determines which columns to include based on merge parameters.
-
-    Args:
-        params: Dictionary of request parameters.
-
-    Returns:
-        List of column indexes to output.
-    """
+def get_indexes(params):
+    """Get column indexes to display according to requested params
+    :param params: parameter dictionary (network, station, ...)
+    :returns: indexes : list of column indexes"""
 
     indexes = [0, 1, 2, 3, 4, 5]
     if "quality" in params["merge"] and "samplerate" in params["merge"]:
@@ -330,20 +224,7 @@ def get_indexes(params: dict) -> list[int]:
     return indexes
 
 
-def get_response(params: dict, data: list[list[Any]]) -> Any:
-    """
-    Constructs the final Flask Response object.
-
-    Formats the data into the requested content type (text/plain, application/json,
-    text/csv, application/zip) and sets appropriate headers (Content-Disposition).
-
-    Args:
-        params: Dictionary of request parameters.
-        data: List of processed data records.
-
-    Returns:
-        A Flask Response object containing the formatted data.
-    """
+def get_response(params, data):
     tic = time.time()
     fname = "resifws-availability"
     headers = {"Content-type": "text/plain"}
@@ -371,22 +252,14 @@ def get_response(params: dict, data: list[list[Any]]) -> Any:
     return response
 
 
-def get_output(param_dic_list: list[dict]) -> Any:
+def get_output(param_dic_list):
     """
-    Main entry point for generating the output response.
+    Availability output (geocsv, json, request, text, zip)
 
-    Orchestrates the data retrieval pipeline:
-    1. Collects data from wfcatalog (via `wfcatalog_client.collect_data`).
-    2. Checks for no-data conditions.
-    3. Merges and sorts data.
-    4. Selects columns and formats output.
-    5. Builds the HTTP response.
-
-    Args:
-        param_dic_list: List of parameter dictionaries (usually one, or multiple for POST).
-
+    Parameters:
+        param_dic_list: list of parameter dictionaries
     Returns:
-        A Flask Response object or an Error Response.
+        response: response with text, json or csv with data availability
     """
 
     try:
@@ -409,13 +282,8 @@ def get_output(param_dic_list: list[dict]) -> Any:
             return overflow_error(Error.TOO_MUCH_ROWS)
 
         indexes = get_indexes(params)
-        
-        # Sort by NSLC + Quality + SampleRate + StartTime to ensure fusion works correctly
-        # This fixes issues where out-of-order segments caused data loss or failed merges
-        data.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4], x[5], x[START]))
-
-        if params["mergegaps"] is not None or params["extent"] or "overlap" in params["merge"]:
-             data = fusion(params, data, indexes)
+        if params["mergegaps"] is not None or params["extent"]:
+            data = fusion(params, data, indexes)
         data = data[: params["limit"]]
 
         if params["orderby"] != "nslc_time_quality_samplerate":
