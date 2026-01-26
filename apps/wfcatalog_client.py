@@ -60,16 +60,21 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
     qries = []
     
     # Initialize DB connection ONCE (Fix for Connection Churn)
-    client = MongoClient(
+    with MongoClient(
         db_host,
         db_port,
         username=db_usr,
         password=db_pwd,
         authSource=db_name,
-    )
-    db = client.get_database(db_name)
-    
-    for params in paramslist:
+        maxPoolSize=1,
+        connect=False,
+        directConnection=True,
+        retryReads=False,
+        retryWrites=False
+    ) as client:
+        db = client.get_database(db_name)
+        
+        for params in paramslist:
         params = _expand_wildcards(params)
         # Crop datetimes to accomodate sub-segment queries.
         # e.g. net=NL&sta=HGN&start=2018-01-06T06:00:00&end=2018-01-06T12:00:00
@@ -99,13 +104,13 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
 
         qries.append(qry)
 
-        cursor = db.availability.find(qry, projection=PROJ)
+            cursor = db.availability.find(qry, projection=PROJ)
 
-        # Eager query execution instead of a cursor
-        result += _apply_restricted_bit(cursor, params.get("includerestricted", False))
+            # Eager query execution instead of a cursor
+            result += _apply_restricted_bit(cursor, params.get("includerestricted", False))
 
-    # Result needs to be sorted, this seems to be required by the fusion step
-    result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
+        # Result needs to be sorted, this seems to be required by the fusion step
+        result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
 
     return qries, result
 

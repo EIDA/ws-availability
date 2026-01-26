@@ -43,3 +43,5 @@ services:
       MONGODB_USR: ${MONGODB_USR:-wfrepouser}
       MONGODB_PWD: ${MONGODB_PWD:-2023wf}
       MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
+    ulimits:
+      nproc: 65535
