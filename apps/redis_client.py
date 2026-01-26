@@ -1,10 +1,20 @@
 import redis
 import pickle
-
+from apps.restriction import REDIS_POOL as GLOBAL_POOL
 
 class RedisClient:
     def __init__(self, host: str, port: int):
-        self._pool = redis.ConnectionPool(host=host, port=port, db=0)
+        global GLOBAL_POOL
+        
+        # Initialize global pool if not exists (lazy init fallback)
+        if GLOBAL_POOL is None:
+             from apps.restriction import RestrictionInventory
+             # Trigger init
+             _ = RestrictionInventory(host, port)
+             from apps.restriction import REDIS_POOL as UPDATED_POOL
+             GLOBAL_POOL = UPDATED_POOL
+
+        self._pool = GLOBAL_POOL
         self._redis = redis.Redis(connection_pool=self._pool)
 
     def get(self, key: str):
