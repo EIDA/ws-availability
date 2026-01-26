@@ -1,27 +1,27 @@
 class Parameters:
-    def __init__(self) -> None:
-        self.network: str | None = None
-        self.station: str | None = None
-        self.location: str | None = None
-        self.channel: str | None = None
-        self.starttime: str | None = None
-        self.endtime: str | None = None
-        self.net: str = "*"
-        self.sta: str = "*"
-        self.loc: str = "*"
-        self.cha: str = "*"
-        self.start: str | None = None
-        self.end: str | None = None
-        self.quality: str = "*"
-        self.merge: str = ""
-        self.mergegaps: float | None = None
-        self.orderby: str | None = None
-        self.show: str = ""
-        self.limit: int | None = None
-        self.includerestricted: str = "false"
-        self.format: str = "text"
-        self.nodata: str = "204"
-        self.constraints: dict[str, list] = {
+    def __init__(self):
+        self.network = None
+        self.station = None
+        self.location = None
+        self.channel = None
+        self.starttime = None
+        self.endtime = None
+        self.net = "*"
+        self.sta = "*"
+        self.loc = "*"
+        self.cha = "*"
+        self.start = None
+        self.end = None
+        self.quality = "*"
+        self.merge = ""
+        self.mergegaps = None
+        self.orderby = None
+        self.show = ""
+        self.limit = None
+        self.includerestricted = "false"
+        self.format = "text"
+        self.nodata = "204"
+        self.constraints = {
             "alias": [
                 ("network", "net"),
                 ("station", "sta"),
@@ -35,5 +35,5 @@ class Parameters:
             "not_none": [],
         }
 
-    def todict(self) -> dict:
+    def todict(self):
         return self.__dict__

@@ -1,14 +1,10 @@
 FROM python:3.10-slim
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+RUN pip install --upgrade pip
+COPY requirements-cacher.txt /
+RUN pip install --no-cache-dir -r /requirements-cacher.txt
 
 WORKDIR /appli
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev
-
 COPY cache.py config.py ./
 COPY apps ./apps/
 
-# Place executables in the environment at the front of the path
-ENV PATH="/appli/.venv/bin:$PATH"
-
-CMD ["python", "cache.py"]
+CMD ["/bin/bash", "-c", "python3 cache.py"]

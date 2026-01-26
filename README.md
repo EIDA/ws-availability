@@ -15,9 +15,22 @@ Following implementation requires MongoDB v4.2 or higher.
 ## Deployment
 
 1. Clone the [https://github.com/EIDA/ws-availability] repository and go to its root
-1. Configure the application using Environment Variables. You can use `config.py.sample` as a reference for available variables found in the `Config` class.
-   
-    **Note:** The application now uses a strict typed configuration system. The legacy `config.py` file is no longer loaded directly; parameters must be supplied via environment variables (which fits naturally with the Docker setup below).
+1. Copy `config.py.sample` to `config.py` and adjust it as needed (please notice there are two sections - `RUNMODE == "production"` and `RUNMODE == "test"`; for Docker deployment use the `production` section):
+
+    ```bash
+    # WFCatalog MongoDB
+    MONGODB_HOST = "localhost" #MongoDB host
+    MONGODB_PORT = 27017 #MongoDB port
+    MONGODB_USR = "" #MongoDB user
+    MONGODB_PWD = "" #MongoDB password
+    MONGODB_NAME = "wfrepo" #MongoDB database name
+    FDSNWS_STATION_URL = "https://orfeus-eu.org/fdsnws/station/1/query" #FDSNWS-Station endpoint to harvest restriction information from
+    CACHE_HOST = "localhost" #Cache host
+    CACHE_PORT = 6379 #Cache port
+    CACHE_INVENTORY_KEY = "inventory" #Cache key for restriction information
+    CACHE_INVENTORY_PERIOD = 0 #Cache invalidation period for `inventory` key; 0 = never invalidate
+    CACHE_RESP_PERIOD = 1200 #Cache invalidation period for API response
+    ```
 
 1. Build the containers:
 
@@ -213,11 +226,23 @@ Following implementation requires MongoDB v4.2 or higher.
 ## Running in development environment
 
 1. Go to the root directory.
-1. Configure Environment Variables (e.g. by exporting them or creating a `.env` file). Reference `config.py.sample` for names.
-1. Install dependencies using `uv` (faster alternative to pip):
+1. Copy `config.py.sample` to `config.py` and adjust it as needed.
+1. Create the virtual environment:
 
     ```bash
-    uv sync
+    python3 -m venv env
+    ```
+
+1. Activate the virtual environment:
+
+    ```bash
+    source env/bin/activate
+    ```
+
+1. Install the dependencies:
+
+    ```bash
+    pip install -r requirements.txt
     ```
 
 1. Create Redis instance (mandatory for WFCatalog-based deployment):
@@ -229,17 +254,17 @@ Following implementation requires MongoDB v4.2 or higher.
 1. Build the cache:
 
     ```bash
-    uv run python cache.py
+    python3 cache.py
     ```
 
 1. Now you can either:
     1. Run it:
 
         ```bash
-        RUNMODE=test FLASK_APP=start.py uv run flask run --port 9001
+        RUNMODE=test FLASK_APP=start.py flask run
 
         # Or with gunicorn:
-        RUNMODE=test uv run gunicorn --workers 2 --timeout 60 --bind 0.0.0.0:9001 start:app
+        RUNMODE=test gunicorn --workers 2 --timeout 60 --bind 0.0.0.0:9001 start:app
         ```
 
     1. Debug it in VS Code (F5) after selecting "Launch (Flask)" config.
@@ -254,7 +279,7 @@ Following implementation requires MongoDB v4.2 or higher.
 Tests can be executed from the respository root using following command:
 
 ```bash
-uv run pytest
+PYTHONPATH=./apps/ python3 -m unittest discover tests/
 ```
 
 ## Ideas for improvements
