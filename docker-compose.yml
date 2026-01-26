@@ -32,6 +32,8 @@ services:
       OMP_NUM_THREADS: 1
     ulimits:
       nproc: 65535
+    security_opt:
+      - seccomp:unconfined
   api:
     build:
       context: ./
@@ -57,3 +59,5 @@ services:
       OMP_NUM_THREADS: 1
     ulimits:
       nproc: 65535
+    security_opt:
+      - seccomp:unconfined
