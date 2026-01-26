@@ -52,6 +52,7 @@ services:
       MONGODB_USR: ${MONGODB_USR:-wfrepouser}
       MONGODB_PWD: ${MONGODB_PWD:-2023wf}
       MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
+      FDSNWS_STATION_URL: "https://eida.gein.noa.gr/fdsnws/station/1/query"
       # Limit OpenBLAS threads side-effect on API
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
