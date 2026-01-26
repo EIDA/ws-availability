@@ -9,7 +9,7 @@ from requests import HTTPError
 
 from apps.restriction import Epoch, Restriction
 from apps.redis_client import RedisClient
-from config import Config
+from apps.settings import settings
 
 logging.basicConfig(
     handlers=[logging.StreamHandler()],
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class Cache:
     def __init__(self):
-        self._config = Config()
+        self._config = settings
         self._inv = {}
 
     @staticmethod
@@ -39,7 +39,7 @@ class Cache:
         inventory = Inventory()
 
         try:
-            url = f"{self._config.FDSNWS_STATION_URL}?level=network"
+            url = f"{self._config.fdsnws_station_url}?level=network"
             cat = read_inventory(url)
             logger.info(
                 "Harvesting {} from {}: {}".format(
@@ -54,7 +54,7 @@ class Cache:
             for n in cat:
                 # Get inventory from FDSN:
                 url = (
-                    f"{self._config.FDSNWS_STATION_URL}?network={n.code}&level=channel"
+                    f"{self._config.fdsnws_station_url}?network={n.code}&level=channel"
                 )
                 i = read_inventory(url)
                 inventory.networks += i.networks
@@ -120,8 +120,8 @@ class Cache:
                     ].start - timedelta(days=1)
 
         # Store inventory in shared memcache instance
-        rc = RedisClient(self._config.CACHE_HOST, self._config.CACHE_PORT)
-        rc.set(self._config.CACHE_INVENTORY_KEY, self._inv)
+        rc = RedisClient(self._config.cache_host, self._config.cache_port)
+        rc.set(self._config.cache_inventory_key, self._inv)
         logger.info(f"Completed caching inventory from FDSNWS-Station")
 
 

@@ -1,8 +1,18 @@
+"""
+Utility Module for ws-availability.
+
+This module contains shared utility functions used across the application for:
+- Parameter validation (legacy and Pydantic helpers).
+- Date and time parsing/manipulation.
+- Error handling and standard response generation.
+- Request parameter normalization (aliases, defaults).
+"""
 import re
 import sys
 import time
 from difflib import SequenceMatcher
 from datetime import datetime, timedelta
+from typing import Any
 
 from flask import Response, request
 
@@ -20,7 +30,20 @@ from apps.globals import STRING_TRUE
 from apps.globals import VERSION
 
 
-def is_valid_integer(dimension, mini=0, maxi=sys.maxsize):
+def is_valid_integer(
+    dimension: Any, mini: int = 0, maxi: int = sys.maxsize
+) -> bool:
+    """
+    Checks if a value can be converted to an integer within a specified range.
+
+    Args:
+        dimension: The value to check.
+        mini: Minimum valid value (default 0).
+        maxi: Maximum valid value (default sys.maxsize).
+
+    Returns:
+        True if valid, False otherwise.
+    """
     # by default valid for positive integers
     try:
         dimension = int(dimension)
@@ -29,7 +52,22 @@ def is_valid_integer(dimension, mini=0, maxi=sys.maxsize):
     return bool(mini <= dimension <= maxi)
 
 
-def is_valid_float(dimension, mini=sys.float_info.epsilon, maxi=sys.float_info.max):
+def is_valid_float(
+    dimension: Any,
+    mini: float = sys.float_info.epsilon,
+    maxi: float = sys.float_info.max,
+) -> bool:
+    """
+    Checks if a value can be converted to a float within a specified range.
+
+    Args:
+        dimension: The value to check.
+        mini: Minimum valid value.
+        maxi: Maximum valid value.
+
+    Returns:
+        True if valid, False otherwise.
+    """
     # by default valid for strictly positive floats
     try:
         dimension = float(dimension)
@@ -38,7 +76,18 @@ def is_valid_float(dimension, mini=sys.float_info.epsilon, maxi=sys.float_info.m
     return bool(mini <= dimension <= maxi)
 
 
-def is_valid_datetime(date):
+def is_valid_datetime(date: str) -> datetime | None:
+    """
+    Parses a string into a datetime object using supported formats.
+
+    Supported formats: "%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f".
+
+    Args:
+        date: The date string to parse.
+
+    Returns:
+        A datetime object if successful, None otherwise.
+    """
     for df in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f"):
         try:
             return datetime.strptime(date.replace("Z", ""), df)
@@ -46,75 +95,101 @@ def is_valid_datetime(date):
             pass
 
 
-def is_valid_starttime(date):
+def is_valid_starttime(date: str) -> bool | datetime | None:
+    """
+    Validates a start time string.
+
+    Args:
+        date: Date string or literal "currentutcday".
+
+    Returns:
+        datetime object, True (special keyword), or None/False if invalid.
+    """
     return is_valid_datetime(date) or date == "currentutcday"
 
 
-def is_valid_endtime(date):
+def is_valid_endtime(date: str | int) -> bool | datetime | None:
+    """
+    Validates an end time string.
+
+    Args:
+        date: Date string, duration integer, or "currentutcday".
+
+    Returns:
+        datetime object, valid integer check result, or None/False.
+    """
     return is_valid_datetime(date) or date == "currentutcday" or is_valid_integer(date)
 
 
-def is_valid_network(network):
-    return re.match("[A-Za-z0-9*?]{1,2}$", network) if network else False
+def is_valid_bool_string(string: str | None) -> bool:
+    """
+    Checks if a string represents a valid boolean value.
 
+    Args:
+        string: String to check (e.g., "true", "FALSE", "1", "0").
 
-def is_valid_station(station):
-    return re.match("[A-Za-z0-9*?]{1,5}$", station) if station else False
-
-
-def is_valid_location(location):
-    return re.match("([A-Za-z0-9*?-]{1,2})$", location) if location else False
-
-
-def is_valid_channel(channel):
-    return re.match("([A-Za-z0-9*?]{1,3})$", channel) if channel else False
-
-
-def is_valid_bool_string(string):
+    Returns:
+        True if the string maps to a boolean, False otherwise.
+    """
     if string is None:
         return False
     return bool(string.lower() in STRING_TRUE + STRING_FALSE)
 
 
-def is_valid_output(output):
-    return output.lower() in OUTPUT if output else False
 
 
-def is_valid_quality(quality):
-    return re.match("[DMQR*?]{1}$", quality) if quality else False
 
+def currentutcday() -> datetime:
+    """
+    Returns the current UTC date with time reset to midnight (00:00:00).
 
-def is_valid_orderby(orderby):
-    return orderby.lower() in ORDERBY if orderby else False
-
-
-def is_valid_show(show):
-    return show.lower() in SHOW if show else False
-
-
-def is_valid_merge(merge):
-    return merge.lower() in MERGE if merge else False
-
-
-def is_valid_nodata(nodata):
-    return nodata.lower() in NODATA_CODE if nodata else False
-
-
-def currentutcday():
+    Returns:
+        datetime corresponding to the start of the current UTC day.
+    """
     return datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def tictac(tic):
+def tictac(tic: float) -> float:
+    """
+    Calculates elapsed time since a reference epoch.
+
+    Args:
+        tic: Reference start time (from time.time()).
+
+    Returns:
+        Elapsed time in seconds, rounded to 2 decimal places.
+    """
     return round(time.time() - tic, 2)
 
 
 # Result HTTP code 400 shortcut function
-def error_param(params, dmesg):
+def error_param(params: dict, dmesg: str) -> tuple[dict, dict]:
+    """
+    Constructs a standard error response for parameter validation failures.
+
+    Args:
+        params: The request parameters.
+        dmesg: Detailed error message.
+
+    Returns:
+        Tuple of (params, error_dict) where error_dict contains code 400.
+    """
     return (params, {"msg": HTTP._400_, "details": dmesg, "code": 400})
 
 
 # Error request function
-def error_request(msg="", details="", code=500):
+def error_request(msg: str = "", details: str = "", code: int = 500) -> Response:
+    """
+    Creates a Flask Response for general API errors.
+
+    Args:
+        msg: Short error message/code description.
+        details: Detailed error explanation.
+        code: HTTP status code.
+
+    Returns:
+        Flask Response object with text/plain body.
+    """
     request_date = datetime.utcnow().strftime("%Y-%b-%d %H:%M:%S UTC")
     message_error = f"""Error {code}: {msg}\n
 {details}\n
@@ -129,16 +204,31 @@ Service: {SERVICE}  version:{VERSION}"""
 
 
 # Error 413 response alias
-def overflow_error(dmesg):
+def overflow_error(dmesg: str) -> Response:
     return error_request(msg=HTTP._413_, details=dmesg, code=413)
 
 
 # Error 500 response alias
-def error_500(dmesg):
+def error_500(dmesg: str) -> Response:
     return error_request(msg=HTTP._500_, details=dmesg, code=500)
 
 
-def check_request(params):
+def check_request(params: dict) -> tuple[dict, dict]:
+    """
+    Performs preliminary validation of the request object.
+
+    Checks for:
+    - Unknown parameters (provides "Did you mean?" hints).
+    - Invalid characters in input.
+    - Duplicate parameters.
+    - Constraint alias mapping.
+
+    Args:
+        params: Dictionary of parameters with defaults and constraints.
+
+    Returns:
+        Tuple of (params, result_dict), where result_dict has code 200 on success.
+    """
     # preliminary parameter checks
 
     for key, val in request.args.items():
@@ -172,7 +262,26 @@ def check_request(params):
     return (params, {"msg": HTTP._200_, "details": Error.VALID_PARAM, "code": 200})
 
 
-def check_base_parameters(params, max_days=None):
+def check_base_parameters(
+    params: dict, max_days: int | None = None
+) -> tuple[dict, dict]:
+    """
+    Validates parameter types, required fields, and logical constraints.
+
+    Note: This function performs logic that Pydantic alone might not fully cover
+    without complex validators, such as:
+    - "Temporary" network expansion logic.
+    - Start/End relative time calculations.
+    - Cross-field validation (Start > End).
+    - Global duration limits (max_days).
+
+    Args:
+        params: Dictionary of parameters.
+        max_days: Optional limit on the time range duration in days.
+
+    Returns:
+        Tuple of (params, result_dict).
+    """
 
     # Search for missing mandatory parameters
     for key in params["constraints"]["not_none"]:
@@ -194,27 +303,12 @@ def check_base_parameters(params, max_days=None):
         elif val is not None:
             return error_param(params, f"Invalid {key} value: {val}")
 
+
+
+
     # Station validations
     if params["network"].lower() == "temporary":
         params["network"] = "0?,1?,2?,3?,4?,5?,6?,7?,8?,9?,X?,Y?,Z?"
-
-    network = params["network"].split(",")
-    station = params["station"].split(",")
-    location = params["location"].split(",")
-    channel = params["channel"].split(",")
-
-    for net in network:
-        if not is_valid_network(net):
-            return error_param(params, Error.NETWORK + net)
-    for sta in station:
-        if not is_valid_station(sta):
-            return error_param(params, Error.STATION + sta)
-    for loc in location:
-        if not is_valid_location(loc):
-            return error_param(params, Error.LOCATION + loc)
-    for cha in channel:
-        if not is_valid_channel(cha):
-            return error_param(params, Error.CHANNEL + cha)
 
     # Start time and end time validations
     if params["start"] is not None:

@@ -4,15 +4,15 @@ services:
   cache:
     restart: always
     image: redis:7.0-alpine
-    container_name: fdsnws-availability-cache
+    container_name: ${CONTAINER_PREFIX:-fdsnws-availability}-cache
     ports:
-      - 6379:6379
+      - ${CACHE_PORT:-6379}:6379
     command: redis-server --save 20 1 --loglevel warning
   cacher:
     build:
       context: ./
       dockerfile: Dockerfile.cacher
-    container_name: fdsnws-availability-cacher
+    container_name: ${CONTAINER_PREFIX:-fdsnws-availability}-cacher
     deploy:
       restart_policy:
         condition: on-failure
@@ -30,10 +30,33 @@ services:
       context: ./
       dockerfile: Dockerfile.api
     restart: always
-    container_name: fdsnws-availability-api
+    container_name: ${CONTAINER_PREFIX:-fdsnws-availability}-api
     ports:
-      - 9001:9001
+      - ${API_PORT:-9001}:9001
     depends_on:
       - cache
     environment:
       RUNMODE: production
+      # Gateway IP (Update if needed)
+      MONGODB_HOST: ${MONGODB_HOST:-172.17.0.1}
+      MONGODB_PORT: ${MONGODB_PORT:-27017}
+      MONGODB_USR: ${MONGODB_USR:-wfrepouser}
+      MONGODB_PWD: ${MONGODB_PWD:-2023wf}
+      MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
+
+  worker:
+    build:
+      context: ./
+      dockerfile: Dockerfile.worker
+    container_name: ${CONTAINER_PREFIX:-fdsnws-availability}-worker
+    restart: always
+    depends_on:
+      - cache
+    environment:
+      RUNMODE: ${RUNMODE:-production}
+      # Database connection
+      MONGODB_HOST: ${MONGODB_HOST:-172.17.0.1}
+      MONGODB_PORT: ${MONGODB_PORT:-27017}
+      MONGODB_USR: ${MONGODB_USR:-wfrepouser}
+      MONGODB_PWD: ${MONGODB_PWD:-2023wf}
+      MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
