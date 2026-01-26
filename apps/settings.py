@@ -71,8 +71,16 @@ def load_legacy_config():
     except ImportError:
         return {}
 
+
 # Load legacy config options and filter out None values
 legacy_defaults = {k: v for k, v in load_legacy_config().items() if v is not None}
 
-# Instantiate settings with legacy defaults (they override default fields but are overriden by env vars)
+# Remove keys from legacy_defaults if they are set in environment variables
+# This ensures Docker environment variables (e.g. MONGODB_HOST) take precedence
+# over values hardcoded in config.py (like "localhost")
+for key in list(legacy_defaults.keys()):
+    if key in os.environ:
+        del legacy_defaults[key]
+
+# Instantiate settings with remaining legacy defaults
 settings = Settings(**legacy_defaults)
