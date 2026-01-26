@@ -25,6 +25,13 @@ services:
       - cache
     environment:
       RUNMODE: production
+      # Limit OpenBLAS threads (Fix for Cacher Crash)
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
+    ulimits:
+      nproc: 65535
   api:
     build:
       context: ./
@@ -43,5 +50,10 @@ services:
       MONGODB_USR: ${MONGODB_USR:-wfrepouser}
       MONGODB_PWD: ${MONGODB_PWD:-2023wf}
       MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
+      # Limit OpenBLAS threads side-effect on API
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
     ulimits:
       nproc: 65535
