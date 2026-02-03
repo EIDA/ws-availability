@@ -35,26 +35,21 @@ services:
     # Run with 1 sync worker (absolute minimum memory/thread footprint)
     command: gunicorn --bind 0.0.0.0:9001 --workers 1 start:app
     container_name: fdsnws-availability-api
-    ports:
-      - 9001:9001
-    depends_on:
-      - cache
+    network_mode: "host"
     environment:
       RUNMODE: production
-      # Point to Local EIDA Inventory via Standard Host Alias
-      FDSNWS_STATION_URL: "http://host.docker.internal:8081/fdsnws/station/1/query"
+      # Point to Localhost (Host Mode shares network stack)
+      FDSNWS_STATION_URL: "http://localhost:8081/fdsnws/station/1/query"
       # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
       OMP_NUM_THREADS: 1
       # Gateway IP (Update if needed)
-      MONGODB_HOST: ${MONGODB_HOST:-172.17.0.1}
+      MONGODB_HOST: ${MONGODB_HOST:-127.0.0.1}
       MONGODB_PORT: ${MONGODB_PORT:-27017}
       MONGODB_USR: ${MONGODB_USR:-wfrepouser}
       MONGODB_PWD: ${MONGODB_PWD:-2023wf}
       MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
-    extra_hosts:
-      - "host.docker.internal:172.17.42.1"
     # Force overrides for strict host limits
     ulimits:
       nproc: 65535
