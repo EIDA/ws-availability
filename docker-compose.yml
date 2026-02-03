@@ -54,7 +54,7 @@ services:
       MONGODB_PWD: ${MONGODB_PWD:-2023wf}
       MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.docker.internal:172.17.42.1"
     # Force overrides for strict host limits
     ulimits:
       nproc: 65535
