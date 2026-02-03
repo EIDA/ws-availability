@@ -47,7 +47,8 @@ class Settings(BaseSettings):
                 
             # Host networking: CACHE_HOST env var is used directly (localhost/127.0.0.1)
             # if self.cache_host == "localhost":
-            #     self.cache_host = "cache" 
+            #     self.cache_host = "cache"
+            pass 
 
         return self
 
