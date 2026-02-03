@@ -93,5 +93,29 @@ class TestWFCatalogFiltering(unittest.TestCase):
             self.assertEqual(len(results), 1)
             self.assertEqual(results[0][9], "RESTRICTED")
 
+    def test_empty_location_converted_to_double_dash(self):
+        """Test that empty location codes are converted to '--' in output"""
+        # Create a separate mock inventory for this test with empty location seedID
+        mock_inv_empty_loc = MagicMock()
+        mock_inv_empty_loc._known_seedIDs = {"NET.STA..CHA"}  # Empty location in seedID
+        mock_inv_empty_loc._restricted_seedIDs = set()  # Not restricted
+        
+        with patch('apps.wfcatalog_client.RESTRICTED_INVENTORY', mock_inv_empty_loc):
+            with patch('apps.wfcatalog_client._get_restricted_status', return_value="OPEN"):
+                
+                # Data with empty location code
+                data = [{
+                    "net": "NET", "sta": "STA", "loc": "", "cha": "CHA",
+                    "qlt": "D", "srate": 100, "ts": "2024-01-01", "te": "2024-01-02",
+                    "created": "now", "restr": "OPEN", "count": 100
+                }]
+                
+                results = wfcatalog_client._apply_restricted_bit(data, include_restricted=False)
+                
+                self.assertEqual(len(results), 1)
+                # Location code (index 2) should be '--', not empty string
+                self.assertEqual(results[0][2], "--")
+
+
 if __name__ == '__main__':
     unittest.main()

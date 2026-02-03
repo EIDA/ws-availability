@@ -181,7 +181,7 @@ def _apply_restricted_bit(data: Any, include_restricted: bool = False) -> list[l
             [
                 segment["net"],
                 segment["sta"],
-                segment["loc"],
+                segment["loc"] if segment["loc"] else "--",  # Convert empty location to '--'
                 segment["cha"],
                 segment["qlt"],
                 segment["srate"],
