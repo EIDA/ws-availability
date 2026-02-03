@@ -54,12 +54,10 @@ services:
       MONGODB_PWD: ${MONGODB_PWD:-2023wf}
       MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
     # Force overrides for strict host limits
-    deploy:
-      resources:
-        limits:
-          pids: 1000
     ulimits:
       nproc: 65535
+    security_opt:
+      - seccomp:unconfined
       nofile:
         soft: 65535
         hard: 65535
