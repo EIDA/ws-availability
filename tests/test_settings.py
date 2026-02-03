@@ -14,16 +14,18 @@ class TestSettings:
         assert settings.fdsnws_station_url == "https://orfeus-eu.org/fdsnws/station/1/query"
 
     def test_production_override(self):
-        """Test that production mode forces specific hostnames if defaults were used"""
+        """Test that production mode no longer overrides cache_host (host networking)"""
         os.environ["RUNMODE"] = "production"
         # Ensure we don't have overrides set
         if "MONGODB_HOST" in os.environ: del os.environ["MONGODB_HOST"]
+        if "CACHE_HOST" in os.environ: del os.environ["CACHE_HOST"]
         
         settings = Settings()
         assert settings.runmode == "production"
         # We removed the auto-switch to host.docker.internal for Linux compatibility
         assert settings.mongodb_host == "localhost" 
-        assert settings.cache_host == "cache"
+        # Host networking: cache_host stays as localhost (no longer auto-changed to "cache")
+        assert settings.cache_host == "localhost"
         
         del os.environ["RUNMODE"]
 
