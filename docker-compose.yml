@@ -19,6 +19,8 @@ services:
       - cache
     environment:
       RUNMODE: production
+      # Point to Local EIDA Inventory (Host Port 8081)
+      FDSNWS_STATION_URL: "http://172.17.42.1:8081/fdsnws/station/1/query"
       # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
@@ -37,7 +39,9 @@ services:
       - cache
     environment:
       RUNMODE: production
-      # Limit OpenBLAS threads for API too (prevent pthread_create failed)
+      # Point to Local EIDA Inventory (Host Port 8081)
+      FDSNWS_STATION_URL: "http://172.17.42.1:8081/fdsnws/station/1/query"
+      # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
       OMP_NUM_THREADS: 1
