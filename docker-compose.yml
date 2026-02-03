@@ -5,28 +5,22 @@ services:
     restart: always
     image: redis:7.0-alpine
     container_name: fdsnws-availability-cache
-    ports:
-      - 6379:6379
+    network_mode: "host"
     command: redis-server --save 20 1 --loglevel warning
   cacher:
     build:
       context: ./
       dockerfile: Dockerfile.cacher
     container_name: fdsnws-availability-cacher
-    ports:
-      - 11211:11211
-    depends_on:
-      - cache
+    network_mode: "host"
     environment:
       RUNMODE: production
       # Point to Local EIDA Inventory via Standard Host Alias
-      FDSNWS_STATION_URL: "http://host.docker.internal:8081/fdsnws/station/1/query"
+      FDSNWS_STATION_URL: "http://localhost:8081/fdsnws/station/1/query"
       # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
       OMP_NUM_THREADS: 1
-    extra_hosts:
-      - "host.docker.internal:172.17.42.1"
   api:
     build:
       context: ./
