@@ -36,6 +36,23 @@ PROJ = {
 
 from apps.settings import settings
 
+
+# Global Singleton Client
+DB_CLIENT = None
+
+def get_db_client():
+    global DB_CLIENT
+    if DB_CLIENT is None:
+        DB_CLIENT = MongoClient(
+            settings.mongodb_host,
+            settings.mongodb_port,
+            username=settings.mongodb_usr,
+            password=settings.mongodb_pwd,
+            authSource=settings.mongodb_name,
+            connect=False, # Wait for first operation to connect (fork-safe)
+        )
+    return DB_CLIENT
+
 def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
     """
     Constructs and executes MongoDB queries to retrieve availability metrics.
@@ -59,14 +76,8 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
     # List of queries executed agains the DB, let's keep it for logging
     qries = []
     
-    # Initialize DB connection ONCE (Fix for Connection Churn)
-    client = MongoClient(
-        db_host,
-        db_port,
-        username=db_usr,
-        password=db_pwd,
-        authSource=db_name,
-    )
+    # Use Global Singleton Client (Fixes Thread Exhaustion)
+    client = get_db_client()
     db = client.get_database(db_name)
     
     for params in paramslist:
