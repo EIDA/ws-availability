@@ -45,8 +45,9 @@ class Settings(BaseSettings):
             # if self.mongodb_host == "localhost":
             #     self.mongodb_host = "host.docker.internal"
                 
-            if self.cache_host == "localhost":
-                self.cache_host = "cache" 
+            # Host networking: CACHE_HOST env var is used directly (localhost/127.0.0.1)
+            # if self.cache_host == "localhost":
+            #     self.cache_host = "cache" 
 
         return self
 
