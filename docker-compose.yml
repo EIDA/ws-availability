@@ -26,7 +26,7 @@ services:
       MKL_NUM_THREADS: 1
       OMP_NUM_THREADS: 1
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.docker.internal:172.17.42.1"
   api:
     build:
       context: ./
