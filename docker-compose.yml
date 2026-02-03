@@ -34,8 +34,8 @@ services:
       context: ./
       dockerfile: Dockerfile.api
     restart: always
-    # Run with 1 worker to save threads/memory on small servers
-    command: gunicorn --bind 0.0.0.0:9001 --workers 1 --threads 4 start:app
+    # Run with 1 sync worker (absolute minimum memory/thread footprint)
+    command: gunicorn --bind 0.0.0.0:9001 --workers 1 start:app
     container_name: fdsnws-availability-api
     ports:
       - 9001:9001
