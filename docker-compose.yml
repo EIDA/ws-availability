@@ -19,12 +19,14 @@ services:
       - cache
     environment:
       RUNMODE: production
-      # Point to Local EIDA Inventory (Host Port 8081)
-      FDSNWS_STATION_URL: "http://172.17.42.1:8081/fdsnws/station/1/query"
+      # Point to Local EIDA Inventory via Standard Host Alias
+      FDSNWS_STATION_URL: "http://host.docker.internal:8081/fdsnws/station/1/query"
       # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
       OMP_NUM_THREADS: 1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   api:
     build:
       context: ./
@@ -39,12 +41,14 @@ services:
       - cache
     environment:
       RUNMODE: production
-      # Point to Local EIDA Inventory (Host Port 8081)
-      FDSNWS_STATION_URL: "http://172.17.42.1:8081/fdsnws/station/1/query"
+      # Point to Local EIDA Inventory via Standard Host Alias
+      FDSNWS_STATION_URL: "http://host.docker.internal:8081/fdsnws/station/1/query"
       # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
       OMP_NUM_THREADS: 1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
       # Gateway IP (Update if needed)
       MONGODB_HOST: ${MONGODB_HOST:-172.17.0.1}
       MONGODB_PORT: ${MONGODB_PORT:-27017}
