@@ -41,6 +41,10 @@ services:
       - cache
     environment:
       RUNMODE: production
+      # Limit OpenBLAS threads for API too (prevent pthread_create failed)
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
       # Gateway IP (Update if needed)
       MONGODB_HOST: ${MONGODB_HOST:-172.17.0.1}
       MONGODB_PORT: ${MONGODB_PORT:-27017}
