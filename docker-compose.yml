@@ -15,8 +15,6 @@ services:
     network_mode: "host"
     environment:
       RUNMODE: production
-      # Use Public URL (Host Networking allows this now)
-      FDSNWS_STATION_URL: "https://eida.gein.noa.gr/fdsnws/station/1/query"
       # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
@@ -32,8 +30,6 @@ services:
     network_mode: "host"
     environment:
       RUNMODE: production
-      # Point to Localhost (Host Mode shares network stack)
-      FDSNWS_STATION_URL: "http://localhost:8081/fdsnws/station/1/query"
       # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
