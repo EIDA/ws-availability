@@ -25,6 +25,10 @@ services:
       - cache
     environment:
       RUNMODE: production
+      # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
   api:
     build:
       context: ./
