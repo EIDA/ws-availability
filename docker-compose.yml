@@ -56,8 +56,6 @@ services:
     # Force overrides for strict host limits
     ulimits:
       nproc: 65535
-    security_opt:
-      - seccomp:unconfined
       nofile:
         soft: 65535
         hard: 65535
