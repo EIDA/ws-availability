@@ -47,14 +47,14 @@ services:
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
       OMP_NUM_THREADS: 1
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
       # Gateway IP (Update if needed)
       MONGODB_HOST: ${MONGODB_HOST:-172.17.0.1}
       MONGODB_PORT: ${MONGODB_PORT:-27017}
       MONGODB_USR: ${MONGODB_USR:-wfrepouser}
       MONGODB_PWD: ${MONGODB_PWD:-2023wf}
       MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Force overrides for strict host limits
     ulimits:
       nproc: 65535
