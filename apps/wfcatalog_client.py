@@ -37,7 +37,7 @@ PROJ = {
 from apps.settings import settings
 
 
-# Global Singleton Client
+# Global DB Client to prevent thread exhaustion
 DB_CLIENT = None
 
 def get_db_client():
@@ -49,7 +49,11 @@ def get_db_client():
             username=settings.mongodb_usr,
             password=settings.mongodb_pwd,
             authSource=settings.mongodb_name,
-            connect=False, # Wait for first operation to connect (fork-safe)
+            maxPoolSize=1,
+            connect=False,
+            directConnection=True,
+            retryReads=False,
+            retryWrites=False
         )
     return DB_CLIENT
 
@@ -65,10 +69,6 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
         - qries (list): List of executed MongoDB query objects (for logging).
         - result (list): Aggregated list of metric records extracted from the DB.
     """
-    db_host = settings.mongodb_host
-    db_port = settings.mongodb_port
-    db_usr = settings.mongodb_usr
-    db_pwd = settings.mongodb_pwd
     db_name = settings.mongodb_name
 
     result = []
@@ -76,7 +76,7 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
     # List of queries executed agains the DB, let's keep it for logging
     qries = []
     
-    # Use Global Singleton Client (Fixes Thread Exhaustion)
+    # Use GLOBAL client (Fix for Connection Churn & Thread Exhaustion)
     client = get_db_client()
     db = client.get_database(db_name)
     

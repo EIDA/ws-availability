@@ -28,13 +28,15 @@ class TestDataAccess(unittest.TestCase):
             "MONGODB_NAME": "testdb"
         })
         
-        # Reset global DB_CLIENT to ensure we get a fresh mock each time
+        # Reset the global DB_CLIENT to ensure fresh start
         wfcatalog_client.DB_CLIENT = None
-
         # Patch MongoClient
         self.mongo_patcher = patch('apps.wfcatalog_client.MongoClient')
         self.mock_mongo_cls = self.mongo_patcher.start()
-        self.mock_db = self.mock_mongo_cls.return_value.get_database.return_value
+        
+        # Setup the mock DB chain
+        self.mock_client_instance = self.mock_mongo_cls.return_value
+        self.mock_db = self.mock_client_instance.get_database.return_value
         self.mock_collection = self.mock_db.availability
         
         # Patch filtering
@@ -42,6 +44,8 @@ class TestDataAccess(unittest.TestCase):
         self.mock_apply_restricted = self.filter_patcher.start()
 
     def tearDown(self):
+        # Reset the global to None so it doesn't leak to other tests
+        wfcatalog_client.DB_CLIENT = None
         self.mongo_patcher.stop()
         self.filter_patcher.stop()
         self.app_context.pop()
