@@ -101,12 +101,15 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
         if params["quality"] != "*":
             quality = {"$in": params["quality"].split(",")}
             qry["qlt"] = quality
-        if start:
-            ts = {"$gte": start}
+        if start is not None:
+            ts = {"$lt": end}
             qry["ts"] = ts
-        if end:
-            te = {"$lte": end}
+            te = {"$gt": start}
             qry["te"] = te
+
+        # if end:
+        #    te = {"$lte": end}
+        #    qry["te"] = te
 
         qries.append(qry)
 
@@ -170,6 +173,11 @@ def _apply_restricted_bit(data: Any, include_restricted: bool = False) -> list[l
         sid = ".".join([segment["net"], segment["sta"], segment["loc"], segment["cha"]])
 
         if sid not in RESTRICTED_INVENTORY._known_seedIDs:
+            continue
+            
+        # FIX Issue #23: Filter out invalid data where Start Time > End Time
+        # This prevents merge logic failures due to negative duration segments
+        if segment["ts"] > segment["te"]:
             continue
 
         if sid in RESTRICTED_INVENTORY._restricted_seedIDs:
