@@ -28,6 +28,9 @@ class TestDataAccess(unittest.TestCase):
             "MONGODB_NAME": "testdb"
         })
         
+        # Reset global DB_CLIENT to ensure we get a fresh mock each time
+        wfcatalog_client.DB_CLIENT = None
+
         # Patch MongoClient
         self.mongo_patcher = patch('apps.wfcatalog_client.MongoClient')
         self.mock_mongo_cls = self.mongo_patcher.start()
@@ -42,6 +45,9 @@ class TestDataAccess(unittest.TestCase):
         self.mongo_patcher.stop()
         self.filter_patcher.stop()
         self.app_context.pop()
+        
+        # Reset global DB_CLIENT again to be clean
+        wfcatalog_client.DB_CLIENT = None
 
     def test_mongo_request_query_construction(self):
         """Test that mongo_request builds correct MongoDB queries from params"""
