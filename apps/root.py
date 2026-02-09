@@ -72,28 +72,13 @@ def check_parameters(params: dict) -> tuple[dict, dict]:
         # Update params with validated/converted values (e.g. limit comes out as int)
         params.update(validated)
 
-        # Legacy logic preservation:
-        # 1. "orderby" lowercasing (handled by Pydantic validator?) -> Yes, we added validator.
-        # 2. "show" split and validate -> Handled.
-        # 3. "merge" split and validate -> Handled? 
-        #    Wait, in `models.py` I defined `merge: str`. 
-        #    Original code: `params["merge"] = params["merge"].split(",")`.
-        #    My Pydantic model kept it as `str`. 
-        #    I should update `models.py` to `merge: List[str]` or handle split in validator?
-        #    Actually, keeping it as string in model might be safer for now if rest of app expects string?
-        #    Original code at L83: `params["merge"][ind] = merge.lower()`. 
-        #    It implies `params["merge"]` becomes a LIST.
-        #    My Pydantic model defined `merge: str`.
-        #    This is a mismatch. I need to fix `models.py` or manual fix here.
-        #    Let's handle split manually here to be safe and match legacy `params` structure exactly.
-        
-        # Pydantic cleanup for specific List types the app expects:
-
-        # Legacy logic note:
-        # Original code split 'quality', 'show', 'merge' into lists here.
-        # However, downstream logic (wfcatalog_client.py, data_access_layer.py)
-        # expects these to be STRINGS and performs the split itself (e.g. .split(",")).
-        # Therefore, we keep them as strings from the Pydantic model.
+        # Convert merge from comma-separated string to list
+        # The data_access_layer.py expects merge to be a list for checks like:
+        # if "quality" in params["merge"]
+        if params["merge"]:
+            params["merge"] = [m.lower().strip() for m in params["merge"].split(",")]
+        else:
+            params["merge"] = []
 
 
         # Derived logic

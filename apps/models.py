@@ -143,6 +143,17 @@ class QueryParameters(BaseModel):
             raise ValueError("Invalid nodata code")
         return v
 
+    @field_validator('merge')
+    @classmethod
+    def validate_merge(cls, v: str) -> str:
+        if not v:
+            return ""
+        parts = v.split(',')
+        for part in parts:
+            if part.lower().strip() not in MERGE:
+                raise ValueError(f"Invalid merge value: {part}. Valid values are: {', '.join(MERGE)}")
+        return v
+
     @field_validator('orderby')
     @classmethod
     def validate_orderby(cls, v: Optional[str]) -> Optional[str]:
