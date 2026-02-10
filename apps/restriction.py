@@ -41,16 +41,27 @@ class Epoch:
         return f"{self.seed_id} {self.start} --- {self.end} {self.restriction}"
 
 
+
+# Global Redis Pool to prevent connection churn
+REDIS_POOL = None
+
 class RestrictionInventory:
-    def __init__(self, host: str, port: int, key: str):
+    def __init__(self, host: str = "localhost", port: int = 6379, key: str = "inventory"):
+        global REDIS_POOL
+
         self._inv = {}
         self._known_seedIDs = None
         self._restricted_seedIDs = None
-        self._pool = redis.ConnectionPool(
-            host=host,
-            port=port,
-            db=0,
-        )
+        
+        if REDIS_POOL is None:
+            REDIS_POOL = redis.ConnectionPool(
+                host=host,
+                port=port,
+                db=0,
+                max_connections=10  # Limit Redis connections explicitly
+            )
+            
+        self._pool = REDIS_POOL
         self._redis = redis.Redis(connection_pool=self._pool)
         cached_inventory = self._redis.get(key)
         # Try to get cached inventory from shared memcache instance

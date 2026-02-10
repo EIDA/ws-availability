@@ -5,35 +5,56 @@ services:
     restart: always
     image: redis:7.0-alpine
     container_name: fdsnws-availability-cache
-    ports:
-      - 6379:6379
+    network_mode: "host"
     command: redis-server --save 20 1 --loglevel warning
   cacher:
     build:
       context: ./
       dockerfile: Dockerfile.cacher
     container_name: fdsnws-availability-cacher
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 5
-        window: 30s
-    ports:
-      - 11211:11211
-    depends_on:
-      - cache
+    network_mode: "host"
     environment:
       RUNMODE: production
+      # Host Networking: Redis is on localhost
+      CACHE_HOST: "127.0.0.1"
+      # Limit OpenBLAS threads (Fix for Cacher Crash)
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
+    ulimits:
+      nproc: 65535
+    security_opt:
+      - seccomp:unconfined
   api:
     build:
       context: ./
       dockerfile: Dockerfile.api
     restart: always
+    # Run with 1 sync worker (absolute minimum memory/thread footprint)
+    command: gunicorn --bind 0.0.0.0:9001 --workers 1 start:app
     container_name: fdsnws-availability-api
-    ports:
-      - 9001:9001
-    depends_on:
-      - cache
+    network_mode: "host"
     environment:
       RUNMODE: production
+      # Host Networking: Redis is on localhost
+      CACHE_HOST: "127.0.0.1"
+      # Gateway IP (Update if needed)
+      MONGODB_HOST: ${MONGODB_HOST:-127.0.0.1}
+      MONGODB_PORT: ${MONGODB_PORT:-27017}
+      MONGODB_USR: ${MONGODB_USR:-wfrepouser}
+      MONGODB_PWD: ${MONGODB_PWD:-2023wf}
+      MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
+      FDSNWS_STATION_URL: "https://eida.gein.noa.gr/fdsnws/station/1/query"
+      # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+    security_opt:
+      - seccomp:unconfined

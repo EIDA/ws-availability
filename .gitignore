@@ -130,4 +130,13 @@ venv.bak/
 dmypy.json
 
 # Pyre type checker
-.pyre/
+
+# Local Documentation
+HOWTO_ADD_DATA.md
+REFACTORING_SUMMARY.md
+
+# Local Verification Scripts
+tests/demonstrate_fusion.py
+reproduce_data_wfcatalog.py
+reproduce_on_server.py
+debug_api_state.py
