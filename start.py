@@ -1,12 +1,21 @@
 import logging
 import os
 
+import sentry_sdk
 from flask import Flask, make_response, render_template
 
 from apps.globals import VERSION
 from apps.root import output
 from config import Config
 
+# Initialize Sentry before creating the Flask app
+if Config.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=Config.SENTRY_DSN,
+        traces_sample_rate=Config.SENTRY_TRACES_SAMPLE_RATE,
+        # Add data like request headers and IP for users
+        send_default_pii=True,
+    )
 
 app = Flask(__name__)
 

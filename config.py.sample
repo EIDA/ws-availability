@@ -60,6 +60,11 @@ class Config:
         CACHE_RESP_PERIOD = (
             os.environ.get("CACHE_SHORT_INV_PERIOD") or CACHE_RESP_PERIOD
         )
+        # Sentry configuration (optional)
+        SENTRY_DSN = os.environ.get("SENTRY_DSN") or ""
+        SENTRY_TRACES_SAMPLE_RATE = float(
+            os.environ.get("SENTRY_TRACES_SAMPLE_RATE") or "1.0"
+        )
     except NameError:
         print("Missing environment variables.")
         raise
