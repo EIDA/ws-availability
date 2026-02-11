@@ -102,10 +102,11 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
             quality = {"$in": params["quality"].split(",")}
             qry["qlt"] = quality
         if start is not None:
-            ts = {"$lt": end}
-            qry["ts"] = ts
             te = {"$gt": start}
             qry["te"] = te
+        if end is not None:
+            ts = {"$lt": end}
+            qry["ts"] = ts
 
         # if end:
         #    te = {"$lte": end}
