@@ -31,8 +31,12 @@ services:
       context: ./
       dockerfile: Dockerfile.api
     restart: always
-    # Run with 1 sync worker (absolute minimum memory/thread footprint)
-    command: gunicorn --bind 0.0.0.0:9001 --workers 1 start:app
+    # Worker Configuration:
+    # - Default: 1 worker (most stable for resource-constrained servers)
+    # - Moderate: 2-3 workers (recommended if no thread creation issues)
+    # - High-performance: (2 × CPU cores) + 1 workers
+    # See README.md "Performance Tuning" section for details
+    command: gunicorn --bind 0.0.0.0:9001 --workers 1 --timeout 600 start:app
     container_name: fdsnws-availability-api
     network_mode: "host"
     environment:

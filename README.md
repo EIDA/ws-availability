@@ -223,6 +223,134 @@ Following implementation requires MongoDB v4.2 or higher.
     ProxyPassReverse /fdsnws/availability/1 <HOST>:9001 timeout=600
     ```
 
+## Performance Tuning
+
+### Gunicorn Workers Configuration
+
+The number of Gunicorn workers directly affects how many concurrent requests your service can handle. The default configuration uses **1 worker** for maximum stability on resource-constrained servers.
+
+#### Current Configuration (docker-compose.yml)
+```yaml
+command: gunicorn --bind 0.0.0.0:9001 --workers 1 start:app
+```
+
+#### Adjusting Worker Count
+
+**For servers with limited resources or thread creation issues:**
+```yaml
+# Minimum configuration (most stable)
+command: gunicorn --bind 0.0.0.0:9001 --workers 1 --timeout 600 start:app
+```
+
+**For servers with moderate resources:**
+```yaml
+# 2-3 workers (recommended for most deployments)
+command: gunicorn --bind 0.0.0.0:9001 --workers 2 --timeout 600 start:app
+```
+
+**For high-performance servers:**
+```yaml
+# Formula: (2 × CPU cores) + 1
+# Example for 4-core server: --workers 9
+command: gunicorn --bind 0.0.0.0:9001 --workers 4 --timeout 600 start:app
+```
+
+#### Important Notes
+
+1. **Each worker is a separate process** with its own memory footprint
+2. **More workers ≠ always better** - too many workers can exhaust system resources
+3. **Monitor for errors** after increasing workers:
+   ```bash
+   docker logs -f fdsnws-availability-api
+   # Watch for "pthread_create failed" or similar errors
+   ```
+
+4. **Resource usage check:**
+   ```bash
+   docker stats fdsnws-availability-api
+   # If CPU < 80% and memory available, you can add more workers
+   ```
+
+### MongoDB Connection Pool
+
+The MongoDB connection pool is configured in `apps/wfcatalog_client.py`:
+
+```python
+maxPoolSize=1  # Connections per worker
+```
+
+#### How It Works
+
+- **Each Gunicorn worker** has its own MongoDB client
+- **Total connections** = `workers × maxPoolSize`
+- **Example:** 2 workers × 1 pool = 2 total MongoDB connections
+
+#### When to Adjust
+
+**Keep `maxPoolSize=1` if:**
+- ✅ Using sync workers (default Gunicorn configuration)
+- ✅ Each worker handles one request at a time
+- ✅ Server has resource constraints
+
+**Increase `maxPoolSize` only if:**
+- Using async workers (gevent/eventlet)
+- Using threading within workers
+- MongoDB is a bottleneck (check with profiling)
+
+#### Example Configurations
+
+| Workers | maxPoolSize | Total Connections | Use Case |
+|---------|-------------|-------------------|----------|
+| 1       | 1           | 1                 | Minimal (default) |
+| 2       | 1           | 2                 | Recommended |
+| 4       | 1           | 4                 | High performance |
+| 2       | 5           | 10                | Async workers |
+
+### Thread Limiting (Important!)
+
+The configuration includes thread limits to prevent `pthread_create failed` errors on restricted servers:
+
+```yaml
+environment:
+  OPENBLAS_NUM_THREADS: 1
+  MKL_NUM_THREADS: 1
+  NUMEXPR_NUM_THREADS: 1
+  OMP_NUM_THREADS: 1
+```
+
+**Do not remove these** unless you're certain your server can handle multiple threads per process. These prevent NumPy/ObsPy from spawning excessive threads.
+
+### Troubleshooting
+
+**Problem:** Service crashes with "pthread_create failed"
+- **Solution:** Reduce workers to 1, keep thread limits in place
+
+**Problem:** Slow response times under load
+- **Solution:** Increase workers (if resources allow), monitor with `docker stats`
+
+**Problem:** High memory usage
+- **Solution:** Reduce workers, check for memory leaks with profiling
+
+**Problem:** MongoDB connection errors
+- **Solution:** Check total connections (workers × maxPoolSize) against MongoDB limits
+
+### Performance Monitoring
+
+See `tests/performance/` for profiling and benchmarking tools:
+
+```bash
+# Quick performance test
+bash tests/performance/quick_test.sh
+
+# Detailed profiling
+python tests/performance/profiler.py
+
+# Load testing
+locust -f tests/performance/locustfile.py --host=http://localhost:9001
+```
+
+For more details, see [Performance Analysis Plan](tests/performance/README.md).
+
 ## Running in development environment
 
 1. Go to the root directory.

@@ -196,43 +196,27 @@ def sort_records(params: dict, data: list[list[Any]]) -> None:
     elif params["orderby"] == "latestupdate_desc":
         data.sort(key=lambda x: x[UPDATED], reverse=True)
     else:
-        # Default sorting: NSLC, Time, Quality, SampleRate
-        # We sort by multiple keys in reverse priority (Python sort is stable)
-        
-        # 1. Sort by Quality and SampleRate
-        data.sort(key=lambda x: (x[QUALITY], x[SAMPLERATE]))
-        # 2. Sort by Time (Start, End) - descending? Wait, original code had reverse=True for time?
-        # Original: data.sort(key=lambda x: (x[START], x[END]), reverse=True) 
-        # But usually we want ascending time?
-        # Let's check original logic carefully.
-        
-        # Original Lines:
-        # 200:             data.sort(key=lambda x: (x[QUALITY], x[SAMPLERATE]))
-        # 201:             data.sort(key=lambda x: (x[START], x[END]), reverse=True) 
-        # 202:             data.sort(key=lambda x: x[:QUALITY])
-        
-        # Line 202 sorts by first 4 columns (Net, Sta, Loc, Cha).
-        # Since Python sort is stable, previous sorts within those groups are preserved.
-        
-        # Line 201 sorted by Time DESCENDING? That seems odd for a time series.
-        # But if we want Earliest to Latest, it should be Ascending.
-        # Maybe reverse=True was a bug or specific requirement?
-        # The user's query example showed 2023-11-23 then 2023-11-22, which is DESCENDING.
-        # If the user wants standard time order, it should be Ascending.
-        
-        # Let's KEEP original logic for now, but ensure it runs.
-        # WAIT, if 201 is reverse=True, then data is sorted Time DESCENDING?
-        # Let's verify what `nslc_time_quality_samplerate` implies. "ordered by ... time ..." usually means Ascending.
-        
-        # If I change reverse=True to False, I might break expected behavior if descending was intended.
-        # But "Earliest" column usually suggests ascending.
-        
-        # Let's stick to the minimal fix: remove the surrounding IF, Keep the logic same.
-        
-        data.sort(key=lambda x: (x[QUALITY], x[SAMPLERATE]))
-        # 2. Sort by Time (Start, End) - Ascending
-        data.sort(key=lambda x: (x[START], x[END]), reverse=False)
-        data.sort(key=lambda x: x[:QUALITY])
+        # Default sorting: NSLC (Network, Station, Location, Channel), 
+        # then Time (Start, End), then Quality, then SampleRate
+        # 
+        # OPTIMIZATION: Use single sort with compound key instead of 3 separate sorts.
+        # This is more efficient and clearer than relying on stable sort behavior.
+        #
+        # Sort order:
+        # 1. Network, Station, Location, Channel (x[0], x[1], x[2], x[3])
+        # 2. Start time, End time (x[START], x[END])
+        # 3. Quality (x[QUALITY])
+        # 4. Sample rate (x[SAMPLERATE])
+        data.sort(key=lambda x: (
+            x[0],           # Network
+            x[1],           # Station
+            x[2],           # Location
+            x[3],           # Channel
+            x[START],       # Start time (ascending - earliest first)
+            x[END],         # End time
+            x[QUALITY],     # Quality
+            x[SAMPLERATE]   # Sample rate
+        ))
 
 
 #    else:
