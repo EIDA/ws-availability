@@ -1,12 +1,81 @@
 import logging
 import os
 
+import sentry_sdk
 from flask import Flask, make_response, render_template
 
 from apps.globals import VERSION
 from apps.root import output
 from config import Config
 
+
+def before_send(event, hint):
+    """
+    Scrub sensitive data from Sentry events before sending.
+    This prevents passwords, API keys, and other secrets from being exposed.
+    """
+    # List of sensitive field names to scrub (case-insensitive)
+    sensitive_keys = {
+        "password", "passwd", "pwd", "secret", "api_key", "apikey", 
+        "token", "auth", "authorization", "credentials", "private_key",
+        "access_token", "refresh_token", "session", "cookie"
+    }
+    
+    def scrub_dict(data):
+        """Recursively scrub sensitive data from dictionaries."""
+        if not isinstance(data, dict):
+            return
+        
+        for key in list(data.keys()):
+            key_lower = str(key).lower()
+            # Check if key contains any sensitive keyword
+            if any(sensitive in key_lower for sensitive in sensitive_keys):
+                data[key] = "[Filtered]"
+            elif isinstance(data[key], dict):
+                scrub_dict(data[key])
+            elif isinstance(data[key], list):
+                for item in data[key]:
+                    if isinstance(item, dict):
+                        scrub_dict(item)
+    
+    # Scrub request data
+    if "request" in event:
+        scrub_dict(event["request"])
+    
+    # Scrub extra context
+    if "extra" in event:
+        scrub_dict(event["extra"])
+    
+    # Scrub user context
+    if "user" in event:
+        scrub_dict(event["user"])
+    
+    # Scrub breadcrumbs
+    if "breadcrumbs" in event:
+        for breadcrumb in event["breadcrumbs"].get("values", []):
+            scrub_dict(breadcrumb)
+    
+    # Scrub local variables from stack traces
+    if "exception" in event:
+        for exception in event["exception"].get("values", []):
+            if "stacktrace" in exception:
+                for frame in exception["stacktrace"].get("frames", []):
+                    if "vars" in frame:
+                        scrub_dict(frame["vars"])
+    
+    return event
+
+
+# Initialize Sentry before creating the Flask app
+if Config.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=Config.SENTRY_DSN,
+        traces_sample_rate=Config.SENTRY_TRACES_SAMPLE_RATE,
+        # Add data like request headers and IP for users
+        send_default_pii=True,
+        # Scrub sensitive data before sending
+        before_send=before_send,
+    )
 
 app = Flask(__name__)
 
