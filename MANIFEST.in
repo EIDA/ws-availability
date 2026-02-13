@@ -1,0 +1,8 @@
+recursive-include views *
+recursive-include templates *
+include README.md
+include LICENSE
+include pyproject.toml
+include docker-compose.yml
+include Dockerfile.api
+include Dockerfile.cacher

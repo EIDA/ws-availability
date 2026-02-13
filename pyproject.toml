@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "ws-availability"
 version = "1.0.4"
@@ -21,3 +25,9 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
 ]
+
+[tool.setuptools]
+packages = ["apps"]
+
+[tool.setuptools.package-data]
+"*" = ["views/*", "templates/*"]
