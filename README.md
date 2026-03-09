@@ -64,14 +64,11 @@ Following implementation requires MongoDB v4.2 or higher.
     docker start fdsnws-availability-cacher
     ```
 
-    To automate cache rebuilding process, add following line to `cron`:
-
     ```bash
-    # Rebuild FDSNWS-Availability restriction information cache daily at 3:00 AM
-    0 3 * * * docker restart fdsnws-availability-cacher
+    docker start fdsnws-availability-cacher
     ```
 
-    It will harvest and overwrite the restricted information stored in Redis instance.
+    With the current configuration, the `fdsnws-availability-cacher` container runs a continuous scheduler (`apps/scheduler.py`). This scheduler automatically handles cache rebuilding every day at 3:00 AM. It will harvest and overwrite the restricted information stored in the Redis instance without requiring host-level cronjobs.
 
 1. Materialized view
     1. Initial build
@@ -88,52 +85,13 @@ Following implementation requires MongoDB v4.2 or higher.
 
     1. Daily appension
 
-        To automate availability information appension, add following line to `cron`:
-
-        ```bash
-        0 6 * * * cd ~/ws-availability/views && mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo main.js > /dev/null 2>&1
-        ```
-
-        It will go throught the documents in `daily_streams` and `c_segments` from last day, extract availability information and append it to the `availability` materialized view. If additional parameters are not provided, script processes data from last day:
-
-        ```bash
-        # Script started on 2023-02-24
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo main.js
-        Processing WFCatalog entries using networks: '^.*$', stations: '^.*$', start: '2023-03-23', end: '2023-03-24' completed!
-        ```
+        To automate availability information appension, the `fdsnws-availability-cacher` container automatically executes the update logic every day at 6:00 AM. 
+        It will go through the documents in `daily_streams` and `c_segments` from the last day, extract availability information, and append it to the `availability` materialized view.
+        Because this runs via the container's scheduler, no host-level interference is required.
 
     1. Back-processing
 
-        Processing can be also executed on a predefined subset of data using `networks`, `stations`, `start` and `end` parameters.
-
-        ```bash
-        # Last week
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=7;" main.js
-        Processing WFCatalog entries using networks: '^.*$', stations: '^.*$', start: '2023-03-17', end: '2023-03-24' completed!
-
-        # January 2023
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "start='2023-01-01'; end='2023-01-31'" main.js
-        Processing WFCatalog entries using networks: '^.*$', stations: '^.*$', start: '2023-01-01', end: '2023-01-31' completed!
-
-        # NL.HGN data between December 2022 and January 2023
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "networks='NL'; stations='HGN'; start='2022-12-01'; end='2023-01-31'" main.js
-        Processing WFCatalog entries using networks: '^NL$', stations: '^HGN$', start: '2022-12-01', end: '2023-01-31' completed!
-
-        # You can also use regular expressiosn for `networks` and `stations` params
-        # Please refer to [docs](https://www.mongodb.com/docs/manual/reference/operator/query/regex/) for details
-
-        # Stations from NL network matching `G*4` template with timespan from 2023-03-01 till 2023-03-02
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "networks='NL'; stations='G.*4'; start='2023-03-01'; end='2023-03-02'" main.js
-        Processing WFCatalog entries using networks: '^NL$', stations: '^G.*4$', start: '2023-03-01', end: '2023-03-02' completed!
-
-        # Stations from `NL` or `NA` networks with station codes `HGN` or `SABA` and timespan from 2023-03-01 till 2023-03-02
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "networks='NL|NA'; stations='HGN|SABA'; start='2023-03-01'; end='2023-03-02'" main.js
-        Processing WFCatalog entries using networks: '^NL|NA$', stations: '^HGN|SABA$', start: '2023-03-01', end: '2023-03-02' completed!
-
-        # All stations from networks `NL` and `NA` with timespan from 2023-03-01 till 2023-03-02
-        $ mongosh -u jarek -p password123 --authenticationDatabase wfrepo --eval "networks='NL|NA'; start='2023-03-01'; end='2023-03-02'" main.js
-        Processing WFCatalog entries using networks: '^NL|NA$', stations: '^.*$', start: '2023-03-01', end: '2023-03-02' completed!
-        ```
+        Processing can be also executed on a predefined subset of data using `networks`, `stations`, `start`, and `end` parameters by executing the updater logic directly within the python environment of the `cacher` container, bypassing the scheduler triggers.
 
     1. Indexes
 

@@ -11,6 +11,7 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile.cacher
+    restart: always
     container_name: fdsnws-availability-cacher
     network_mode: "host"
     environment:
