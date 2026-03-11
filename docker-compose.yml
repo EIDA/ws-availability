@@ -14,14 +14,14 @@ services:
     container_name: fdsnws-availability-cacher
     network_mode: "host"
     environment:
-      RUNMODE: production
+      - RUNMODE=production
       # Host Networking: Redis is on localhost
-      CACHE_HOST: "127.0.0.1"
+      - CACHE_HOST=127.0.0.1
       # Limit OpenBLAS threads (Fix for Cacher Crash)
-      OPENBLAS_NUM_THREADS: 1
-      MKL_NUM_THREADS: 1
-      NUMEXPR_NUM_THREADS: 1
-      OMP_NUM_THREADS: 1
+      - OPENBLAS_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
+      - NUMEXPR_NUM_THREADS=1
+      - OMP_NUM_THREADS=1
     ulimits:
       nproc: 65535
     security_opt:
@@ -40,21 +40,21 @@ services:
     container_name: fdsnws-availability-api
     network_mode: "host"
     environment:
-      RUNMODE: production
+      - RUNMODE=production
       # Host Networking: Redis is on localhost
-      CACHE_HOST: "127.0.0.1"
+      - CACHE_HOST=127.0.0.1
       # Gateway IP (Update if needed)
-      MONGODB_HOST: ${MONGODB_HOST:-127.0.0.1}
-      MONGODB_PORT: ${MONGODB_PORT:-27017}
-      MONGODB_USR: ${MONGODB_USR:-wfrepouser}
-      MONGODB_PWD: ${MONGODB_PWD:-2023wf}
-      MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
-      FDSNWS_STATION_URL: "https://eida.gein.noa.gr/fdsnws/station/1/query"
+      - MONGODB_HOST
+      - MONGODB_PORT
+      - MONGODB_USR
+      - MONGODB_PWD
+      - MONGODB_NAME
+      - FDSNWS_STATION_URL=https://eida.gein.noa.gr/fdsnws/station/1/query
       # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
-      OPENBLAS_NUM_THREADS: 1
-      MKL_NUM_THREADS: 1
-      NUMEXPR_NUM_THREADS: 1
-      OMP_NUM_THREADS: 1
+      - OPENBLAS_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
+      - NUMEXPR_NUM_THREADS=1
+      - OMP_NUM_THREADS=1
     ulimits:
       nproc: 65535
       nofile:

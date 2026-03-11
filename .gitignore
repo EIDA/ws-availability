@@ -140,3 +140,7 @@ tests/demonstrate_fusion.py
 reproduce_data_wfcatalog.py
 reproduce_on_server.py
 debug_api_state.py
+
+# Agent Context
+.agent
+.agents/
