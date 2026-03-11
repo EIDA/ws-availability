@@ -1,6 +1,10 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "ws-availability"
-version = "0.1.0"
+version = "1.0.5"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,6 +17,8 @@ dependencies = [
     "requests==2.31.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.12.0",
+    "sentry-sdk[flask]>=2.0.0",
+    "apscheduler>=3.11.2",
 ]
 
 [dependency-groups]
@@ -20,3 +26,11 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apps*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+"*" = ["views/*", "templates/*"]
