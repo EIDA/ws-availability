@@ -67,10 +67,10 @@ def before_send(event, hint):
 
 
 # Initialize Sentry before creating the Flask app
-if Config.SENTRY_DSN:
+if getattr(Config, "SENTRY_DSN", None):
     sentry_sdk.init(
         dsn=Config.SENTRY_DSN,
-        traces_sample_rate=Config.SENTRY_TRACES_SAMPLE_RATE,
+        traces_sample_rate=getattr(Config, "SENTRY_TRACES_SAMPLE_RATE", 1.0),
         # Add data like request headers and IP for users
         send_default_pii=True,
         # Scrub sensitive data before sending
