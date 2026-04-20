@@ -50,8 +50,8 @@ class RestrictionInventory:
         global REDIS_POOL
 
         self._inv = {}
-        self._known_seedIDs = None
-        self._restricted_seedIDs = None
+        self._known_seedIDs = set()
+        self._restricted_seedIDs = set()
         
         if REDIS_POOL is None:
             REDIS_POOL = redis.ConnectionPool(
@@ -79,8 +79,9 @@ class RestrictionInventory:
             logging.info(f"Loaded inventory from cache...")
             return
         else:
-            logging.exception(
-                "Inventory information is not cached and needs to be rebuilt."
+            logging.warning(
+                "Inventory information is not cached and needs to be rebuilt. "
+                "Run the cacher container to populate the Redis inventory key."
             )
 
     @property
