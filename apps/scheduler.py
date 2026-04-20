@@ -93,6 +93,14 @@ if __name__ == "__main__":
         replace_existing=True,
     )
 
+    # Run jobs once on startup to ensure persistence/freshness after a restart
+    logger.info("Running initial startup tasks...")
+    try:
+        run_inventory_cache()
+        run_materialized_view_update()
+    except Exception as e:
+        logger.error("Initial startup tasks failed: %s", e)
+
     logger.info("Scheduler started successfully. Waiting for jobs to execute...")
     try:
         scheduler.start()
