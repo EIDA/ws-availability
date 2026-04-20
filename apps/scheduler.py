@@ -75,10 +75,10 @@ if __name__ == "__main__":
 
     scheduler = BlockingScheduler()
 
-    # Schedule cache rebuilding every minute for testing Sentry Crons
+    # Schedule cache rebuilding every day at 3:00 AM (Equivalent to 0 3 * * * cron)
     scheduler.add_job(
         run_inventory_cache,
-        CronTrigger(minute="*"),
+        CronTrigger(hour=3, minute=0),
         id="rebuild_inventory_cache_job",
         name="Rebuilds the cache mapping seed IDs to restriction data from FDSNWS Station",
         replace_existing=True,

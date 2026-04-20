@@ -79,4 +79,9 @@ def init_sentry():
             traces_sample_rate=Config.SENTRY_TRACES_SAMPLE_RATE,
             send_default_pii=False,
             before_send=before_send,
+            # Required for Sentry Cron monitoring (check-ins)
+            enable_tracing=True,
         )
+        print(f"[SENTRY] Initialized. DSN={Config.SENTRY_DSN[:40]}...")
+    else:
+        print("[SENTRY] SENTRY_DSN not set — Sentry disabled.")
