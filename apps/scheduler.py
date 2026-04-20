@@ -20,7 +20,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-@sentry_sdk.monitor(monitor_slug="rebuild-inventory-cache")
+@sentry_sdk.monitor(
+    monitor_slug="rebuild-inventory-cache",
+    monitor_config={
+        "schedule": {"type": "crontab", "value": "0 3 * * *"},
+        "checkin_margin": 10,
+        "max_runtime": 60,
+        "timezone": "UTC",
+    },
+)
+
 def run_inventory_cache():
     """Builds the inventory cache stored in Redis.
 
@@ -40,7 +49,15 @@ def run_inventory_cache():
         raise  # Re-raise so the Sentry monitor registers this run as ERROR
 
 
-@sentry_sdk.monitor(monitor_slug="update-availability-view")
+@sentry_sdk.monitor(
+    monitor_slug="update-availability-view",
+    monitor_config={
+        "schedule": {"type": "crontab", "value": "0 6 * * *"},
+        "checkin_margin": 10,
+        "max_runtime": 60,
+        "timezone": "UTC",
+    },
+)
 def run_materialized_view_update():
     """Updates the MongoDB materialized view from daily_streams.
 
