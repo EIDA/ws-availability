@@ -10,5 +10,7 @@ COPY apps ./apps/
 
 # Place executables in the environment at the front of the path
 ENV PATH="/appli/.venv/bin:$PATH"
+# Set PYTHONPATH so 'from apps.sentry import ...' resolves correctly
+ENV PYTHONPATH="/appli"
 
 CMD ["python", "apps/scheduler.py"]
