@@ -138,12 +138,8 @@ Following implementation requires MongoDB v4.2 or higher.
 
     1. Indexes
 
-        It is highly suggested to create at least following index in the `availability` materialized view. First, login to your MongoDB instance using `mongosh` and then execute following commands:
-
-        ```bash
-        use wfrepo;
-        db.availability.createIndex({ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 })
-        ```
+        The FDSNWS-Availability API automatically ensures the creation of an optimized compound index on the `availability` materialized view at startup `({ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 })`. 
+        If you are experiencing slow queries, ensure this index has finished building in the background.
 
 1. Validation
 

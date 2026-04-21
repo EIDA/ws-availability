@@ -10,7 +10,7 @@ import logging
 from fnmatch import fnmatch
 # from flask import current_app (Removed)
 from .redis_client import RedisClient
-from pymongo import MongoClient
+from pymongo import MongoClient, ASCENDING
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -55,6 +55,17 @@ def get_db_client():
             retryReads=False,
             retryWrites=False
         )
+        try:
+            db = DB_CLIENT.get_database(settings.mongodb_name)
+            db.availability.create_index(
+                [("net", ASCENDING), ("sta", ASCENDING), ("loc", ASCENDING), 
+                 ("cha", ASCENDING), ("ts", ASCENDING), ("te", ASCENDING)],
+                background=True
+            )
+            logging.getLogger(__name__).info("Ensured MongoDB compound index is present on 'availability' collection.")
+        except Exception as e:
+            logging.getLogger(__name__).warning("Failed to verify/create MongoDB indexes: %s", e)
+            
     return DB_CLIENT
 
 def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
