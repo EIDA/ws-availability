@@ -48,7 +48,7 @@ def get_db_client():
             settings.mongodb_port,
             username=settings.mongodb_usr,
             password=settings.mongodb_pwd,
-            authSource=settings.mongodb_name,
+            authSource=settings.mongodb_auth_source or settings.mongodb_name,
             maxPoolSize=1,
             connect=False,
             directConnection=True,

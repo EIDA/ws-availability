@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     mongodb_usr: str = Field("", alias="MONGODB_USR")
     mongodb_pwd: str = Field("", alias="MONGODB_PWD")
     mongodb_name: str = Field("wfrepo", alias="MONGODB_NAME")
+    mongodb_auth_source: str | None = Field(None, alias="MONGODB_AUTH_SOURCE")
     
     # FDSNWS-Station cache source
     fdsnws_station_url: str = Field("https://orfeus-eu.org/fdsnws/station/1/query", alias="FDSNWS_STATION_URL")
@@ -63,6 +64,7 @@ def load_legacy_config():
             "MONGODB_USR": getattr(Config, "MONGODB_USR", None),
             "MONGODB_PWD": getattr(Config, "MONGODB_PWD", None),
             "MONGODB_NAME": getattr(Config, "MONGODB_NAME", None),
+            "MONGODB_AUTH_SOURCE": getattr(Config, "MONGODB_AUTH_SOURCE", None),
             "FDSNWS_STATION_URL": getattr(Config, "FDSNWS_STATION_URL", None),
             "CACHE_HOST": getattr(Config, "CACHE_HOST", None),
             "CACHE_PORT": getattr(Config, "CACHE_PORT", None),
