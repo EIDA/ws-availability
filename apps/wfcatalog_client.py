@@ -88,29 +88,19 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
         start, end = crop_datetimes(params)
         qry = {}
         if params["network"] != "*":
-            network = {"$in": params["network"].split(",")}
-            qry["net"] = network
+            qry["net"] = {"$in": params["network"].split(",")}
         if params["station"] != "*":
-            station = {"$in": params["station"].split(",")}
-            qry["sta"] = station
+            qry["sta"] = {"$in": params["station"].split(",")}
         if params["location"] != "*":
-            location = {"$in": params["location"].split(",")}
-            qry["loc"] = location
+            qry["loc"] = {"$in": params["location"].split(",")}
         if params["channel"] != "*":
             qry["cha"] = {"$in": params["channel"].split(",")}
-        if params["quality"] != "*":
-            quality = {"$in": params["quality"].split(",")}
-            qry["qlt"] = quality
-        if start is not None:
-            te = {"$gt": start}
-            qry["te"] = te
         if end is not None:
-            ts = {"$lt": end}
-            qry["ts"] = ts
-
-        # if end:
-        #    te = {"$lte": end}
-        #    qry["te"] = te
+            qry["ts"] = {"$lt": end}
+        if start is not None:
+            qry["te"] = {"$gt": start}
+        if params["quality"] != "*":
+            qry["qlt"] = {"$in": params["quality"].split(",")}
 
         qries.append(qry)
 
