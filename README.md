@@ -24,6 +24,7 @@ Following implementation requires MongoDB v4.2 or higher.
     MONGODB_USR = "" #MongoDB user
     MONGODB_PWD = "" #MongoDB password
     MONGODB_NAME = "wfrepo" #MongoDB database name
+    MONGODB_AUTH_SOURCE = None #MongoDB authentication database. None falls back to database name
     FDSNWS_STATION_URL = "https://orfeus-eu.org/fdsnws/station/1/query" #FDSNWS-Station endpoint to harvest restriction information from
     CACHE_HOST = "localhost" #Cache host
     CACHE_PORT = 6379 #Cache port
