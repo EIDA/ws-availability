@@ -144,4 +144,3 @@ debug_api_state.py
 # AI Agents & Tools
 .agents/
 .gemini/
-uv.lock
