@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     cache_inventory_period: int = Field(0, alias="CACHE_INVENTORY_PERIOD")
     cache_resp_period: int = Field(1200, alias="CACHE_RESP_PERIOD")
 
+    # Resource Limits
+    max_data_rows: int = Field(2_500_000, alias="MAX_DATA_ROWS")
+    max_streams: int = Field(2000, alias="MAX_STREAMS")
+
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
     @model_validator(mode='after')

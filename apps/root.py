@@ -16,7 +16,8 @@ from flask import request
 from flask import request
 
 from apps.data_access_layer import get_output
-from apps.globals import HTTP, MAX_DATA_ROWS, MAX_DAYS, MAX_MERGEGAPS, TIMEOUT, Error
+from apps.globals import HTTP, MAX_DAYS, MAX_MERGEGAPS, TIMEOUT, Error
+from apps.settings import settings
 from apps.parameters import Parameters
 from apps.models import QueryParameters
 from pydantic import ValidationError
@@ -97,7 +98,7 @@ def check_parameters(params: dict) -> tuple[dict, dict]:
         if params["limit"]:
              params["limit"] = int(params["limit"])
         elif params["limit"] is None:
-             params["limit"] = MAX_DATA_ROWS
+             params["limit"] = settings.max_data_rows
 
         return (params, {"msg": HTTP._200_, "details": Error.VALID_PARAM, "code": 200})
 

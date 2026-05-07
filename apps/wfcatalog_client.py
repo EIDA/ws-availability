@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from .restriction import RestrictionInventory
+from .globals import Error
 
 RESTRICTED_INVENTORY = None
 
@@ -113,8 +114,9 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
         #    qry["te"] = te
 
         qries.append(qry)
-
-        cursor = db.availability.find(qry, projection=PROJ)
+        
+        # LAYER 4: Cap the MongoDB cursor
+        cursor = db.availability.find(qry, projection=PROJ).limit(settings.max_data_rows + 1)
 
         # Eager query execution instead of a cursor
         result += _apply_restricted_bit(cursor, params.get("includerestricted", False))
@@ -251,6 +253,19 @@ def _expand_wildcards(params: dict) -> dict:
         _cha += [e for e in _loc if fnmatch(e.split(".")[3], cha)]
 
     # Replace original query parameters with ones filtered out from the cached inventory.
+    stream_count = len(_cha)
+    
+    # LAYER 3: Breadth Check
+    # Rule A: Hard limit on number of streams
+    if stream_count > settings.max_streams:
+        raise ValueError(Error.TOO_MANY_STREAMS)
+        
+    # Rule B: Broad query (many streams + no time range)
+    # Using 500 as the "broadness" threshold as discussed
+    no_time_range = params.get("start") is None and params.get("end") is None
+    if stream_count > 500 and no_time_range:
+        raise ValueError(Error.BROAD_QUERY)
+
     params["network"] = ",".join(set([e.split(".")[0] for e in _cha]))
     params["station"] = (
         "*"
