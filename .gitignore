@@ -145,3 +145,14 @@ debug_api_state.py
 .agent
 .agents/
 .gemini/
+.claude/
+.cursor/
+.aider*
+CLAUDE.md
+AGENTS.md
+plans/
+*.agent.md
+# Internal briefing / handover docs (not project documentation — README.md only)
+*-briefing.md
+*briefing*.md
+ws-availability-issue60-briefing.md
