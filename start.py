@@ -86,8 +86,10 @@ def before_send(event, hint):
 # Initialize Sentry before creating the Flask app.
 # Defensive getattr() so a legacy config.py without these fields doesn't crash startup.
 if getattr(Config, "SENTRY_DSN", None):
+    sentry_environment = getattr(Config, "SENTRY_ENVIRONMENT", None) or "local_development"
     sentry_sdk.init(
         dsn=Config.SENTRY_DSN,
+        environment=sentry_environment,
         traces_sample_rate=getattr(Config, "SENTRY_TRACES_SAMPLE_RATE", 1.0),
         # Disable default PII collection (IP, headers, cookies) for GDPR compliance
         send_default_pii=False,

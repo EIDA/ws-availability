@@ -74,14 +74,16 @@ def before_send(event, hint):
 def init_sentry():
     """Initialize Sentry SDK if SENTRY_DSN is configured."""
     if Config.SENTRY_DSN:
+        environment = getattr(Config, "SENTRY_ENVIRONMENT", None) or "local_development"
         sentry_sdk.init(
             dsn=Config.SENTRY_DSN,
+            environment=environment,
             traces_sample_rate=Config.SENTRY_TRACES_SAMPLE_RATE,
             send_default_pii=False,
             before_send=before_send,
             # Required for Sentry Cron monitoring (check-ins)
             enable_tracing=True,
         )
-        print(f"[SENTRY] Initialized. DSN={Config.SENTRY_DSN[:40]}...")
+        print(f"[SENTRY] Initialized. env={environment} DSN={Config.SENTRY_DSN[:40]}...")
     else:
         print("[SENTRY] SENTRY_DSN not set — Sentry disabled.")

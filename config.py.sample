@@ -65,6 +65,11 @@ class Config:
         SENTRY_TRACES_SAMPLE_RATE = float(
             os.environ.get("SENTRY_TRACES_SAMPLE_RATE") or "1.0"
         )
+        # Per-node Sentry environment tag.
+        # Examples: noa_production, noa_staging, local_development.
+        # If unset, the app defaults to "local_development" so events from an
+        # unconfigured dev machine don't pollute the production stream.
+        SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT") or "local_development"
     except NameError:
         print("Missing environment variables.")
         raise
