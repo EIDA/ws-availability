@@ -69,8 +69,10 @@ class TestDataAccess(unittest.TestCase):
         
         # Mock wildcard expansion to return params as-is for simplicity
         with patch('apps.wfcatalog_client._expand_wildcards', side_effect=lambda x: x):
-            # Mock return values
-            self.mock_collection.find.return_value = ["fake_cursor"]
+            # mongo_request calls .find(...).limit(...) — chain the mock through .limit
+            cursor = MagicMock()
+            cursor.limit.return_value = iter(["fake_cursor"])
+            self.mock_collection.find.return_value = cursor
             self.mock_apply_restricted.return_value = ["fake_result"]
             
             # Act
