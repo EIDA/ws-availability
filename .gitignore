@@ -142,5 +142,6 @@ reproduce_on_server.py
 debug_api_state.py
 
 # AI Agents & Tools
+.agent
 .agents/
 .gemini/

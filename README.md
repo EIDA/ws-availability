@@ -309,6 +309,23 @@ locust -f tests/performance/locustfile.py --host=http://localhost:9001
 
 For more details, see [Performance Analysis Plan](tests/performance/README.md).
 
+## Troubleshooting
+
+If your webservice is not working (e.g., after upgrading to v1.0.5), it is likely due to a configuration problem. Follow these steps to diagnose the issue:
+
+1. **Check Docker Logs**
+   Inspect the API container logs for any runtime errors or connection failures:
+
+   ```bash
+   docker logs fdsnws-availability-api
+   ```
+
+2. **Verify Configuration**
+   Ensure that your `config.py` includes all required fields. Compare your `config.py` with the provided `config.py.sample` to ensure no newly introduced configuration variables are missing.
+
+3. **Check Database Access**
+   Verify that your MongoDB and Redis connection parameters in `config.py` are correct and that those services are fully operational.
+
 ## Running in development environment
 
 1. Go to the root directory.
