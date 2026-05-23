@@ -217,82 +217,203 @@ If all five succeed, your fresh install is operational. Continue to §7 (enablin
 
 ---
 
-## 5. Path B — Upgrade from v1.0.5
+## 5. Path B — Upgrade an existing node from v1.0.5 (cookbook)
 
-### 5.1 Snapshot current state (safety net)
+This is the path for an EIDA node operator already running `v1.0.5`. Follow the steps in order. Each step has a verification command — if its output doesn't match, **stop and investigate before continuing**.
+
+Total time: **~5–10 minutes** including build. API downtime: **~15 seconds × 2** (API and cacher swapped one at a time).
+
+### 5.1 Variables for your node
+
+Set these once in the shell you'll run the rest from. Replace `<your_node>` with a short tag — `noa`, `resif`, `orfeus`, `ingv`, etc. This tag identifies your deployment in Sentry.
 
 ```bash
-# Note the current image tags so you can roll back
-docker compose images > /tmp/pre-upgrade-images.txt
-
-# Note current commit
-git -C /path/to/ws-availability rev-parse HEAD > /tmp/pre-upgrade-commit.txt
-
-# Back up your config.py somewhere safe
-cp /path/to/ws-availability/config.py ~/config.py.pre-1.1.0-beta.bak
+export WSAVAIL_DIR=/path/to/your/ws-availability/checkout    # <-- adjust
+export NODE_TAG=<your_node>                                  # <-- adjust, e.g. noa
 ```
 
-### 5.2 Pull the beta tag
+### 5.2 Back up before you change anything
 
 ```bash
-cd /path/to/ws-availability
+cd "$WSAVAIL_DIR"
+cp config.py "$HOME/config.py.pre-1.1.0-beta.bak"
+crontab -l > "$HOME/crontab.pre-1.1.0-beta.bak" 2>/dev/null
+git rev-parse HEAD > "$HOME/ws-availability.pre-1.1.0-beta.commit"
+echo "OK — backups written to $HOME/config.py.pre-1.1.0-beta.bak, $HOME/crontab.pre-1.1.0-beta.bak, $HOME/ws-availability.pre-1.1.0-beta.commit"
+```
+
+**Verify:** all three backup files exist.
+
+```bash
+ls -la "$HOME"/config.py.pre-1.1.0-beta.bak "$HOME"/crontab.pre-1.1.0-beta.bak "$HOME"/ws-availability.pre-1.1.0-beta.commit
+```
+
+### 5.3 Fetch and check out v1.1.0-beta.1
+
+```bash
+cd "$WSAVAIL_DIR"
 git fetch --tags origin
 git checkout v1.1.0-beta.1
 ```
 
-### 5.3 Update `config.py`
-
-Compare your existing `config.py` against the new `config.py.sample`:
+**Verify:**
 
 ```bash
-diff -u config.py config.py.sample | less
+git log --oneline -1
+# expected: a commit on v1.1.0-beta.1 (e.g. "release: prepare v1.1.0-beta.1" or later)
+grep '^VERSION' apps/globals.py
+# expected: VERSION = "1.1.0-beta.1"
 ```
-
-You should see two new lines in the sample (around the Sentry section):
-
-```python
-SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT") or "local_development"
-```
-
-You do **not** need to add this to your `config.py` — the app reads it via `getattr(..., None)` and falls back to env-var lookup. But adding it makes the variable visible alongside the other Sentry settings, which is recommended.
 
 ### 5.4 Set the per-node Sentry environment
 
-If you want events tagged correctly in Sentry (instead of `local_development`):
+Write the env var into a `.env` file next to `docker-compose.yml` so it survives reboots:
 
 ```bash
-# Option 1 — shell env var
-export SENTRY_ENVIRONMENT=your_node_production
-
-# Option 2 — .env file in the repo root
-echo "SENTRY_ENVIRONMENT=your_node_production" >> .env
+cd "$WSAVAIL_DIR"
+echo "SENTRY_ENVIRONMENT=${NODE_TAG}_production" > .env
+cat .env
+# expected: SENTRY_ENVIRONMENT=<your_node>_production
 ```
 
-### 5.5 Create the compose override for pre-built images (optional)
+`.env` is read automatically by Docker Compose v2 and is gitignored.
 
-Same as §4.3. If you previously built images locally (no override file), you can keep doing that — Compose will rebuild on the new Python 3.13 base.
-
-### 5.6 Restart the stack
+### 5.5 Build new images
 
 ```bash
-# If using pre-built images
-docker compose pull
-docker compose up -d
-
-# If building locally
-docker compose build --no-cache       # --no-cache forces the python:3.13 base pull
-docker compose up -d
+cd "$WSAVAIL_DIR"
+docker compose build api cacher
 ```
 
-Expected behavior: about **10–30 seconds** of API downtime while the api container restarts. The cacher will not re-harvest the inventory on restart (it reads from the persisted Redis cache), so the inventory stays available throughout the upgrade.
+**Verify:** the build finishes with `Successfully tagged ws-availability*_api:latest` and `..._cacher:latest`. No errors or warnings about ObsPy or pymongo. ~3–5 min on a 4-core box.
 
-### 5.7 Smoke test
+### 5.6 Phase 1 — replace the API container only
 
-Run the same five checks from §4.9. They should all return the same outputs they did on v1.0.5 (modulo the JSON `"created"` timestamp).
+```bash
+cd "$WSAVAIL_DIR"
+docker compose up -d --no-deps --build api
+sleep 5
+```
 
-### 5.8 If something is wrong — roll back
+**Verify:**
 
-See §11 (Rollback) for the exact commands. Rolling back from the beta to v1.0.5 takes about the same time as the upgrade.
+```bash
+docker ps --filter name=fdsnws-availability-api --format "{{.Status}} {{.Image}}"
+# expected: Up <few seconds>  ws-availability*_api
+
+curl -s http://127.0.0.1:9001/version
+# expected: 1.1.0-beta.1
+
+curl -s -o /dev/null -w "%{http_code}\n" "http://127.0.0.1:9001/extent?net=<known_net>&sta=<known_sta>&start=2024-01-01&end=2024-01-02"
+# expected: 200
+
+docker exec fdsnws-availability-api env | grep SENTRY_ENVIRONMENT
+# expected: SENTRY_ENVIRONMENT=<your_node>_production
+```
+
+If `/version` reports the OLD version or any check fails, **roll back the API now** (§11.2) before continuing.
+
+### 5.7 Phase 2 — replace the cacher container
+
+```bash
+cd "$WSAVAIL_DIR"
+docker compose up -d --no-deps --build cacher
+```
+
+The cacher runs two startup tasks immediately: an inventory refresh from FDSNWS-Station (~15–30 s) and a materialized-view update over the last 4 days (~30 s – several minutes depending on your data volume).
+
+**Verify** by tailing the log until you see "Scheduler started":
+
+```bash
+docker logs -f fdsnws-availability-cacher 2>&1 | grep --line-buffered -E "Scheduler started|ERROR|Traceback"
+# wait for: "Scheduler started"  then Ctrl-C
+```
+
+Expected log lines, in order:
+
+```
+Initializing APScheduler...
+Running initial startup tasks...
+Starting scheduled task: Rebuild Inventory Cache
+Completed scheduled task: Rebuild Inventory Cache
+Starting scheduled task: Update Availability Materialized View
+Processing WFCatalog entries ... start: '<today-4d>', end: '<today>' started!
+Processing WFCatalog entries ... completed!
+Completed scheduled task: Update Availability Materialized View
+Scheduler started successfully. Waiting for jobs to execute...
+Added job "Rebuilds the cache mapping seed IDs to restriction data from FDSNWS Station"
+Added job "Builds the daily_streams aggregation into the availability materialized view"
+Scheduler started
+```
+
+If you see `ERROR` or `Traceback` instead, **roll back the cacher** (§11.2) and report at §12.
+
+### 5.8 If your node had a host-cron entry for `views/main.js`
+
+Some node deployments (NOA, possibly others) added a host-level cron at `01:00 UTC` like:
+
+```
+0 1 * * * cd /path/to/old-ws-availability/views && mongosh -u ... --eval "const daysBack=4" main.js
+```
+
+It's now redundant — the in-app scheduler does the same work at 06:00 UTC with `days_back=4`. Remove it:
+
+```bash
+crontab -l | grep -v "ws-availability.*views.*main.js" | crontab -
+```
+
+**Verify:**
+
+```bash
+crontab -l | grep -c "ws-availability"
+# expected: 0
+```
+
+If you're unsure whether your node has such a cron, this command shows you safely:
+
+```bash
+crontab -l | grep -iE "ws-availability|fdsnws-availability"
+```
+
+### 5.9 Final smoke test — same 5 checks as a fresh install
+
+```bash
+curl -sf http://127.0.0.1:9001/ | grep -q FDSNWS-Availability && echo "Landing OK"
+curl -s http://127.0.0.1:9001/version
+curl -s "http://127.0.0.1:9001/extent?net=<known_net>&sta=<known_sta>&start=2024-01-01&end=2024-01-02" | head -5
+curl -s "http://127.0.0.1:9001/query?net=<known_net>&sta=<known_sta>&start=2024-01-01&end=2024-01-02&format=json" | head -c 200
+curl -s -o /dev/null -w "%{http_code}\n" "http://127.0.0.1:9001/extent?network=<known_net>"
+# last command expected: 413 (broad-query rejection from Issue #60)
+```
+
+Replace `<known_net>` and `<known_sta>` with a station you know has data.
+
+### 5.10 Confirm Sentry tag is flowing through
+
+Hit your service a couple more times and then check Sentry: filter by `environment:<your_node>_production`. You should see transactions arriving with that tag and no events with `local_development`.
+
+### 5.11 You're done
+
+Watch logs and Sentry for the next 24 hours. The first real scheduled run happens at **06:00 UTC tomorrow** (`update-availability-view` job with `days_back=4`). If it fires on time and the Sentry monitor stays green, you've validated the new in-app scheduler in your environment.
+
+---
+
+## Rollback (Path B — to v1.0.5)
+
+If anything goes wrong in §5.6–5.9, this command set restores the previous state. Run from `$WSAVAIL_DIR`:
+
+```bash
+cd "$WSAVAIL_DIR"
+git checkout v1.0.5
+rm -f .env
+docker compose build api cacher
+docker compose up -d --no-deps api cacher
+# Restore the old host cron only if you ran §5.8:
+crontab "$HOME/crontab.pre-1.1.0-beta.bak"
+# Verify:
+curl -s http://127.0.0.1:9001/version
+# expected: 1.0.4
+```
 
 ---
 
