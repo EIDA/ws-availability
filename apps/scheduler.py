@@ -74,8 +74,14 @@ def run_materialized_view_update():
 
         updater = AvailabilityUpdater(db)
 
-        # Run the updates using the default (last 1 day) behavior
-        updater.run_updates()
+        # Re-process the last 4 days so a missed run does not leave a permanent
+        # gap in the availability view. The aggregation is idempotent
+        # ($merge whenMatched: "replace") so re-running the same days only
+        # rewrites the same documents — it does not duplicate or corrupt data.
+        # This is the safety margin previously provided by the legacy host cron
+        # `mongosh ... --eval "const daysBack=4" main.js` that this scheduler
+        # supersedes.
+        updater.run_updates(days_back=4)
         logger.info("Completed scheduled task: Update Availability Materialized View")
     except Exception as e:
         sentry_sdk.capture_exception(e)
