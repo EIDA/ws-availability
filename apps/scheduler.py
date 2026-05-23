@@ -92,6 +92,13 @@ if __name__ == "__main__":
 
     scheduler = BlockingScheduler()
 
+    # APScheduler's default misfire_grace_time is 1 second — if the scheduler
+    # fires the job more than 1 s late (e.g. another job is still running, GIL
+    # contention, brief host pause), the run is skipped and Sentry alerts a
+    # MISSED check-in. A 5-minute grace window absorbs realistic jitter while
+    # coalesce=True ensures a backlog of missed fires collapses into one run.
+    JOB_DEFAULTS = {"misfire_grace_time": 300, "coalesce": True}
+
     # Schedule cache rebuilding every day at 3:00 AM (Equivalent to 0 3 * * * cron)
     scheduler.add_job(
         run_inventory_cache,
@@ -99,6 +106,7 @@ if __name__ == "__main__":
         id="rebuild_inventory_cache_job",
         name="Rebuilds the cache mapping seed IDs to restriction data from FDSNWS Station",
         replace_existing=True,
+        **JOB_DEFAULTS,
     )
 
     # Schedule DB view update every day at 6:00 AM (Equivalent to 0 6 * * * cron)
@@ -108,6 +116,7 @@ if __name__ == "__main__":
         id="update_availability_view_job",
         name="Builds the daily_streams aggregation into the availability materialized view",
         replace_existing=True,
+        **JOB_DEFAULTS,
     )
 
     # Run jobs once on startup to ensure persistence/freshness after a restart
