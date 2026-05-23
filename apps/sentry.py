@@ -1,3 +1,4 @@
+import os
 import sentry_sdk
 
 from config import Config
@@ -74,7 +75,12 @@ def before_send(event, hint):
 def init_sentry():
     """Initialize Sentry SDK if SENTRY_DSN is configured."""
     if Config.SENTRY_DSN:
-        environment = getattr(Config, "SENTRY_ENVIRONMENT", None) or "local_development"
+        # Resolution order: config.py attribute -> env var -> default.
+        environment = (
+            getattr(Config, "SENTRY_ENVIRONMENT", None)
+            or os.environ.get("SENTRY_ENVIRONMENT")
+            or "local_development"
+        )
         sentry_sdk.init(
             dsn=Config.SENTRY_DSN,
             environment=environment,

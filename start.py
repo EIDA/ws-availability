@@ -85,8 +85,14 @@ def before_send(event, hint):
 
 # Initialize Sentry before creating the Flask app.
 # Defensive getattr() so a legacy config.py without these fields doesn't crash startup.
+# SENTRY_ENVIRONMENT resolution order: Config attribute (config.py) -> env var (docker-compose) -> default.
+# This lets operators tag a deployment without having to edit config.py on every node.
 if getattr(Config, "SENTRY_DSN", None):
-    sentry_environment = getattr(Config, "SENTRY_ENVIRONMENT", None) or "local_development"
+    sentry_environment = (
+        getattr(Config, "SENTRY_ENVIRONMENT", None)
+        or os.environ.get("SENTRY_ENVIRONMENT")
+        or "local_development"
+    )
     sentry_sdk.init(
         dsn=Config.SENTRY_DSN,
         environment=sentry_environment,
