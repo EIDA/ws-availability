@@ -264,6 +264,28 @@ maxPoolSize=1  # Connections per worker
 | 4       | 1           | 4                 | High performance |
 | 2       | 5           | 10                | Async workers |
 
+### Parallel MongoDB Fan-out (opt-in)
+
+For long-time-range requests, `mongo_request` can split the `[starttime, endtime)` range into day-aligned windows and run them as concurrent MongoDB cursors on a thread pool. The `availability` collection stores one document per (channel × quality × srate × day), so each shard is an index range scan with no overlap. Behind the feature flag, off by default.
+
+| Env var | Default | Meaning |
+|---------|---------|---------|
+| `FANOUT_ENABLED` | `false` | Master switch. When `false`, the request path is byte-identical to the legacy single-cursor flow. |
+| `FANOUT_MAX_WORKERS` | `4` | Max parallel shards per request. Also bumps the MongoDB `maxPoolSize` for the worker when fan-out is on, so the pool can serve every shard. |
+| `FANOUT_MIN_DAYS` | `7` | Skip fan-out when the request range is shorter than this — the thread-pool overhead would dominate. |
+| `FANOUT_WINDOW_DAYS` | `30` | Target size of each shard. A 90-day request becomes ≈3 shards at the default. |
+
+#### When to enable
+
+- Long-range queries (months/years) for a small NSLC selection are the sweet spot.
+- Verify `db.availability.serverStatus().connections` after enabling — peak should be `gunicorn_workers × FANOUT_MAX_WORKERS`.
+- Compare Sentry traces with the flag on vs off; each shard is reported as a `db.mongo.shard` child span with `ts_start` / `ts_end` tags.
+
+#### When to leave off
+
+- Short-range queries (< `FANOUT_MIN_DAYS`) — they take the legacy single-cursor path even with the flag on, so leaving the flag off costs nothing.
+- If your MongoDB has a tight `maxConnections` budget that `gunicorn_workers × FANOUT_MAX_WORKERS` would exceed.
+
 ### Thread Limiting (Important!)
 
 The configuration includes thread limits to prevent `pthread_create failed` errors on restricted servers:

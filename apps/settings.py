@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     max_data_rows: int = Field(2_500_000, alias="MAX_DATA_ROWS")
     max_streams: int = Field(2000, alias="MAX_STREAMS")
 
+    # Parallel time-window fan-out for MongoDB queries.
+    # When enabled, mongo_request splits ranges >= fanout_min_days into shards
+    # of fanout_window_days and runs them concurrently on a thread pool.
+    fanout_enabled: bool = Field(False, alias="FANOUT_ENABLED")
+    fanout_max_workers: int = Field(4, alias="FANOUT_MAX_WORKERS")
+    fanout_min_days: int = Field(7, alias="FANOUT_MIN_DAYS")
+    fanout_window_days: int = Field(30, alias="FANOUT_WINDOW_DAYS")
+
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
     @model_validator(mode='after')
