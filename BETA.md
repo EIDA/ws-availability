@@ -26,12 +26,34 @@ Beta release. API-compatible with v1.0.5.
    $EDITOR config.py
    ```
 
-   Set these in `config.py`:
-   - `MONGODB_*`, `FDSNWS_STATION_URL`, `SENTRY_DSN` — as before.
-   - **`SENTRY_ENVIRONMENT`** — new in this version. Set it to a unique tag for your node, e.g. `"noa_production"`, `"resif_production"`. **Every node must have its own value.** If you are upgrading and your `config.py` has no such line, add one next to `SENTRY_DSN`:
+   `MONGODB_*`, `CACHE_*`, and `FDSNWS_STATION_URL` are unchanged since v1.0.3 — keep your existing values.
+
+   **What you must add depends on the version you're upgrading from.** Add the missing lines inside the `try:` block of `config.py` (next to the other `os.environ.get(...)` lines):
+
+   - **Upgrading from v1.0.5 or v1.0.4** — add one line:
+
      ```python
      SENTRY_ENVIRONMENT = "yournode_production"
      ```
+
+   - **Upgrading from v1.0.3 (or earlier)** — your `config.py` predates Sentry entirely. Add all three:
+
+     ```python
+     SENTRY_DSN = os.environ.get("SENTRY_DSN") or ""          # paste your Sentry DSN, or leave "" to disable Sentry
+     SENTRY_TRACES_SAMPLE_RATE = float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE") or "1.0")
+     SENTRY_ENVIRONMENT = "yournode_production"
+     ```
+
+   - **Fresh install (copied from `config.py.sample`)** — all three are already present; just replace the `{{node}}_production` placeholder.
+
+   **`SENTRY_ENVIRONMENT` is mandatory and must be unique per node** (e.g. `noa_production`, `resif_production`, `ingv_production`). It is what separates your events from other nodes' in Sentry. Do not leave it as `{{node}}_production` and do not reuse another node's value.
+
+   > To see exactly what your `config.py` is missing, diff it against the shipped sample:
+   > ```bash
+   > diff <(grep -oE '^[[:space:]]*[A-Z_]+ =' config.py | tr -d ' =' | sort -u) \
+   >      <(grep -oE '^[[:space:]]*[A-Z_]+ =' config.py.sample | tr -d ' =' | sort -u)
+   > ```
+   > Lines prefixed `>` are keys present in the sample but missing from your `config.py`.
 
 3. Build and start.
 
