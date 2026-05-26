@@ -19,27 +19,28 @@ Beta release. API-compatible with v1.0.5.
    git checkout v1.1.0-beta.1
    ```
 
-2. `config.py` — keep your existing one if you already have it; otherwise copy the sample and edit:
+2. `config.py` — keep your existing one if you already have it; otherwise copy the sample:
 
    ```bash
    [ -f config.py ] || cp config.py.sample config.py
-   $EDITOR config.py    # set MONGODB_*, FDSNWS_STATION_URL, SENTRY_DSN
+   $EDITOR config.py
    ```
 
-3. Set your node's Sentry tag (replace `noa` with your node short name):
+   Set these in `config.py`:
+   - `MONGODB_*`, `FDSNWS_STATION_URL`, `SENTRY_DSN` — as before.
+   - **`SENTRY_ENVIRONMENT`** — new in this version. Set it to a unique tag for your node, e.g. `"noa_production"`, `"resif_production"`. **Every node must have its own value.** If you are upgrading and your `config.py` has no such line, add one next to `SENTRY_DSN`:
+     ```python
+     SENTRY_ENVIRONMENT = "yournode_production"
+     ```
 
-   ```bash
-   echo "SENTRY_ENVIRONMENT=noa_production" > .env
-   ```
-
-4. Build and start.
+3. Build and start.
 
    ```bash
    docker-compose build
    docker-compose up -d
    ```
 
-5. If your node had a host cron triggering `views/main.js`, remove it — it's now redundant.
+4. If your node had a host cron triggering `views/main.js`, remove it — it's now redundant.
 
    ```bash
    crontab -l | grep -v "ws-availability.*views.*main.js" | crontab -
@@ -60,15 +61,14 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 curl -s -o /dev/null -w "%{http_code}\n" "http://127.0.0.1:9001/extent?network=<net>"
 # expected: 413
 
-docker exec fdsnws-availability-api env | grep SENTRY_ENVIRONMENT
-# expected: SENTRY_ENVIRONMENT=noa_production
+docker exec fdsnws-availability-api python -c "from config import Config; print(Config.SENTRY_ENVIRONMENT)"
+# expected: your node tag, e.g. noa_production  (NOT {{node}}_production — that means you forgot step 2)
 ```
 
 ## Rollback
 
 ```bash
 git checkout v1.0.5
-rm -f .env
 docker-compose build
 docker-compose up -d
 ```

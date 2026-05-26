@@ -18,9 +18,6 @@ services:
       RUNMODE: production
       # Host Networking: Redis is on localhost
       CACHE_HOST: "127.0.0.1"
-      # Per-node Sentry environment tag (e.g. noa_production, noa_staging).
-      # Set SENTRY_ENVIRONMENT in the host shell before `docker compose up`.
-      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-local_development}
       # Limit OpenBLAS threads (Fix for Cacher Crash)
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
@@ -53,9 +50,6 @@ services:
       MONGODB_USR: ${MONGODB_USR:-wfrepouser}
       MONGODB_PWD: ${MONGODB_PWD:-2023wf}
       MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
-      # Per-node Sentry environment tag (e.g. noa_production, noa_staging).
-      # Set SENTRY_ENVIRONMENT in the host shell before `docker compose up`.
-      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-local_development}
       FDSNWS_STATION_URL: "https://eida.gein.noa.gr/fdsnws/station/1/query"
       # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
       OPENBLAS_NUM_THREADS: 1
