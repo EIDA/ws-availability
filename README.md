@@ -1,31 +1,31 @@
 # FDSNWS-Availability
 
-A Flask implementation of the [FDSN Availability web service 1.0](http://www.fdsn.org/webservices/fdsnws-availability-1.0.pdf). It reports the time spans for which time-series data exist, sourced from a WFCatalog MongoDB.
+A Flask implementation of the [FDSN Availability web service 1.0](http://www.fdsn.org/webservices/fdsnws-availability-1.0.pdf). It reports the time spans for which time-series data exist, served from a WFCatalog MongoDB.
 
-> **Beta testers:** if you are installing or upgrading to the **v1.1.0-beta.1** release, follow [`BETA.md`](BETA.md) — it has the exact step-by-step commands. This README is the general reference.
+It runs as three Docker containers: the **API** (Flask + gunicorn, port 9001), a **Redis** cache, and a **cacher** that keeps the restriction inventory and the `availability` view up to date on a built-in daily schedule.
 
-## Architecture
+> **Installing or upgrading to v1.1.0-beta.1?** Follow [`BETA.md`](BETA.md) for the exact commands.
 
-| Component | Role |
-|-----------|------|
-| **API** (`fdsnws-availability-api`) | Flask + gunicorn service answering `/query` and `/extent`. |
-| **Cache** (`fdsnws-availability-cache`) | Redis — stores the restriction inventory and cached responses. |
-| **Cacher** (`fdsnws-availability-cacher`) | Python container running an in-app scheduler (`apps/scheduler.py`) that harvests restriction info and refreshes the materialized view. |
-| **WFCatalog MongoDB** | External — holds `daily_streams` / `c_segments`, and the `availability` materialized view the API reads. Requires MongoDB ≥ 4.2. |
+## Run it
 
-![FDSNWS-Availability deployment diagram](deployment.png)
+```bash
+git clone https://github.com/EIDA/ws-availability.git
+cd ws-availability
+cp config.py.sample config.py        # edit MongoDB creds, FDSNWS_STATION_URL, SENTRY_ENVIRONMENT
+docker-compose up -d --build
+```
+
+Check it:
+
+```bash
+curl "127.0.0.1:9001/extent?net=NA&start=2023-02-01"
+```
+
+That's the whole install for a node that already has a populated WFCatalog. Requires MongoDB ≥ 4.2.
 
 ## Endpoints
 
-API listens on port `9001` by default.
-
-| Path | Description |
-|------|-------------|
-| `/query` | Time spans per channel (one row per contiguous segment). GET and POST. |
-| `/extent` | One row per channel: earliest/latest + timespan count. GET and POST. |
-| `/version` | Service version string. |
-| `/application.wadl` | WADL service description. |
-| `/` | HTML landing page listing the URLs above. |
+API on port `9001`. `/query` (time spans per channel) and `/extent` (one row per channel) accept GET and POST. Also `/version`, `/application.wadl`, and `/` (landing page).
 
 ```bash
 curl "127.0.0.1:9001/extent?net=NA&start=2023-02-01"
@@ -35,99 +35,54 @@ NA       SABA             BHZ     D       40.0       2023-02-01T00:00:00.000000Z
 
 ## Configuration
 
-Copy `config.py.sample` to `config.py` and edit the `RUNMODE == "production"` block. `config.py` is gitignored — your copy is never overwritten by upgrades.
+Everything lives in `config.py` (copied from `config.py.sample`, gitignored so upgrades never touch it). Set these in the `RUNMODE == "production"` block:
 
 | Key | Description |
 |-----|-------------|
-| `MONGODB_HOST` / `MONGODB_PORT` | WFCatalog MongoDB location. |
-| `MONGODB_USR` / `MONGODB_PWD` | MongoDB credentials (leave empty if no auth). |
-| `MONGODB_NAME` | Database name; also used as `authSource`. Default `wfrepo`. |
-| `FDSNWS_STATION_URL` | FDSNWS-Station endpoint the cacher harvests restriction info from. |
+| `MONGODB_HOST` / `PORT` / `USR` / `PWD` / `NAME` | WFCatalog MongoDB connection. |
+| `FDSNWS_STATION_URL` | FDSNWS-Station endpoint to harvest restriction info from. |
 | `CACHE_HOST` / `CACHE_PORT` | Redis location. |
-| `CACHE_INVENTORY_KEY` | Redis key for the restriction inventory. Default `inventory`. |
-| `CACHE_INVENTORY_PERIOD` | Inventory cache TTL; `0` = never expire. |
-| `CACHE_RESP_PERIOD` | Response cache TTL in seconds. Default `1200`. |
-| `SENTRY_DSN` | Sentry DSN. Empty disables Sentry. |
-| `SENTRY_TRACES_SAMPLE_RATE` | Trace sample rate `0.0`–`1.0`. |
-| `SENTRY_ENVIRONMENT` | **Per-node tag** (e.g. `noa_production`). Must be unique per deployment so Sentry can tell nodes apart. |
+| `CACHE_RESP_PERIOD` | Response cache TTL in seconds (default 1200). |
+| `SENTRY_DSN` | Sentry DSN; empty disables Sentry. |
+| `SENTRY_ENVIRONMENT` | **Unique per-node tag** (e.g. `noa_production`) so Sentry can tell deployments apart. |
 
-The following are optional, read from environment variables with safe defaults (see `apps/settings.py`):
+## What runs daily
 
-| Env var | Default | Description |
-|---------|---------|-------------|
-| `MAX_DATA_ROWS` | `2500000` | Row cap; a request exceeding it returns HTTP 413. |
-| `MAX_STREAMS` | `2000` | Stream-count cap for a single request. |
-| `FANOUT_ENABLED` | `false` | Enable parallel time-window MongoDB queries (see [Performance](#performance)). |
-| `FANOUT_MAX_WORKERS` | `4` | Max parallel shards per request when fan-out is on. |
-| `FANOUT_MIN_DAYS` | `7` | Below this range size, fan-out is skipped. |
-| `FANOUT_WINDOW_DAYS` | `30` | Target shard size in days. |
+The cacher runs a built-in scheduler — no host cron needed:
 
-## Deployment
+- **03:00 UTC** — refresh the restriction inventory from FDSNWS-Station into Redis.
+- **06:00 UTC** — update the `availability` view from the last 4 days of WFCatalog data.
+- **On startup** — both run once, so a restart leaves data fresh.
 
-1. Clone and configure:
+## First-time database setup
 
-   ```bash
-   git clone https://github.com/EIDA/ws-availability.git
-   cd ws-availability
-   cp config.py.sample config.py
-   $EDITOR config.py
-   ```
+*Skip this if you already run ws-availability — the view and index already exist.*
 
-2. Build and start:
+For a brand-new WFCatalog database, build the materialized view once and add the index:
 
-   ```bash
-   docker-compose up -d --build
-   ```
+```bash
+# Build the availability view (adjust daysBack to how far back you want)
+mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=365" views/main.js
 
-   Three containers come up: `fdsnws-availability-api`, `fdsnws-availability-cacher`, `fdsnws-availability-cache`.
+# Index — without it, every query is a full collection scan
+mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval '
+  db.availability.createIndex({ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 })'
+```
 
-3. Reverse proxy (Apache example):
+## Serving publicly
 
-   ```apache
-   <Location /fdsnws/availability/1>
-     Header add Access-Control-Allow-Origin "*"
-   </Location>
-   ProxyPass        /fdsnws/availability/1 http://127.0.0.1:9001 timeout=600
-   ProxyPassReverse /fdsnws/availability/1 http://127.0.0.1:9001 timeout=600
-   ```
+The API speaks plain HTTP on 9001. To serve it at the standard FDSN URL with HTTPS, put it behind your existing reverse proxy. Apache example:
 
-## The materialized view
+```apache
+ProxyPass        /fdsnws/availability/1 http://127.0.0.1:9001 timeout=600
+ProxyPassReverse /fdsnws/availability/1 http://127.0.0.1:9001 timeout=600
+```
 
-The API reads the `availability` collection, built from WFCatalog's `daily_streams` and `c_segments`.
+## Tuning (optional)
 
-- **Initial build** (one-time, for a fresh database):
-
-  ```bash
-  mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=365" views/main.js
-  ```
-
-- **Daily refresh** — the cacher's in-app scheduler runs the update automatically (see [Operations](#operations)). No host cron required.
-
-- **Index** (strongly recommended — without it every query is a collection scan):
-
-  ```javascript
-  use wfrepo
-  db.availability.createIndex({ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 })
-  ```
-
-## Operations
-
-The cacher runs an [APScheduler](https://apscheduler.readthedocs.io/) loop (`apps/scheduler.py`) — no host-level cron is needed:
-
-| Time (UTC) | Job | Action |
-|------------|-----|--------|
-| 03:00 daily | `rebuild-inventory-cache` | Harvest restriction inventory from FDSNWS-Station into Redis. |
-| 06:00 daily | `update-availability-view` | Re-process the last 4 days of `daily_streams`/`c_segments` into the `availability` view. |
-| on startup | both | Run once when the container starts, so a restart leaves data fresh. |
-
-Both jobs report to Sentry Crons (when `SENTRY_DSN` is set) with `misfire_grace_time=300`, so a brief delay doesn't skip a run. The 4-day reprocessing window means up to 4 consecutive missed days self-heal on the next run.
-
-## Performance
-
-- **Gunicorn workers** — default `--workers 1` (most stable on constrained hosts). Raise in `docker-compose.yml` if you have CPU/RAM headroom; watch `docker logs` for `pthread_create failed`.
-- **MongoDB pool** — `maxPoolSize=1` per worker by default (`apps/wfcatalog_client.py`). Total connections = `workers × maxPoolSize`.
-- **Parallel fan-out** (opt-in) — set `FANOUT_ENABLED=true` to split long-range queries into day-aligned windows run as concurrent cursors. Best for multi-month queries over a small NSLC selection. When on, peak Mongo connections rise to `workers × FANOUT_MAX_WORKERS`. Off by default; behavior is byte-identical to the single-cursor path when disabled.
-- **Thread limits** — `OPENBLAS_NUM_THREADS=1` etc. in `docker-compose.yml` prevent NumPy/ObsPy thread storms. Keep them unless you know your host can handle more.
+- **Workers** — default `--workers 1` in `docker-compose.yml`; raise if you have CPU/RAM headroom.
+- **Row/stream caps** — `MAX_DATA_ROWS` (default 2.5M) and `MAX_STREAMS` (default 2000) env vars guard against oversized requests (HTTP 413).
+- **Parallel fan-out** — set `FANOUT_ENABLED=true` to speed up long multi-month queries by running them as parallel time-window cursors. Off by default; identical results when off.
 
 ## Development
 
@@ -135,21 +90,13 @@ Requires Python ≥ 3.13 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 cp config.py.sample config.py        # edit for RUNMODE=test
-uv sync                              # create venv + install deps from uv.lock
-
-# Redis is required:
-docker run -p 6379:6379 --name cache -d redis:7.0-alpine redis-server --save 20 1 --loglevel warning
+uv sync
+docker run -p 6379:6379 -d redis:7.0-alpine     # Redis is required
 uv run python cache.py               # build the restriction inventory
-
-# Run the API:
-RUNMODE=test uv run gunicorn --workers 2 --timeout 60 --bind 0.0.0.0:9001 start:app
+RUNMODE=test uv run gunicorn --bind 0.0.0.0:9001 start:app
 ```
 
-## Tests
-
-```bash
-uv run pytest tests/
-```
+Tests: `uv run pytest tests/`
 
 ## References
 
