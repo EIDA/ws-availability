@@ -96,7 +96,21 @@ ProxyPassReverse /fdsnws/availability/1 http://127.0.0.1:9001 timeout=600
 
 - **Workers** — default `--workers 1` in `docker-compose.yml`; raise if you have CPU/RAM headroom.
 - **Row/stream caps** — `MAX_DATA_ROWS` (default 2.5M) and `MAX_STREAMS` (default 2000) env vars guard against oversized requests (HTTP 413).
-- **Parallel fan-out** — set `FANOUT_ENABLED=true` to speed up long multi-month queries by running them as parallel time-window cursors. Off by default; identical results when off.
+
+### Parallel fan-out
+
+By default, each request is answered by a **single** MongoDB cursor. The `availability` collection holds one document per channel-per-day, so a long time range means many documents fetched in sequential round-trips — most of the time is spent waiting on the database, one batch after another.
+
+Fan-out splits the request's time range into day-aligned windows and runs them as **concurrent** cursors, then merges the pieces back together. The waiting overlaps instead of stacking up, so a multi-month query finishes noticeably faster. Because each window is a separate day range, the slices never overlap and the merged result is **byte-identical** to the single-cursor answer — only the speed differs.
+
+Enable it with `FANOUT_ENABLED=true`. Details:
+
+- **Off by default.** When off, the request path is exactly the original single-cursor flow.
+- **Only engages for ranges ≥ `FANOUT_MIN_DAYS`** (default 7). Shorter requests stay single-cursor — the thread overhead wouldn't pay off.
+- **Applies to both `/query` and `/extent`** (they share the same fetch layer).
+- **Tunables:** `FANOUT_MAX_WORKERS` (default 4 — also the number of MongoDB connections used while a fan-out request runs) and `FANOUT_WINDOW_DAYS` (default 30 — the size of each window; a 90-day query becomes ~3 windows).
+
+Best for long, narrow queries (months/years of a few channels). Before enabling on a busy node, check that `workers × FANOUT_MAX_WORKERS` stays within your MongoDB connection budget.
 
 ## Development
 
