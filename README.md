@@ -6,22 +6,51 @@ It runs as three Docker containers: the **API** (Flask + gunicorn, port 9001), a
 
 > **Installing or upgrading to v1.1.0-beta.1?** Follow [`BETA.md`](BETA.md) for the exact commands.
 
-## Run it
+## Deployment
+
+First, get and configure the repo (needed either way):
 
 ```bash
 git clone https://github.com/EIDA/ws-availability.git
 cd ws-availability
 cp config.py.sample config.py        # edit MongoDB creds, FDSNWS_STATION_URL, SENTRY_ENVIRONMENT
+```
+
+Then pick one of:
+
+### Option A — Build locally
+
+Builds the images on your host. No registry access needed.
+
+```bash
 docker-compose up -d --build
 ```
 
-Check it:
+### Option B — Pull pre-built images
+
+Each tagged release publishes images to GHCR, so you skip the build. Create `docker-compose.override.yml`:
+
+```yaml
+services:
+  api:
+    image: ghcr.io/eida/ws-availability/api:1.1.0-beta.1
+  cacher:
+    image: ghcr.io/eida/ws-availability/cacher:1.1.0-beta.1
+```
 
 ```bash
+docker-compose pull
+docker-compose up -d
+```
+
+Either way, three containers come up. Check it:
+
+```bash
+curl "127.0.0.1:9001/version"        # -> 1.1.0-beta.1
 curl "127.0.0.1:9001/extent?net=NA&start=2023-02-01"
 ```
 
-That's the whole install for a node that already has a populated WFCatalog. Requires MongoDB ≥ 4.2.
+For a node that already has a populated WFCatalog, that's the whole install. A brand-new database also needs the one-time [database setup](#first-time-database-setup). Requires MongoDB ≥ 4.2.
 
 ## Endpoints
 
@@ -54,21 +83,6 @@ The cacher runs a built-in scheduler — no host cron needed:
 - **06:00 UTC** — update the `availability` view from the last 4 days of WFCatalog data.
 - **On startup** — both run once, so a restart leaves data fresh.
 
-## First-time database setup
-
-*Skip this if you already run ws-availability — the view and index already exist.*
-
-For a brand-new WFCatalog database, build the materialized view once and add the index:
-
-```bash
-# Build the availability view (adjust daysBack to how far back you want)
-mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=365" views/main.js
-
-# Index — without it, every query is a full collection scan
-mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval '
-  db.availability.createIndex({ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 })'
-```
-
 ## Serving publicly
 
 The API speaks plain HTTP on 9001. To serve it at the standard FDSN URL with HTTPS, put it behind your existing reverse proxy. Apache example:
@@ -97,6 +111,23 @@ RUNMODE=test uv run gunicorn --bind 0.0.0.0:9001 start:app
 ```
 
 Tests: `uv run pytest tests/`
+
+## First-time database setup
+
+*Skip this if you already run ws-availability — the view and index already exist.*
+
+For a brand-new WFCatalog database, build the materialized view once and add the index the API relies on:
+
+```bash
+# Build the availability view (adjust daysBack to how far back you want)
+mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=365" views/main.js
+
+# Index — without it, every query is a full collection scan
+mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval '
+  db.availability.createIndex({ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 })'
+```
+
+After the initial build, the cacher keeps the view current automatically (see [What runs daily](#what-runs-daily)).
 
 ## References
 
