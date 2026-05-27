@@ -2,6 +2,8 @@
 
 Beta release. API-compatible with v1.0.5.
 
+> **During the beta**, the code lives on the contributor fork until it lands in EIDA. Clone from `https://github.com/NikolaosSokos/ws-availability.git`. Once merged into EIDA, use `https://github.com/EIDA/ws-availability.git` instead.
+
 ## Prerequisites
 
 - Docker with `docker-compose` (v1) or `docker compose` (v2).
@@ -10,7 +12,7 @@ Beta release. API-compatible with v1.0.5.
 
 ## Install
 
-`cd` into your `ws-availability` checkout (or `git clone https://github.com/EIDA/ws-availability.git` if you don't have one yet), then:
+`cd` into your `ws-availability` checkout (or `git clone https://github.com/NikolaosSokos/ws-availability.git` if you don't have one yet — see the note above), then:
 
 1. Check out the beta.
 
