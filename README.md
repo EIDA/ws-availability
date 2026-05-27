@@ -141,7 +141,21 @@ mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval '
   db.availability.createIndex({ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 })'
 ```
 
-After the initial build, the cacher keeps the view current automatically (see [What runs daily](#what-runs-daily)).
+After the initial build, the cacher keeps the view current automatically (see [What runs daily](#what-runs-daily)) — **no host cron is needed** (earlier versions required one; it has been replaced by the built-in scheduler).
+
+### Back-processing
+
+The daily scheduler only refreshes a rolling recent window. To reprocess a specific historical range or a subset of streams — e.g. after a data correction or a backfill — run `views/main.js` manually with parameters (`networks`/`stations` accept regex):
+
+```bash
+# A specific month
+mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo \
+  --eval "start='2023-01-01'; end='2023-01-31'" views/main.js
+
+# One network/station over a range
+mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo \
+  --eval "networks='NL'; stations='HGN'; start='2022-12-01'; end='2023-01-31'" views/main.js
+```
 
 ## References
 
