@@ -28,20 +28,23 @@ docker-compose up -d --build
 
 ### Option B — Pull pre-built images
 
-Each tagged release publishes images to GHCR, so you skip the build. Create `docker-compose.override.yml`:
+Each **tagged release** publishes images to GHCR, so you can skip the build. Replace `<version>` with a release tag (e.g. `1.1.0`):
 
 ```yaml
+# docker-compose.override.yml
 services:
   api:
-    image: ghcr.io/eida/ws-availability/api:1.1.0-beta.1
+    image: ghcr.io/eida/ws-availability/api:<version>
   cacher:
-    image: ghcr.io/eida/ws-availability/cacher:1.1.0-beta.1
+    image: ghcr.io/eida/ws-availability/cacher:<version>
 ```
 
 ```bash
 docker-compose pull
 docker-compose up -d
 ```
+
+> Pre-built images exist only for tagged releases. The current beta ships as a branch, so use Option A (build locally) for it — see [`BETA.md`](BETA.md).
 
 Either way, three containers come up. Check it:
 

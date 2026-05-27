@@ -1,8 +1,6 @@
 # ws-availability v1.1.0-beta.1 — Install
 
-Beta release. API-compatible with v1.0.5.
-
-> **During the beta**, the code lives on the contributor fork until it lands in EIDA. Clone from `https://github.com/NikolaosSokos/ws-availability.git`. Once merged into EIDA, use `https://github.com/EIDA/ws-availability.git` instead.
+Beta release. API-compatible with v1.0.5. The beta ships as the **`beta/v1.1.0-beta.1` branch** on `EIDA/ws-availability` — you build it locally (no pre-built images during the beta).
 
 ## Prerequisites
 
@@ -12,13 +10,13 @@ Beta release. API-compatible with v1.0.5.
 
 ## Install
 
-`cd` into your `ws-availability` checkout (or `git clone https://github.com/NikolaosSokos/ws-availability.git` if you don't have one yet — see the note above), then:
+`cd` into your `ws-availability` checkout (or `git clone https://github.com/EIDA/ws-availability.git` if you don't have one yet), then:
 
-1. Check out the beta.
+1. Check out the beta branch.
 
    ```bash
-   git fetch --tags origin
-   git checkout v1.1.0-beta.1
+   git fetch origin
+   git checkout beta/v1.1.0-beta.1
    ```
 
 2. `config.py` — keep your existing one if you already have it; otherwise copy the sample:
