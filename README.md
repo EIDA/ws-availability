@@ -66,14 +66,21 @@ NA       SABA             BHZ     D       40.0       2023-02-01T00:00:00.000000Z
 
 Everything lives in `config.py` (copied from `config.py.sample`, gitignored so upgrades never touch it). Set these in the `RUNMODE == "production"` block:
 
-| Key | Description |
-|-----|-------------|
-| `MONGODB_HOST` / `PORT` / `USR` / `PWD` / `NAME` | WFCatalog MongoDB connection. |
-| `FDSNWS_STATION_URL` | FDSNWS-Station endpoint to harvest restriction info from. |
-| `CACHE_HOST` / `CACHE_PORT` | Redis location. |
-| `CACHE_RESP_PERIOD` | Response cache TTL in seconds (default 1200). |
-| `SENTRY_DSN` | Sentry DSN; empty disables Sentry. |
-| `SENTRY_ENVIRONMENT` | **Unique per-node tag** (e.g. `noa_production`) so Sentry can tell deployments apart. |
+| Key | Default | Description |
+|-----|---------|-------------|
+| `MONGODB_HOST` | `host.docker.internal` | WFCatalog MongoDB host. |
+| `MONGODB_PORT` | `27017` | MongoDB port. |
+| `MONGODB_USR` / `MONGODB_PWD` | empty | MongoDB credentials (leave empty if no auth). |
+| `MONGODB_NAME` | `wfrepo` | Database name; also used as `authSource`. |
+| `FDSNWS_STATION_URL` | `https://orfeus-eu.org/fdsnws/station/1/query` | FDSNWS-Station endpoint to harvest restriction info from. |
+| `CACHE_HOST` | `cache` | Redis host. |
+| `CACHE_PORT` | `6379` | Redis port. |
+| `CACHE_INVENTORY_KEY` | `inventory` | Redis key for the restriction inventory. |
+| `CACHE_INVENTORY_PERIOD` | `0` | Inventory cache TTL in seconds; `0` = never expire. |
+| `CACHE_RESP_PERIOD` | `1200` | Response cache TTL in seconds. |
+| `SENTRY_DSN` | empty | Sentry DSN; empty disables Sentry. |
+| `SENTRY_TRACES_SAMPLE_RATE` | `1.0` | Fraction of requests traced, `0.0`–`1.0`. |
+| `SENTRY_ENVIRONMENT` | `{{node}}_production` | **Unique per-node tag** (e.g. `noa_production`) so Sentry can tell deployments apart. Must be changed from the placeholder. |
 
 ## What runs daily
 
@@ -82,15 +89,6 @@ The cacher runs a built-in scheduler — no host cron needed:
 - **03:00 UTC** — refresh the restriction inventory from FDSNWS-Station into Redis.
 - **06:00 UTC** — update the `availability` view from the last 4 days of WFCatalog data.
 - **On startup** — both run once, so a restart leaves data fresh.
-
-## Serving publicly
-
-The API speaks plain HTTP on 9001. To serve it at the standard FDSN URL with HTTPS, put it behind your existing reverse proxy. Apache example:
-
-```apache
-ProxyPass        /fdsnws/availability/1 http://127.0.0.1:9001 timeout=600
-ProxyPassReverse /fdsnws/availability/1 http://127.0.0.1:9001 timeout=600
-```
 
 ## Tuning (optional)
 
@@ -103,12 +101,14 @@ By default, each request is answered by a **single** MongoDB cursor. The `availa
 
 Fan-out splits the request's time range into day-aligned windows and runs them as **concurrent** cursors, then merges the pieces back together. The waiting overlaps instead of stacking up, so a multi-month query finishes noticeably faster. Because each window is a separate day range, the slices never overlap and the merged result is **byte-identical** to the single-cursor answer — only the speed differs.
 
-Enable it with `FANOUT_ENABLED=true`. Details:
+It is **off by default**, applies to **both `/query` and `/extent`** (they share the same fetch layer), and only engages when a request's time range is at least `FANOUT_MIN_DAYS` — shorter requests stay single-cursor because the thread overhead wouldn't pay off. Controlled by these environment variables:
 
-- **Off by default.** When off, the request path is exactly the original single-cursor flow.
-- **Only engages for ranges ≥ `FANOUT_MIN_DAYS`** (default 7). Shorter requests stay single-cursor — the thread overhead wouldn't pay off.
-- **Applies to both `/query` and `/extent`** (they share the same fetch layer).
-- **Tunables:** `FANOUT_MAX_WORKERS` (default 4 — also the number of MongoDB connections used while a fan-out request runs) and `FANOUT_WINDOW_DAYS` (default 30 — the size of each window; a 90-day query becomes ~3 windows).
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `FANOUT_ENABLED` | `false` | Master switch. When `false`, behaves exactly like the single-cursor path. |
+| `FANOUT_MIN_DAYS` | `7` | Minimum request range, in days, before fan-out engages. |
+| `FANOUT_WINDOW_DAYS` | `30` | Size of each window. A 90-day query becomes ~3 windows. |
+| `FANOUT_MAX_WORKERS` | `4` | Max windows run at once — also the number of MongoDB connections a fan-out request uses. |
 
 Best for long, narrow queries (months/years of a few channels). Before enabling on a busy node, check that `workers × FANOUT_MAX_WORKERS` stays within your MongoDB connection budget.
 
