@@ -238,5 +238,43 @@ class TestWFCatalogQuery(unittest.TestCase):
             self.assertEqual(len(results), 1)
             self.assertEqual(results[0][6], valid_segment["ts"]) # Index 6 is start time
 
+
+class TestBuildQueryFieldOrder(unittest.TestCase):
+    """Lock in the #51 fix: query field order must match the compound index
+    ``{net, sta, loc, cha, ts, te}`` so MongoDB's planner picks it up implicitly.
+    Python dicts preserve insertion order, and the planner sees that order.
+
+    `qlt` is not in the index — it must come *after* the indexed prefix.
+    """
+
+    def test_field_order_matches_compound_index(self):
+        params = {
+            "network": "NL",
+            "station": "HGN",
+            "location": "--",
+            "channel": "BHZ",
+            "quality": "D",
+        }
+        start = datetime(2024, 1, 1)
+        end = datetime(2024, 2, 1)
+        qry = wfcatalog_client._build_query(params, start, end)
+        # Indexed prefix first, in index order; qlt last.
+        self.assertEqual(list(qry.keys()), ["net", "sta", "loc", "cha", "ts", "te", "qlt"])
+
+    def test_field_order_holds_when_some_filters_skipped(self):
+        """Wildcards still preserve relative order — the planner only needs
+        prefix matching, so missing fields must not flip later ones around."""
+        params = {
+            "network": "NL",
+            "station": "*",      # skipped
+            "location": "--",
+            "channel": "*",      # skipped
+            "quality": "*",      # skipped
+        }
+        qry = wfcatalog_client._build_query(params, datetime(2024, 1, 1), datetime(2024, 2, 1))
+        # Only the kept indexed fields, in index order.
+        self.assertEqual(list(qry.keys()), ["net", "loc", "ts", "te"])
+
+
 if __name__ == '__main__':
     unittest.main()

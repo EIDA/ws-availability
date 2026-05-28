@@ -1,6 +1,6 @@
 import os
 import pytest
-from apps.settings import Settings
+from apps.settings import Settings, build_settings
 
 class TestSettings:
     def test_default_values(self):
@@ -67,3 +67,56 @@ class TestSettings:
 
         del os.environ["MONGODB_AUTH_SOURCE"]
         del os.environ["MONGODB_NAME"]
+
+
+class TestConfigPyVsEnvPrecedence:
+    """Guard rails for the docker-compose ↔ config.py precedence bug.
+
+    Until this commit, apps/settings.py removed any config.py value whose
+    *key* appeared in os.environ. docker-compose blindly passed defaults
+    like MONGODB_HOST=${MONGODB_HOST:-127.0.0.1}, so the key was always
+    present, and config.py was silently ignored. The fix:
+    - docker-compose no longer sets MONGODB_*/FDSNWS_STATION_URL,
+    - build_settings() requires a *non-empty* env var to override config.py.
+
+    Pydantic always reads aliases from the real ``os.environ`` for its own
+    env-precedence layer, so these tests manipulate the process env directly
+    and clean up in ``setup_method``/``teardown_method``.
+    """
+
+    @staticmethod
+    def _clear():
+        for k in ("MONGODB_HOST", "MONGODB_NAME"):
+            os.environ.pop(k, None)
+
+    def setup_method(self, method):
+        self._clear()
+
+    def teardown_method(self, method):
+        self._clear()
+
+    def test_config_py_wins_when_env_unset(self):
+        """Operator edits config.py, env is clean — config.py value reaches Settings."""
+        s = build_settings({"MONGODB_HOST": "mongo.lmu.example", "MONGODB_NAME": "wfrepo"})
+        assert s.mongodb_host == "mongo.lmu.example"
+        assert s.mongodb_name == "wfrepo"
+
+    def test_env_var_wins_when_explicitly_set(self):
+        """Power user exports MONGODB_HOST — env wins (existing override path)."""
+        os.environ["MONGODB_HOST"] = "from-env"
+        s = build_settings({"MONGODB_HOST": "from-config-py"})
+        assert s.mongodb_host == "from-env"
+
+    def test_empty_env_var_does_not_override_config(self):
+        """Defense-in-depth: empty-string env (the old ``${VAR:-}`` shape)
+        must NOT blow away the config.py value — this is what made
+        Tobias's container connect to the wrong host."""
+        os.environ["MONGODB_HOST"] = ""
+        s = build_settings({"MONGODB_HOST": "mongo.lmu.example"})
+        assert s.mongodb_host == "mongo.lmu.example"
+
+    def test_none_legacy_value_does_not_clobber_default(self):
+        """If config.py never set a key (None), build_settings leaves the
+        Pydantic default alone."""
+        s = build_settings({"MONGODB_HOST": None})
+        assert s.mongodb_host == "localhost"  # Pydantic Field default

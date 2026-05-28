@@ -88,15 +88,25 @@ def load_legacy_config():
         return {}
 
 
-# Load legacy config options and filter out None values
-legacy_defaults = {k: v for k, v in load_legacy_config().items() if v is not None}
+def build_settings(legacy: dict, env: dict | None = None) -> "Settings":
+    """Combine config.py values with environment overrides into a Settings.
 
-# Remove keys from legacy_defaults if they are set in environment variables
-# This ensures Docker environment variables (e.g. MONGODB_HOST) take precedence
-# over values hardcoded in config.py (like "localhost")
-for key in list(legacy_defaults.keys()):
-    if key in os.environ:
-        del legacy_defaults[key]
+    Precedence: a **non-empty** env var beats config.py. An env var that is
+    missing, or set to the empty string, falls back to the config.py value.
+    This protects against the scenario where docker-compose passes
+    ``${MONGODB_HOST:-…}`` defaults that would otherwise silently override
+    operator-edited config.py values (the "Tobias/LMU" bug).
+    """
+    env = os.environ if env is None else env
+    overrides: dict = {}
+    for k, v in legacy.items():
+        if v is None:
+            continue
+        if env.get(k):  # truthy: present AND non-empty
+            continue
+        overrides[k] = v
+    return Settings(**overrides)
 
-# Instantiate settings with remaining legacy defaults
-settings = Settings(**legacy_defaults)
+
+# Instantiate settings: config.py values, overridden by non-empty env vars.
+settings = build_settings(load_legacy_config())

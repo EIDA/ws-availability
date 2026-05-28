@@ -44,13 +44,10 @@ services:
       RUNMODE: production
       # Host Networking: Redis is on localhost
       CACHE_HOST: "127.0.0.1"
-      # Gateway IP (Update if needed)
-      MONGODB_HOST: ${MONGODB_HOST:-127.0.0.1}
-      MONGODB_PORT: ${MONGODB_PORT:-27017}
-      MONGODB_USR: ${MONGODB_USR:-wfrepouser}
-      MONGODB_PWD: ${MONGODB_PWD:-2023wf}
-      MONGODB_NAME: ${MONGODB_NAME:-wfrepo}
-      FDSNWS_STATION_URL: "https://eida.gein.noa.gr/fdsnws/station/1/query"
+      # MongoDB / FDSNWS-Station / Sentry settings are read from config.py.
+      # Do NOT add MONGODB_* or FDSNWS_STATION_URL here — env vars set in this
+      # block take precedence over config.py and would silently override the
+      # operator's settings.
       # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
