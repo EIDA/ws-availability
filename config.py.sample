@@ -18,6 +18,7 @@ class Config:
         MONGODB_USR = ""
         MONGODB_PWD = ""
         MONGODB_NAME = "wfrepo"
+        MONGODB_AUTH_SOURCE = None
         # FDSNWS-Station cache source
         FDSNWS_STATION_URL = "https://orfeus-eu.org/fdsnws/station/1/query"
         # Cache host (localhost or container name)
@@ -33,6 +34,7 @@ class Config:
         MONGODB_USR = ""
         MONGODB_PWD = ""
         MONGODB_NAME = "wfrepo"
+        MONGODB_AUTH_SOURCE = None
         # FDSNWS-Station cache source
         FDSNWS_STATION_URL = "https://orfeus-eu.org/fdsnws/station/1/query"
         # Cache host (localhost or container name)
@@ -48,6 +50,7 @@ class Config:
         MONGODB_USR = os.environ.get("MONGODB_USR") or MONGODB_USR
         MONGODB_PWD = os.environ.get("MONGODB_PWD") or MONGODB_PWD
         MONGODB_NAME = os.environ.get("MONGODB_NAME") or MONGODB_NAME
+        MONGODB_AUTH_SOURCE = os.environ.get("MONGODB_AUTH_SOURCE") or MONGODB_AUTH_SOURCE
         FDSNWS_STATION_URL = os.environ.get("FDSNWS_STATION_URL") or FDSNWS_STATION_URL
         CACHE_HOST = os.environ.get("CACHE_HOST") or CACHE_HOST
         CACHE_PORT = os.environ.get("CACHE_PORT") or CACHE_PORT

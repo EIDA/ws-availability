@@ -74,7 +74,8 @@ Everything lives in `config.py` (copied from `config.py.sample`, gitignored so u
 | `MONGODB_HOST` | `host.docker.internal` | WFCatalog MongoDB host. |
 | `MONGODB_PORT` | `27017` | MongoDB port. |
 | `MONGODB_USR` / `MONGODB_PWD` | empty | MongoDB credentials (leave empty if no auth). |
-| `MONGODB_NAME` | `wfrepo` | Database name; also used as `authSource`. |
+| `MONGODB_NAME` | `wfrepo` | Database name; also used as `authSource` unless `MONGODB_AUTH_SOURCE` is set. |
+| `MONGODB_AUTH_SOURCE` | `None` | Optional. Mongo auth database when it differs from `MONGODB_NAME` (e.g. `admin`). Falls back to `MONGODB_NAME` when unset. |
 | `FDSNWS_STATION_URL` | `https://orfeus-eu.org/fdsnws/station/1/query` | FDSNWS-Station endpoint to harvest restriction info from. |
 | `CACHE_HOST` | `cache` | Redis host. |
 | `CACHE_PORT` | `6379` | Redis port. |
@@ -133,16 +134,14 @@ Tests: `uv run pytest tests/`
 
 *Skip this if you already run ws-availability — the view and index already exist.*
 
-For a brand-new WFCatalog database, build the materialized view once and add the index the API relies on:
+For a brand-new WFCatalog database, build the materialized view once:
 
 ```bash
 # Build the availability view (adjust daysBack to how far back you want)
 mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=365" views/main.js
-
-# Index — without it, every query is a full collection scan
-mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval '
-  db.availability.createIndex({ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 })'
 ```
+
+The compound index `{ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 }` is created automatically by the API at startup (built in the background). If queries feel slow right after a brand-new install, give it a moment to finish.
 
 After the initial build, the cacher keeps the view current automatically (see [What runs daily](#what-runs-daily)) — **no host cron is needed** (earlier versions required one; it has been replaced by the built-in scheduler).
 

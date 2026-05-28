@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from fnmatch import fnmatch
 # from flask import current_app (Removed)
 from .redis_client import RedisClient
-from pymongo import MongoClient
+from pymongo import MongoClient, ASCENDING
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -76,13 +76,24 @@ def get_db_client():
             settings.mongodb_port,
             username=settings.mongodb_usr,
             password=settings.mongodb_pwd,
-            authSource=settings.mongodb_name,
+            authSource=settings.mongodb_auth_source or settings.mongodb_name,
             maxPoolSize=pool_size,
             connect=False,
             directConnection=True,
             retryReads=False,
             retryWrites=False
         )
+        try:
+            db = DB_CLIENT.get_database(settings.mongodb_name)
+            db.availability.create_index(
+                [("net", ASCENDING), ("sta", ASCENDING), ("loc", ASCENDING), 
+                 ("cha", ASCENDING), ("ts", ASCENDING), ("te", ASCENDING)],
+                background=True
+            )
+            logging.getLogger(__name__).info("Ensured MongoDB compound index is present on 'availability' collection.")
+        except Exception as e:
+            logging.getLogger(__name__).warning("Failed to verify/create MongoDB indexes: %s", e)
+            
     return DB_CLIENT
 
 def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
@@ -141,7 +152,12 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
 
 
 def _build_query(params: dict, start: datetime | None, end: datetime | None) -> dict:
-    """Build the MongoDB filter dict shared by single-shot and fan-out paths."""
+    """Build the MongoDB filter dict shared by single-shot and fan-out paths.
+
+    Field insertion order is intentional: it matches the compound index
+    {net, sta, loc, cha, ts, te} so MongoDB's planner picks it up implicitly
+    (Issue #51). `qlt` is not in the index, so it goes last.
+    """
     qry: dict = {}
     if params["network"] != "*":
         qry["net"] = {"$in": params["network"].split(",")}
@@ -151,12 +167,12 @@ def _build_query(params: dict, start: datetime | None, end: datetime | None) -> 
         qry["loc"] = {"$in": params["location"].split(",")}
     if params["channel"] != "*":
         qry["cha"] = {"$in": params["channel"].split(",")}
-    if params["quality"] != "*":
-        qry["qlt"] = {"$in": params["quality"].split(",")}
-    if start is not None:
-        qry["te"] = {"$gt": start}
     if end is not None:
         qry["ts"] = {"$lt": end}
+    if start is not None:
+        qry["te"] = {"$gt": start}
+    if params["quality"] != "*":
+        qry["qlt"] = {"$in": params["quality"].split(",")}
     return qry
 
 
