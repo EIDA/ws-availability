@@ -85,6 +85,7 @@ Everything lives in `config.py` (copied from `config.py.sample`, gitignored so u
 | `SENTRY_DSN` | empty | Sentry DSN; empty disables Sentry. |
 | `SENTRY_TRACES_SAMPLE_RATE` | `1.0` | Fraction of requests traced, `0.0`–`1.0`. |
 | `SENTRY_ENVIRONMENT` | `{{node}}_production` | **Unique per-node tag** (e.g. `noa_production`) so Sentry can tell deployments apart. Must be changed from the placeholder. |
+| `GUNICORN_WORKERS` | `1` | Number of gunicorn worker processes. Raise (2–3, or `(2 × CPU cores) + 1`) if you have CPU/RAM headroom. Read by `gunicorn.conf.py` at container start. |
 
 ## What runs daily
 
@@ -96,7 +97,7 @@ The cacher runs a built-in scheduler — no host cron needed:
 
 ## Tuning (optional)
 
-- **Workers** — default `--workers 1` in `docker-compose.yml`; raise if you have CPU/RAM headroom.
+- **Workers** — set `GUNICORN_WORKERS` in `config.py` (default `1`). `gunicorn.conf.py` reads it at startup. Raise if you have CPU/RAM headroom.
 - **Row/stream caps** — `MAX_DATA_ROWS` (default 2.5M) and `MAX_STREAMS` (default 2000) env vars guard against oversized requests (HTTP 413).
 
 ### Parallel fan-out

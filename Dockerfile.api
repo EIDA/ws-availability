@@ -5,7 +5,7 @@ WORKDIR /appli
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-progress
 
-COPY start.py config.py* ./
+COPY start.py config.py* gunicorn.conf.py ./
 COPY apps ./apps/
 COPY templates ./templates/
 COPY tests ./tests/
@@ -13,4 +13,6 @@ COPY tests ./tests/
 # Place executables in the environment at the front of the path
 ENV PATH="/appli/.venv/bin:$PATH"
 
-CMD ["/bin/bash", "-c", "gunicorn --workers 2 --timeout 600 --bind 0.0.0.0:9001 start:app"]
+# Default CMD when running the image without docker-compose. Worker count
+# comes from gunicorn.conf.py → Config.GUNICORN_WORKERS (defaults to 1).
+CMD ["/bin/bash", "-c", "gunicorn -c gunicorn.conf.py --timeout 600 --bind 0.0.0.0:9001 start:app"]

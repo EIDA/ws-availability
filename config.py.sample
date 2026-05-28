@@ -27,6 +27,9 @@ class Config:
         CACHE_INVENTORY_KEY = "inventory"
         CACHE_INVENTORY_PERIOD = 0
         CACHE_RESP_PERIOD = 1200
+        # Gunicorn worker count — raise (2–3, or `(2 × CPU cores) + 1`)
+        # if you have CPU/RAM headroom. Read by gunicorn.conf.py at startup.
+        GUNICORN_WORKERS = 1
     elif RUNMODE == "test":
         # WFCatalog MongoDB
         MONGODB_HOST = "localhost"
@@ -43,6 +46,7 @@ class Config:
         CACHE_INVENTORY_KEY = "inventory"
         CACHE_INVENTORY_PERIOD = 0
         CACHE_RESP_PERIOD = 1200
+        GUNICORN_WORKERS = 1
 
     try:
         MONGODB_HOST = os.environ.get("MONGODB_HOST", MONGODB_HOST)
@@ -60,6 +64,7 @@ class Config:
             "CACHE_INVENTORY_PERIOD", CACHE_INVENTORY_PERIOD)
         CACHE_RESP_PERIOD = os.environ.get(
             "CACHE_SHORT_INV_PERIOD", CACHE_RESP_PERIOD)
+        GUNICORN_WORKERS = int(os.environ.get("GUNICORN_WORKERS", GUNICORN_WORKERS))
         # Sentry configuration (optional)
         SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
         SENTRY_TRACES_SAMPLE_RATE = float(

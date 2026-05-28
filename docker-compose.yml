@@ -32,12 +32,11 @@ services:
       context: ./
       dockerfile: Dockerfile.api
     restart: always
-    # Worker Configuration:
-    # - Default: 1 worker (most stable for resource-constrained servers)
-    # - Moderate: 2-3 workers (recommended if no thread creation issues)
-    # - High-performance: (2 × CPU cores) + 1 workers
-    # See README.md "Performance Tuning" section for details
-    command: gunicorn --bind 0.0.0.0:9001 --workers 1 --timeout 600 start:app
+    # Worker count is set in config.py via GUNICORN_WORKERS — see gunicorn.conf.py.
+    # Default is 1; raise (2–3, or `(2 × CPU cores) + 1`) if you have CPU/RAM
+    # headroom. Bind / timeout stay on the CLI because they're container-level
+    # concerns, not per-operator tunables.
+    command: gunicorn -c gunicorn.conf.py --bind 0.0.0.0:9001 --timeout 600 start:app
     container_name: fdsnws-availability-api
     network_mode: "host"
     environment:
