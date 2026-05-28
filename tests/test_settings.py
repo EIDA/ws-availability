@@ -120,3 +120,26 @@ class TestConfigPyVsEnvPrecedence:
         Pydantic default alone."""
         s = build_settings({"MONGODB_HOST": None})
         assert s.mongodb_host == "localhost"  # Pydantic Field default
+
+
+class TestConfigSampleHasSaferGetters:
+    """Lock in Tobias Megies's PR #62: config.py.sample must use
+    ``os.environ.get("X", X)`` — never the leaky ``os.environ.get("X") or X``
+    pattern. The latter falls back to the default when env is the literal
+    string ``"0"`` (in numeric contexts) or ``""``, silently ignoring an
+    operator who genuinely wants to set that value.
+    """
+
+    def test_no_or_fallback_pattern_in_config_sample(self):
+        from pathlib import Path
+        sample = Path(__file__).resolve().parents[1] / "config.py.sample"
+        text = sample.read_text()
+        # The bad shape: os.environ.get("X")  or  …
+        # The good shape: os.environ.get("X", default)
+        import re
+        bad = re.findall(r'os\.environ\.get\([^)]+\)\s+or\b', text)
+        assert not bad, (
+            f"config.py.sample uses the leaky pattern `os.environ.get(...) or X` "
+            f"in {len(bad)} place(s): {bad}. Use `os.environ.get('X', X)` instead "
+            f"(PR #62 by Tobias Megies)."
+        )
