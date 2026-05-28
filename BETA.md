@@ -19,12 +19,16 @@ Beta release. API-compatible with v1.0.5. The beta ships as the **`beta/v1.1.0-b
    git checkout beta/v1.1.0-beta.1
    ```
 
+   > **What's new for operators:** `config.py` is now the only place to set MongoDB, FDSNWS-Station and Sentry settings — `docker-compose.yml` no longer passes them to the container, so your edits in `config.py` actually take effect.
+
 2. `config.py` — keep your existing one if you already have it; otherwise copy the sample:
 
    ```bash
-   [ -f config.py ] || cp config.py.sample config.py
+   cp -n config.py.sample config.py
    $EDITOR config.py
    ```
+
+   (`cp -n` won't overwrite an existing `config.py`.)
 
    `MONGODB_*`, `CACHE_*`, and `FDSNWS_STATION_URL` are unchanged since v1.0.3 — keep your existing values.
 
@@ -39,8 +43,8 @@ Beta release. API-compatible with v1.0.5. The beta ships as the **`beta/v1.1.0-b
    - **Upgrading from v1.0.3 (or earlier)** — your `config.py` predates Sentry entirely. Add all three:
 
      ```python
-     SENTRY_DSN = os.environ.get("SENTRY_DSN") or ""          # paste your Sentry DSN, or leave "" to disable Sentry
-     SENTRY_TRACES_SAMPLE_RATE = float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE") or "1.0")
+     SENTRY_DSN = os.environ.get("SENTRY_DSN", "")          # paste your Sentry DSN, or leave "" to disable Sentry
+     SENTRY_TRACES_SAMPLE_RATE = float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "1.0"))
      SENTRY_ENVIRONMENT = "yournode_production"
      ```
 

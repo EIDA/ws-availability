@@ -70,3 +70,37 @@ def test_no_leaked_credentials_in_compose():
         ("eida.gein.noa.gr", "NOA-internal station URL hardcoded"),
     ]:
         assert needle not in text, f"`{needle}` appeared in docker-compose.yml — {why}"
+
+
+# --- BETA.md doc invariants ---------------------------------------------------
+
+BETA_MD_PATH = Path(__file__).resolve().parents[1] / "BETA.md"
+
+
+def test_beta_md_uses_cp_n_for_config():
+    """Tobias's PR #62 review comment: use `cp -n config.py.sample config.py`
+    instead of the two-line `[ -f config.py ] || cp ...` pattern.
+    `cp -n` won't overwrite an existing config.py, which is exactly the
+    upgrade-safe semantics we want."""
+    text = BETA_MD_PATH.read_text()
+    assert "cp -n config.py.sample config.py" in text, (
+        "BETA.md must instruct operators to use `cp -n config.py.sample config.py` "
+        "(safe no-clobber copy). Bare `cp` would overwrite an existing config.py."
+    )
+    assert "[ -f config.py ] || cp" not in text, (
+        "BETA.md still has the old `[ -f config.py ] || cp ...` conditional. "
+        "Switch to `cp -n config.py.sample config.py`."
+    )
+
+
+def test_beta_md_example_snippets_use_safe_getter_pattern():
+    """Examples in BETA.md must use `os.environ.get('X', DEFAULT)`, never
+    `os.environ.get('X') or DEFAULT`. Anything we teach in docs becomes
+    cargo-culted into other operators' config.py files (PR #62)."""
+    text = BETA_MD_PATH.read_text()
+    import re
+    bad = re.findall(r'os\.environ\.get\([^)]+\)\s+or\b', text)
+    assert not bad, (
+        f"BETA.md uses the leaky `os.environ.get(...) or X` pattern in "
+        f"{len(bad)} place(s): {bad}. Use `os.environ.get('X', X)` instead."
+    )
