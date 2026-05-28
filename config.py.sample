@@ -43,28 +43,24 @@ class Config:
         CACHE_RESP_PERIOD = 1200
 
     try:
-        MONGODB_HOST = os.environ.get("MONGODB_HOST") or MONGODB_HOST
-        MONGODB_PORT = os.environ.get("MONGODB_PORT") or MONGODB_PORT
-        MONGODB_USR = os.environ.get("MONGODB_USR") or MONGODB_USR
-        MONGODB_PWD = os.environ.get("MONGODB_PWD") or MONGODB_PWD
-        MONGODB_NAME = os.environ.get("MONGODB_NAME") or MONGODB_NAME
-        FDSNWS_STATION_URL = os.environ.get("FDSNWS_STATION_URL") or FDSNWS_STATION_URL
-        CACHE_HOST = os.environ.get("CACHE_HOST") or CACHE_HOST
-        CACHE_PORT = os.environ.get("CACHE_PORT") or CACHE_PORT
-        CACHE_INVENTORY_KEY = (
-            os.environ.get("CACHE_INVENTORY_KEY") or CACHE_INVENTORY_KEY
-        )
-        CACHE_INVENTORY_PERIOD = (
-            os.environ.get("CACHE_INVENTORY_PERIOD") or CACHE_INVENTORY_PERIOD
-        )
-        CACHE_RESP_PERIOD = (
-            os.environ.get("CACHE_SHORT_INV_PERIOD") or CACHE_RESP_PERIOD
-        )
+        MONGODB_HOST = os.environ.get("MONGODB_HOST", MONGODB_HOST)
+        MONGODB_PORT = os.environ.get("MONGODB_PORT", MONGODB_PORT)
+        MONGODB_USR = os.environ.get("MONGODB_USR", MONGODB_USR)
+        MONGODB_PWD = os.environ.get("MONGODB_PWD", MONGODB_PWD)
+        MONGODB_NAME = os.environ.get("MONGODB_NAME", MONGODB_NAME)
+        FDSNWS_STATION_URL = os.environ.get("FDSNWS_STATION_URL", FDSNWS_STATION_URL)
+        CACHE_HOST = os.environ.get("CACHE_HOST", CACHE_HOST)
+        CACHE_PORT = os.environ.get("CACHE_PORT", CACHE_PORT)
+        CACHE_INVENTORY_KEY = os.environ.get(
+            "CACHE_INVENTORY_KEY", CACHE_INVENTORY_KEY)
+        CACHE_INVENTORY_PERIOD = os.environ.get(
+            "CACHE_INVENTORY_PERIOD", CACHE_INVENTORY_PERIOD)
+        CACHE_RESP_PERIOD = os.environ.get(
+            "CACHE_SHORT_INV_PERIOD", CACHE_RESP_PERIOD)
         # Sentry configuration (optional)
-        SENTRY_DSN = os.environ.get("SENTRY_DSN") or ""
+        SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
         SENTRY_TRACES_SAMPLE_RATE = float(
-            os.environ.get("SENTRY_TRACES_SAMPLE_RATE") or "1.0"
-        )
+            os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "1.0"))
     except NameError:
         print("Missing environment variables.")
         raise
