@@ -104,3 +104,23 @@ def test_beta_md_example_snippets_use_safe_getter_pattern():
         f"BETA.md uses the leaky `os.environ.get(...) or X` pattern in "
         f"{len(bad)} place(s): {bad}. Use `os.environ.get('X', X)` instead."
     )
+
+
+# --- Single source of truth for deps ----------------------------------------
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_no_stale_requirements_files():
+    """Dependency pins live in uv.lock (built from pyproject.toml).
+    The old hand-maintained `requirements-api.txt` / `requirements-cacher.txt`
+    were obsolete pin sets (Flask 2.3.2, gunicorn 20.1, etc.) that Dependabot
+    still scanned — they inflated the alert count with duplicates and led
+    new contributors to wonder which lockfile was canonical."""
+    for stale in ("requirements-api.txt", "requirements-cacher.txt"):
+        assert not (REPO_ROOT / stale).exists(), (
+            f"{stale} is back. Deps belong in pyproject.toml + uv.lock; "
+            f"the Dockerfiles install via `uv sync --frozen`. If you really "
+            f"need a pip-format lockfile, generate it with `uv export` at "
+            f"build time instead of hand-maintaining a parallel one."
+        )
