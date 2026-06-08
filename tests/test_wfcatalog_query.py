@@ -55,6 +55,23 @@ class TestWFCatalogQuery(unittest.TestCase):
         self.mock_ri._known_seedIDs = ["NL.HGN.--.BHZ", "NL.HGN.02.BHZ"]
         self.mock_ri._restricted_seedIDs = []
 
+    def _set_find_results(self, results_or_fn):
+        """Stub `collection.find(...).limit(...)` to return the given iterable.
+
+        Accepts either a list (same iterable for every call) or a callable
+        ``fn(query) -> iterable`` for per-query results.
+        """
+        if callable(results_or_fn):
+            def _find_side_effect(qry, projection=None):
+                cursor = MagicMock()
+                cursor.limit.return_value = iter(results_or_fn(qry))
+                return cursor
+            self.mock_collection.find.side_effect = _find_side_effect
+        else:
+            cursor = MagicMock()
+            cursor.limit.return_value = iter(results_or_fn)
+            self.mock_collection.find.return_value = cursor
+
     def tearDown(self):
         self.mongo_patcher.stop()
         self.ri_patcher.stop()
@@ -71,8 +88,9 @@ class TestWFCatalogQuery(unittest.TestCase):
         }]
         
         with patch('apps.wfcatalog_client._expand_wildcards', side_effect=lambda x: x):
+            self._set_find_results([])
             wfcatalog_client.mongo_request(params)
-            
+
             # Get the query passed to find
             call_args = self.mock_collection.find.call_args
             qry = call_args[0][0]
@@ -92,6 +110,96 @@ class TestWFCatalogQuery(unittest.TestCase):
             
             self.assertEqual(qry["ts"], {"$lt": expected_end})
             self.assertEqual(qry["te"], {"$gt": params[0]["start"]})
+
+    def test_fanout_disabled_runs_single_query(self):
+        """With FANOUT_ENABLED=False, mongo_request issues exactly one find() per params entry."""
+        params = [{
+            "network": "NL", "station": "HGN", "location": "--", "channel": "BHZ", "quality": "D",
+            "start": datetime(2024, 1, 1),
+            "end": datetime(2024, 4, 1),  # 91 days — would trigger fan-out if on
+        }]
+
+        with patch.object(wfcatalog_client.settings, "fanout_enabled", False), \
+             patch('apps.wfcatalog_client._expand_wildcards', side_effect=lambda x: x):
+            self._set_find_results([])
+            wfcatalog_client.mongo_request(params)
+
+            self.assertEqual(self.mock_collection.find.call_count, 1)
+
+    def test_fanout_enabled_splits_into_non_overlapping_shards(self):
+        """With FANOUT_ENABLED=True and a wide range, shards cover [start,end) without overlap."""
+        params = [{
+            "network": "NL", "station": "HGN", "location": "--", "channel": "BHZ", "quality": "D",
+            "start": datetime(2024, 1, 1),
+            "end": datetime(2024, 4, 1),  # 91 days
+        }]
+
+        with patch.object(wfcatalog_client.settings, "fanout_enabled", True), \
+             patch.object(wfcatalog_client.settings, "fanout_min_days", 7), \
+             patch.object(wfcatalog_client.settings, "fanout_window_days", 30), \
+             patch.object(wfcatalog_client.settings, "fanout_max_workers", 4), \
+             patch('apps.wfcatalog_client._expand_wildcards', side_effect=lambda x: x):
+            self._set_find_results([])
+            wfcatalog_client.mongo_request(params)
+
+            # crop_datetimes pushes end to start-of-next-day, so range is 92 days -> 4 shards of <=30d.
+            self.assertEqual(self.mock_collection.find.call_count, 4)
+
+            shard_bounds = []
+            for call in self.mock_collection.find.call_args_list:
+                qry = call[0][0]
+                shard_bounds.append((qry["te"]["$gt"], qry["ts"]["$lt"]))
+
+            # Shards are contiguous and non-overlapping when sorted by start.
+            shard_bounds.sort()
+            for (a_start, a_end), (b_start, b_end) in zip(shard_bounds, shard_bounds[1:]):
+                self.assertEqual(a_end, b_start, "shards must tile [start, end) without gaps or overlap")
+            self.assertEqual(shard_bounds[0][0], datetime(2024, 1, 1))
+            self.assertEqual(shard_bounds[-1][1], datetime(2024, 4, 2))  # crop_datetimes(+1 day)
+
+    def test_fanout_result_equals_single_shot(self):
+        """Merged fan-out result must equal the single-shot result for the same query."""
+        seg = lambda ts, te: {
+            "net": "NL", "sta": "HGN", "loc": "--", "cha": "BHZ", "qlt": "D", "srate": 100.0,
+            "ts": ts, "te": te,
+            "created": datetime(2024, 5, 1), "count": 10, "restr": "OPEN",
+        }
+        # Three docs that fall in different 30-day windows.
+        all_docs = [
+            seg(datetime(2024, 1, 5), datetime(2024, 1, 6)),
+            seg(datetime(2024, 2, 10), datetime(2024, 2, 11)),
+            seg(datetime(2024, 3, 20), datetime(2024, 3, 21)),
+        ]
+
+        def find_by_range(qry, projection=None):
+            ts_lt = qry["ts"]["$lt"]
+            te_gt = qry["te"]["$gt"]
+            return [d for d in all_docs if d["ts"] < ts_lt and d["te"] > te_gt]
+
+        params = [{
+            "network": "NL", "station": "HGN", "location": "--", "channel": "BHZ", "quality": "D",
+            "start": datetime(2024, 1, 1),
+            "end": datetime(2024, 4, 1),
+        }]
+
+        # Single-shot reference
+        with patch.object(wfcatalog_client.settings, "fanout_enabled", False), \
+             patch('apps.wfcatalog_client._expand_wildcards', side_effect=lambda x: x):
+            self._set_find_results(find_by_range)
+            _, single_result = wfcatalog_client.mongo_request(params)
+
+        # Reset mock for the fan-out path.
+        self.mock_collection.find.reset_mock()
+        self._set_find_results(find_by_range)
+
+        with patch.object(wfcatalog_client.settings, "fanout_enabled", True), \
+             patch.object(wfcatalog_client.settings, "fanout_min_days", 7), \
+             patch.object(wfcatalog_client.settings, "fanout_window_days", 30), \
+             patch.object(wfcatalog_client.settings, "fanout_max_workers", 4), \
+             patch('apps.wfcatalog_client._expand_wildcards', side_effect=lambda x: x):
+            _, fanout_result = wfcatalog_client.mongo_request(params)
+
+        self.assertEqual(single_result, fanout_result)
 
     def test_filter_invalid_data(self):
         """test that segments with start > end are filtered out"""
@@ -120,8 +228,8 @@ class TestWFCatalogQuery(unittest.TestCase):
         
         with patch('apps.wfcatalog_client._expand_wildcards', side_effect=lambda x: x):
             # Return both segments
-            self.mock_collection.find.return_value = [invalid_segment, valid_segment]
-            
+            self._set_find_results([invalid_segment, valid_segment])
+
             # Act
             queries, results = wfcatalog_client.mongo_request(params)
             
@@ -129,6 +237,44 @@ class TestWFCatalogQuery(unittest.TestCase):
             # Only valid_segment should remain
             self.assertEqual(len(results), 1)
             self.assertEqual(results[0][6], valid_segment["ts"]) # Index 6 is start time
+
+
+class TestBuildQueryFieldOrder(unittest.TestCase):
+    """Lock in the #51 fix: query field order must match the compound index
+    ``{net, sta, loc, cha, ts, te}`` so MongoDB's planner picks it up implicitly.
+    Python dicts preserve insertion order, and the planner sees that order.
+
+    `qlt` is not in the index — it must come *after* the indexed prefix.
+    """
+
+    def test_field_order_matches_compound_index(self):
+        params = {
+            "network": "NL",
+            "station": "HGN",
+            "location": "--",
+            "channel": "BHZ",
+            "quality": "D",
+        }
+        start = datetime(2024, 1, 1)
+        end = datetime(2024, 2, 1)
+        qry = wfcatalog_client._build_query(params, start, end)
+        # Indexed prefix first, in index order; qlt last.
+        self.assertEqual(list(qry.keys()), ["net", "sta", "loc", "cha", "ts", "te", "qlt"])
+
+    def test_field_order_holds_when_some_filters_skipped(self):
+        """Wildcards still preserve relative order — the planner only needs
+        prefix matching, so missing fields must not flip later ones around."""
+        params = {
+            "network": "NL",
+            "station": "*",      # skipped
+            "location": "--",
+            "channel": "*",      # skipped
+            "quality": "*",      # skipped
+        }
+        qry = wfcatalog_client._build_query(params, datetime(2024, 1, 1), datetime(2024, 2, 1))
+        # Only the kept indexed fields, in index order.
+        self.assertEqual(list(qry.keys()), ["net", "loc", "ts", "te"])
+
 
 if __name__ == '__main__':
     unittest.main()

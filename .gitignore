@@ -141,6 +141,18 @@ reproduce_data_wfcatalog.py
 reproduce_on_server.py
 debug_api_state.py
 
-# Agent Context
+# AI Agents & Tools
 .agent
 .agents/
+.gemini/
+.claude/
+.cursor/
+.aider*
+CLAUDE.md
+AGENTS.md
+plans/
+*.agent.md
+# Internal briefing / handover docs (not project documentation — README.md only)
+*-briefing.md
+*briefing*.md
+ws-availability-issue60-briefing.md

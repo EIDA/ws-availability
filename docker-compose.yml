@@ -1,4 +1,4 @@
-version: '3'
+version: '2.4'
 
 services:
   cache:
@@ -11,17 +11,18 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile.cacher
+    restart: always
     container_name: fdsnws-availability-cacher
     network_mode: "host"
     environment:
-      - RUNMODE=production
+      RUNMODE: production
       # Host Networking: Redis is on localhost
-      - CACHE_HOST=127.0.0.1
+      CACHE_HOST: "127.0.0.1"
       # Limit OpenBLAS threads (Fix for Cacher Crash)
-      - OPENBLAS_NUM_THREADS=1
-      - MKL_NUM_THREADS=1
-      - NUMEXPR_NUM_THREADS=1
-      - OMP_NUM_THREADS=1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
     ulimits:
       nproc: 65535
     security_opt:
@@ -31,30 +32,26 @@ services:
       context: ./
       dockerfile: Dockerfile.api
     restart: always
-    # Worker Configuration:
-    # - Default: 1 worker (most stable for resource-constrained servers)
-    # - Moderate: 2-3 workers (recommended if no thread creation issues)
-    # - High-performance: (2 × CPU cores) + 1 workers
-    # See README.md "Performance Tuning" section for details
-    command: gunicorn --bind 0.0.0.0:9001 --workers 1 --timeout 600 start:app
+    # Worker count is set in config.py via GUNICORN_WORKERS — see gunicorn.conf.py.
+    # Default is 1; raise (2–3, or `(2 × CPU cores) + 1`) if you have CPU/RAM
+    # headroom. Bind / timeout stay on the CLI because they're container-level
+    # concerns, not per-operator tunables.
+    command: gunicorn -c gunicorn.conf.py --bind 0.0.0.0:9001 --timeout 600 start:app
     container_name: fdsnws-availability-api
     network_mode: "host"
     environment:
-      - RUNMODE=production
+      RUNMODE: production
       # Host Networking: Redis is on localhost
-      - CACHE_HOST=127.0.0.1
-      # Gateway IP (Update if needed)
-      - MONGODB_HOST
-      - MONGODB_PORT
-      - MONGODB_USR
-      - MONGODB_PWD
-      - MONGODB_NAME
-      - FDSNWS_STATION_URL=https://eida.gein.noa.gr/fdsnws/station/1/query
+      CACHE_HOST: "127.0.0.1"
+      # MongoDB / FDSNWS-Station / Sentry settings are read from config.py.
+      # Do NOT add MONGODB_* or FDSNWS_STATION_URL here — env vars set in this
+      # block take precedence over config.py and would silently override the
+      # operator's settings.
       # Limit OpenBLAS threads to prevent "pthread_create failed" on restricted servers
-      - OPENBLAS_NUM_THREADS=1
-      - MKL_NUM_THREADS=1
-      - NUMEXPR_NUM_THREADS=1
-      - OMP_NUM_THREADS=1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
     ulimits:
       nproc: 65535
       nofile:
@@ -62,3 +59,6 @@ services:
         hard: 65535
     security_opt:
       - seccomp:unconfined
+    mem_limit: 2g
+    memswap_limit: 2g
+

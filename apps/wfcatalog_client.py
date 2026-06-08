@@ -7,14 +7,37 @@ availability metrics, and applies access restrictions based on cached inventory 
 It also manages caching logic using Redis.
 """
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from fnmatch import fnmatch
 # from flask import current_app (Removed)
 from .redis_client import RedisClient
-from pymongo import MongoClient
+from pymongo import MongoClient, ASCENDING
 from datetime import datetime, timedelta
 from typing import Any
 
 from .restriction import RestrictionInventory
+from .globals import Error
+
+try:
+    import sentry_sdk
+except ImportError:  # pragma: no cover - sentry_sdk is an optional runtime dep
+    sentry_sdk = None
+
+
+@contextmanager
+def _sentry_span(op: str, name: str, **tags: str):
+    """Open a Sentry span if the SDK is available; no-op otherwise."""
+    if sentry_sdk is None:
+        yield None
+        return
+    with sentry_sdk.start_span(op=op, name=name) as span:
+        for k, v in tags.items():
+            try:
+                span.set_tag(k, v)
+            except Exception:  # pragma: no cover - tag failures must not break the request
+                pass
+        yield span
 
 RESTRICTED_INVENTORY = None
 
@@ -43,18 +66,34 @@ DB_CLIENT = None
 def get_db_client():
     global DB_CLIENT
     if DB_CLIENT is None:
+        # When fan-out is enabled, each worker may run up to fanout_max_workers
+        # cursors in parallel — give the pool enough connections to serve them.
+        pool_size = (
+            max(1, settings.fanout_max_workers) if settings.fanout_enabled else 1
+        )
         DB_CLIENT = MongoClient(
             settings.mongodb_host,
             settings.mongodb_port,
             username=settings.mongodb_usr,
             password=settings.mongodb_pwd,
-            authSource=settings.mongodb_name,
-            maxPoolSize=1,
+            authSource=settings.mongodb_auth_source or settings.mongodb_name,
+            maxPoolSize=pool_size,
             connect=False,
             directConnection=True,
             retryReads=False,
             retryWrites=False
         )
+        try:
+            db = DB_CLIENT.get_database(settings.mongodb_name)
+            db.availability.create_index(
+                [("net", ASCENDING), ("sta", ASCENDING), ("loc", ASCENDING), 
+                 ("cha", ASCENDING), ("ts", ASCENDING), ("te", ASCENDING)],
+                background=True
+            )
+            logging.getLogger(__name__).info("Ensured MongoDB compound index is present on 'availability' collection.")
+        except Exception as e:
+            logging.getLogger(__name__).warning("Failed to verify/create MongoDB indexes: %s", e)
+            
     return DB_CLIENT
 
 def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
@@ -75,54 +114,141 @@ def mongo_request(paramslist: list[dict]) -> tuple[list[dict], list[list[Any]]]:
 
     # List of queries executed agains the DB, let's keep it for logging
     qries = []
-    
+
     # Use GLOBAL client (Fix for Connection Churn & Thread Exhaustion)
     client = get_db_client()
     db = client.get_database(db_name)
-    
-    for params in paramslist:
-        params = _expand_wildcards(params)
-        # Crop datetimes to accomodate sub-segment queries.
-        # e.g. net=NL&sta=HGN&start=2018-01-06T06:00:00&end=2018-01-06T12:00:00
-        # when we have one 24h segment for 2018-01-06
-        start, end = crop_datetimes(params)
-        qry = {}
-        if params["network"] != "*":
-            network = {"$in": params["network"].split(",")}
-            qry["net"] = network
-        if params["station"] != "*":
-            station = {"$in": params["station"].split(",")}
-            qry["sta"] = station
-        if params["location"] != "*":
-            location = {"$in": params["location"].split(",")}
-            qry["loc"] = location
-        if params["channel"] != "*":
-            qry["cha"] = {"$in": params["channel"].split(",")}
-        if params["quality"] != "*":
-            quality = {"$in": params["quality"].split(",")}
-            qry["qlt"] = quality
-        if start is not None:
-            te = {"$gt": start}
-            qry["te"] = te
-        if end is not None:
-            ts = {"$lt": end}
-            qry["ts"] = ts
 
-        # if end:
-        #    te = {"$lte": end}
-        #    qry["te"] = te
+    with _sentry_span("db.mongo", "mongo_request"):
+        for params in paramslist:
+            params = _expand_wildcards(params)
+            # Crop datetimes to accomodate sub-segment queries.
+            # e.g. net=NL&sta=HGN&start=2018-01-06T06:00:00&end=2018-01-06T12:00:00
+            # when we have one 24h segment for 2018-01-06
+            start, end = crop_datetimes(params)
+            qry = _build_query(params, start, end)
 
-        qries.append(qry)
+            qries.append(qry)
+            include_restricted = params.get("includerestricted", False)
 
-        cursor = db.availability.find(qry, projection=PROJ)
-
-        # Eager query execution instead of a cursor
-        result += _apply_restricted_bit(cursor, params.get("includerestricted", False))
+            if _should_fanout(start, end):
+                shard_results = _run_fanout(db, qry, start, end, include_restricted)
+                for shard in shard_results:
+                    result += shard
+                    if len(result) > settings.max_data_rows:
+                        # Stop early: the row cap is enforced in get_output().
+                        break
+            else:
+                # LAYER 4: Cap the MongoDB cursor
+                cursor = db.availability.find(
+                    qry, projection=PROJ
+                ).limit(settings.max_data_rows + 1)
+                result += _apply_restricted_bit(cursor, include_restricted)
 
     # Result needs to be sorted, this seems to be required by the fusion step
     result.sort(key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
 
     return qries, result
+
+
+def _build_query(params: dict, start: datetime | None, end: datetime | None) -> dict:
+    """Build the MongoDB filter dict shared by single-shot and fan-out paths.
+
+    Field insertion order is intentional: it matches the compound index
+    {net, sta, loc, cha, ts, te} so MongoDB's planner picks it up implicitly
+    (Issue #51). `qlt` is not in the index, so it goes last.
+    """
+    qry: dict = {}
+    if params["network"] != "*":
+        qry["net"] = {"$in": params["network"].split(",")}
+    if params["station"] != "*":
+        qry["sta"] = {"$in": params["station"].split(",")}
+    if params["location"] != "*":
+        qry["loc"] = {"$in": params["location"].split(",")}
+    if params["channel"] != "*":
+        qry["cha"] = {"$in": params["channel"].split(",")}
+    if end is not None:
+        qry["ts"] = {"$lt": end}
+    if start is not None:
+        qry["te"] = {"$gt": start}
+    if params["quality"] != "*":
+        qry["qlt"] = {"$in": params["quality"].split(",")}
+    return qry
+
+
+def _should_fanout(start: datetime | None, end: datetime | None) -> bool:
+    """Decide whether to split this query across parallel time shards."""
+    if not settings.fanout_enabled:
+        return False
+    if start is None or end is None:
+        return False
+    if (end - start).days < settings.fanout_min_days:
+        return False
+    return True
+
+
+def _split_windows(
+    start: datetime, end: datetime, window_days: int
+) -> list[tuple[datetime, datetime]]:
+    """Slice [start, end) into day-aligned windows of at most window_days each."""
+    if window_days <= 0:
+        window_days = 1
+    step = timedelta(days=window_days)
+    windows: list[tuple[datetime, datetime]] = []
+    cur = start
+    while cur < end:
+        nxt = min(cur + step, end)
+        windows.append((cur, nxt))
+        cur = nxt
+    return windows
+
+
+def _run_shard(
+    db: Any,
+    qry_base: dict,
+    w_start: datetime,
+    w_end: datetime,
+    include_restricted: bool,
+) -> list[list[Any]]:
+    """Execute a single time-window shard and return restricted-filtered rows."""
+    shard_qry = dict(qry_base)
+    shard_qry["te"] = {"$gt": w_start}
+    shard_qry["ts"] = {"$lt": w_end}
+
+    with _sentry_span(
+        "db.mongo.shard",
+        "availability.find",
+        ts_start=w_start.isoformat(),
+        ts_end=w_end.isoformat(),
+    ):
+        cursor = db.availability.find(shard_qry, projection=PROJ).limit(
+            settings.max_data_rows + 1
+        )
+        return _apply_restricted_bit(cursor, include_restricted)
+
+
+def _run_fanout(
+    db: Any,
+    qry_base: dict,
+    start: datetime,
+    end: datetime,
+    include_restricted: bool,
+) -> list[list[list[Any]]]:
+    """Dispatch shards onto a thread pool and return their results in order."""
+    windows = _split_windows(start, end, settings.fanout_window_days)
+    workers = min(settings.fanout_max_workers, len(windows)) or 1
+    logging.debug(
+        "Fanning out mongo_request across %d windows with %d workers",
+        len(windows),
+        workers,
+    )
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return list(
+            pool.map(
+                lambda w: _run_shard(db, qry_base, w[0], w[1], include_restricted),
+                windows,
+            )
+        )
 
 
 def crop_datetimes(params: dict) -> tuple[datetime | None, datetime | None]:
@@ -251,6 +377,19 @@ def _expand_wildcards(params: dict) -> dict:
         _cha += [e for e in _loc if fnmatch(e.split(".")[3], cha)]
 
     # Replace original query parameters with ones filtered out from the cached inventory.
+    stream_count = len(_cha)
+    
+    # LAYER 3: Breadth Check
+    # Rule A: Hard limit on number of streams
+    if stream_count > settings.max_streams:
+        raise ValueError(Error.TOO_MANY_STREAMS)
+        
+    # Rule B: Broad query (many streams + no time range)
+    # Using 500 as the "broadness" threshold as discussed
+    no_time_range = params.get("start") is None and params.get("end") is None
+    if stream_count > 500 and no_time_range:
+        raise ValueError(Error.BROAD_QUERY)
+
     params["network"] = ",".join(set([e.split(".")[0] for e in _cha]))
     params["station"] = (
         "*"

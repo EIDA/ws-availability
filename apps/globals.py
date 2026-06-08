@@ -13,11 +13,11 @@ UPDATED = 8
 STATUS = 9
 COUNT = 10  # timespancount
 
+from apps.settings import settings
+
 # limitations
 TIMEOUT = 600
 MAX_DAYS = None
-MAX_ROWS = "2_500_000"
-MAX_DATA_ROWS = int(MAX_ROWS.replace(",", ""))
 MAX_MERGEGAPS = 10000000000
 
 # available parameter values
@@ -38,7 +38,7 @@ ORDERBY = (
 # error message constants
 DOCUMENTATION_URI = "http://www.fdsn.org/webservices/fdsnws-availability-1.0.pdf"
 SERVICE = "fdsnws-availability"
-VERSION = "1.0.5"
+VERSION = "1.1.0"
 
 
 class Error:
@@ -47,7 +47,9 @@ class Error:
     VALID_PARAM = "Valid parameters."
     START_LATER = "The starttime cannot be later than the endtime: "
     TOO_LONG_DURATION = "Too many days requested (greater than "
-    TOO_MUCH_ROWS = f"The request exceeds the limit of {MAX_ROWS} rows."
+    TOO_MUCH_ROWS = f"The request exceeds the limit of {settings.max_data_rows} rows."
+    TOO_MANY_STREAMS = f"The request matches too many streams (limit is {settings.max_streams}). Please be more specific."
+    BROAD_QUERY = "Request too broad: please provide starttime/endtime, or specify at least a station or channel."
     UNSPECIFIED = "Error processing your request."
     NODATA = "Your query doesn't match any available data."
     TIMEOUT = f"Your query exceeds timeout ({TIMEOUT} seconds)."

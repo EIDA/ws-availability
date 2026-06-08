@@ -1,309 +1,187 @@
-# FDSNWS-Availability Deployment
+# FDSNWS-Availability
 
-## Overview
+A Flask implementation of the [FDSN Availability web service 1.0](http://www.fdsn.org/webservices/fdsnws-availability-1.0.pdf). It reports the time spans for which time-series data exist, served from a WFCatalog MongoDB.
 
-- WFCatalog DB (gray) - database used by the WFCatalog collector and API.
-- FDSNWS-Availability API (blue) - Flask-based FDSNWS-Availability implementation.
-- FDSNWS-Availability Cache (green) - Redis-based cache to store restriction information.
-- FDSNWS-Availability Cacher (orange) - Python-based container to harvest and store restriction information.
-- FDSNWS-Availability Update (purple) - JS script to fill the `availability` materialized view using WFCatalog `daily_streams` and `c_segments` collections.
+It runs as three Docker containers: the **API** (Flask + gunicorn, port 9001), a **Redis** cache, and a **cacher** that keeps the restriction inventory and the `availability` view up to date on a built-in daily schedule.
 
-![FDSNWS-Availability deployment diagram](deployment.png)
-
-Following implementation requires MongoDB v4.2 or higher.
+> **Upgrading from v1.0.x?** Follow [`BETA.md`](BETA.md) for the exact upgrade steps (config.py changes, the in-app scheduler replacing host cron).
 
 ## Deployment
 
-1. Clone the [https://github.com/EIDA/ws-availability] repository and go to its root
-1. Copy `config.py.sample` to `config.py` and adjust it as needed (please notice there are two sections - `RUNMODE == "production"` and `RUNMODE == "test"`; for Docker deployment use the `production` section):
+First, get and configure the repo (needed either way):
 
-    ```bash
-    # WFCatalog MongoDB
-    MONGODB_HOST = "localhost" #MongoDB host
-    MONGODB_PORT = 27017 #MongoDB port
-    MONGODB_USR = "" #MongoDB user
-    MONGODB_PWD = "" #MongoDB password
-    MONGODB_NAME = "wfrepo" #MongoDB database name
-    FDSNWS_STATION_URL = "https://orfeus-eu.org/fdsnws/station/1/query" #FDSNWS-Station endpoint to harvest restriction information from
-    CACHE_HOST = "localhost" #Cache host
-    CACHE_PORT = 6379 #Cache port
-    CACHE_INVENTORY_KEY = "inventory" #Cache key for restriction information
-    CACHE_INVENTORY_PERIOD = 0 #Cache invalidation period for `inventory` key; 0 = never invalidate
-    CACHE_RESP_PERIOD = 1200 #Cache invalidation period for API response
-    ```
+```bash
+git clone https://github.com/EIDA/ws-availability.git
+cd ws-availability
+cp config.py.sample config.py        # edit MongoDB creds, FDSNWS_STATION_URL, SENTRY_ENVIRONMENT
+```
 
-1. Build the containers:
+Then pick one of:
 
-    ```bash
-    docker-compose -p 'fdsnws-availability' up -d --no-deps --build
-    ```
+### Option A — Build locally
 
-    When the Docker stack is deployed, you will see 3 containers running:
+Builds the images on your host. No registry access needed.
 
-    ```bash
-    $ docker ps
-    CONTAINER ID   IMAGE                         COMMAND                  CREATED         STATUS        PORTS                      NAMES
-    4e3dace01fb0   fdsnws-availability_api       "/bin/bash -c 'gunic…"   10 seconds ago  Up 5 seconds  0.0.0.0:9001->9001/tcp     fdsnws-availability-api
-    3c91e0d1c5e6   fdsnws-availability_cacher    "/bin/bash -c 'pytho…"   10 seconds ago  Up 5 seconds  0.0.0.0:11211->11211/tcp   fdsnws-availability-cacher
-    d983e64d64a8   redis:7.0-alpine              "docker-entrypoint.s…"   10 seconds ago  Up 5 seconds  0.0.0.0:6379->6379/tcp     fdsnws-availability-cache
-    ```
+```bash
+docker-compose up -d --build
+```
 
-    You can follow the `fdsnws-availability-cacher` container to see the status of restriction information harvesting:
+### Option B — Pull pre-built images
 
-    ```bash
-    $ docker logs --follow fdsnws-availability-cacher
-    [2023-01-11 09:47:38 +0000] [0] [INFO] Getting inventory from FDSNWS-Station...
-    [2023-01-11 09:47:39 +0000] [0] [INFO] Harvesting 33 from https://orfeus-eu.org/fdsnws/station/1/query?level=network: 2M,3T,6A...
-    #...
-    [2023-02-15 08:31:56 +0000] [0] [INFO] Completed caching inventory from FDSNWS-Station
-    ```
+Each **tagged release** publishes images to GHCR, so you can skip the build. Replace `<version>` with a release tag (e.g. `1.1.0`, or `1.1` for the latest 1.1.x):
 
-    Once `fdsnws-availability-cacher` is completed, it will go down. Harvested information is stored in the Redis DB served by `fdsnws-availability-cache` container. To rebuild the cache, simply restart the container using:
+```yaml
+# docker-compose.override.yml
+services:
+  api:
+    image: ghcr.io/eida/ws-availability/api:<version>
+  cacher:
+    image: ghcr.io/eida/ws-availability/cacher:<version>
+```
 
-    ```bash
-    docker start fdsnws-availability-cacher
-    ```
+```bash
+docker-compose pull
+docker-compose up -d
+```
 
-    To automate cache rebuilding process, add following line to `cron`:
+> Pre-built images exist only for tagged releases. To build from an untagged branch instead, use Option A (build locally).
 
-    ```bash
-    # Rebuild FDSNWS-Availability restriction information cache daily at 3:00 AM
-    0 3 * * * docker restart fdsnws-availability-cacher
-    ```
+Either way, three containers come up. Check it:
 
-    It will harvest and overwrite the restricted information stored in Redis instance.
+```bash
+curl "127.0.0.1:9001/version"        # -> 1.1.0
+curl "127.0.0.1:9001/extent?net=NA&start=2023-02-01"
+```
 
-1. Materialized view
-    1. Initial build
+For a node that already has a populated WFCatalog, that's the whole install. A brand-new database also needs the one-time [database setup](#first-time-database-setup). Requires MongoDB ≥ 4.2.
 
-        When the stack is initially deployed, the materialized view is not yet in place. To build it, issue the following command:
+## Endpoints
 
-        ```bash
-        # Script started on 2023-02-24
-        $ mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=365" views/main.js
-        Processing WFCatalog entries using networks: '^.*$', stations: '^.*$', start: '2022-03-24', end: '2023-03-24' completed!
-        ```
+API on port `9001`. `/query` (time spans per channel) and `/extent` (one row per channel) accept GET and POST. Also `/version`, `/application.wadl`, and `/` (landing page).
 
-        It will go throught the documents in `daily_streams` and `c_segments` from last year, extract availability information and store it in the `availability` materialized view.
+```bash
+curl "127.0.0.1:9001/extent?net=NA&start=2023-02-01"
+#Network Station Location Channel Quality SampleRate Earliest                    Latest                      Updated              TimeSpans Restriction
+NA       SABA             BHZ     D       40.0       2023-02-01T00:00:00.000000Z 2023-02-14T00:00:00.000000Z 2023-02-14T07:41:41Z 1         OPEN
+```
 
-    1. Daily appension
+## Configuration
 
-        To automate availability information appension, add following line to `cron`:
+Everything lives in `config.py` (copied from `config.py.sample`, gitignored so upgrades never touch it). Set these in the `RUNMODE == "production"` block:
 
-        ```bash
-        0 6 * * * cd ~/ws-availability/views && mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo main.js > /dev/null 2>&1
-        ```
+| Key | Default | Description |
+|-----|---------|-------------|
+| `MONGODB_HOST` | `host.docker.internal` | WFCatalog MongoDB host. |
+| `MONGODB_PORT` | `27017` | MongoDB port. |
+| `MONGODB_USR` / `MONGODB_PWD` | empty | MongoDB credentials (leave empty if no auth). |
+| `MONGODB_NAME` | `wfrepo` | Database name; also used as `authSource` unless `MONGODB_AUTH_SOURCE` is set. |
+| `MONGODB_AUTH_SOURCE` | `None` | Optional. Mongo auth database when it differs from `MONGODB_NAME` (e.g. `admin`). Falls back to `MONGODB_NAME` when unset. |
+| `FDSNWS_STATION_URL` | `https://orfeus-eu.org/fdsnws/station/1/query` | FDSNWS-Station endpoint to harvest restriction info from. |
+| `CACHE_HOST` | `cache` | Redis host. |
+| `CACHE_PORT` | `6379` | Redis port. |
+| `CACHE_INVENTORY_KEY` | `inventory` | Redis key for the restriction inventory. |
+| `CACHE_INVENTORY_PERIOD` | `0` | Inventory cache TTL in seconds; `0` = never expire. |
+| `CACHE_RESP_PERIOD` | `1200` | Response cache TTL in seconds. |
+| `SENTRY_DSN` | empty | Sentry DSN; empty disables Sentry. |
+| `SENTRY_TRACES_SAMPLE_RATE` | `1.0` | Fraction of requests traced, `0.0`–`1.0`. |
+| `SENTRY_ENVIRONMENT` | `{{node}}_production` | **Unique per-node tag** (e.g. `noa_production`) so Sentry can tell deployments apart. Must be changed from the placeholder. |
+| `GUNICORN_WORKERS` | `1` | Number of gunicorn worker processes. Raise (2–3, or `(2 × CPU cores) + 1`) if you have CPU/RAM headroom. Read by `gunicorn.conf.py` at container start. |
 
-        It will go throught the documents in `daily_streams` and `c_segments` from last day, extract availability information and append it to the `availability` materialized view. If additional parameters are not provided, script processes data from last day:
+## What runs daily
 
-        ```bash
-        # Script started on 2023-02-24
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo main.js
-        Processing WFCatalog entries using networks: '^.*$', stations: '^.*$', start: '2023-03-23', end: '2023-03-24' completed!
-        ```
+The cacher runs a built-in scheduler — no host cron needed:
 
-    1. Back-processing
+- **03:00 UTC** — refresh the restriction inventory from FDSNWS-Station into Redis.
+- **06:00 UTC** — update the `availability` view from the last 4 days of WFCatalog data.
+- **On startup** — both run once, so a restart leaves data fresh.
 
-        Processing can be also executed on a predefined subset of data using `networks`, `stations`, `start` and `end` parameters.
+## Tuning (optional)
 
-        ```bash
-        # Last week
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=7;" main.js
-        Processing WFCatalog entries using networks: '^.*$', stations: '^.*$', start: '2023-03-17', end: '2023-03-24' completed!
+- **Workers** — set `GUNICORN_WORKERS` in `config.py` (default `1`). `gunicorn.conf.py` reads it at startup. Raise if you have CPU/RAM headroom.
+- **Row/stream caps** — `MAX_DATA_ROWS` (default 2.5M) and `MAX_STREAMS` (default 2000) env vars guard against oversized requests (HTTP 413).
 
-        # January 2023
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "start='2023-01-01'; end='2023-01-31'" main.js
-        Processing WFCatalog entries using networks: '^.*$', stations: '^.*$', start: '2023-01-01', end: '2023-01-31' completed!
+### Parallel fan-out
 
-        # NL.HGN data between December 2022 and January 2023
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "networks='NL'; stations='HGN'; start='2022-12-01'; end='2023-01-31'" main.js
-        Processing WFCatalog entries using networks: '^NL$', stations: '^HGN$', start: '2022-12-01', end: '2023-01-31' completed!
+By default, each request is answered by a **single** MongoDB cursor. The `availability` collection holds one document per channel-per-day, so a long time range means many documents fetched in sequential round-trips — most of the time is spent waiting on the database, one batch after another.
 
-        # You can also use regular expressiosn for `networks` and `stations` params
-        # Please refer to [docs](https://www.mongodb.com/docs/manual/reference/operator/query/regex/) for details
+Fan-out splits the request's time range into day-aligned windows and runs them as **concurrent** cursors, then merges the pieces back together. The waiting overlaps instead of stacking up, so a multi-month query finishes noticeably faster. Because each window is a separate day range, the slices never overlap and the merged result is **byte-identical** to the single-cursor answer — only the speed differs.
 
-        # Stations from NL network matching `G*4` template with timespan from 2023-03-01 till 2023-03-02
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "networks='NL'; stations='G.*4'; start='2023-03-01'; end='2023-03-02'" main.js
-        Processing WFCatalog entries using networks: '^NL$', stations: '^G.*4$', start: '2023-03-01', end: '2023-03-02' completed!
+It is **off by default**, applies to **both `/query` and `/extent`** (they share the same fetch layer), and only engages when a request's time range is at least `FANOUT_MIN_DAYS` — shorter requests stay single-cursor because the thread overhead wouldn't pay off. Controlled by these environment variables:
 
-        # Stations from `NL` or `NA` networks with station codes `HGN` or `SABA` and timespan from 2023-03-01 till 2023-03-02
-        $ mongosh -u USERNAME -p PASSWORD --authenticationDatabase wfrepo --eval "networks='NL|NA'; stations='HGN|SABA'; start='2023-03-01'; end='2023-03-02'" main.js
-        Processing WFCatalog entries using networks: '^NL|NA$', stations: '^HGN|SABA$', start: '2023-03-01', end: '2023-03-02' completed!
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `FANOUT_ENABLED` | `false` | Master switch. When `false`, behaves exactly like the single-cursor path. |
+| `FANOUT_MIN_DAYS` | `7` | Minimum request range, in days, before fan-out engages. |
+| `FANOUT_WINDOW_DAYS` | `30` | Size of each window. A 90-day query becomes ~3 windows. |
+| `FANOUT_MAX_WORKERS` | `4` | Max windows run at once — also the number of MongoDB connections a fan-out request uses. |
 
-        # All stations from networks `NL` and `NA` with timespan from 2023-03-01 till 2023-03-02
-        $ mongosh -u jarek -p password123 --authenticationDatabase wfrepo --eval "networks='NL|NA'; start='2023-03-01'; end='2023-03-02'" main.js
-        Processing WFCatalog entries using networks: '^NL|NA$', stations: '^.*$', start: '2023-03-01', end: '2023-03-02' completed!
-        ```
+Best for long, narrow queries (months/years of a few channels). Before enabling on a busy node, check that `workers × FANOUT_MAX_WORKERS` stays within your MongoDB connection budget.
 
-    1. Indexes
+## Development
 
-        It is highly suggested to create at least following index in the `availability` materialized view. First, login to your MongoDB instance using `mongosh` and then execute following commands:
+Requires Python ≥ 3.13 and [uv](https://docs.astral.sh/uv/).
 
-        ```bash
-        use wfrepo;
-        db.availability.createIndex({ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 })
-        ```
+```bash
+cp config.py.sample config.py        # edit for RUNMODE=test
+uv sync
+docker run -p 6379:6379 -d redis:7.0-alpine     # Redis is required
+uv run python cache.py               # build the restriction inventory
+RUNMODE=test uv run gunicorn --bind 0.0.0.0:9001 start:app
+```
 
-1. Validation
+Tests: `uv run pytest tests/`
 
-    Now it is time to check if everything is running (remember to change the `net` query parameter). API is exposed by default on port `9001`, let's try to get the landing page:
+## First-time database setup
 
-    ```bash
-    $ curl "127.0.0.1:9001"
-    <!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="author" content="gempa GmbH" />
-        <title>FDSNWS-Availability</title>
-      </head>
-      <body>
-        <h1>FDSNWS Availability Web Service</h1>
-        <p>
-          The availability web service returns detailed time span information about
-          available time series data. Please refer to
-          <a href="http://www.fdsn.org/webservices"
-            >http://www.fdsn.org/webservice</a
-          >
-          for a complete service description.
-        </p>
-    
-        <h2>Available URLs</h2>
-        <ul>
-          <li><a href="query">query</a></li>
-          <li><a href="extent">extent</a></li>
-          <li><a href="version">version</a></li>
-          <li><a href="application.wadl">application.wadl</a></li>
-        </ul>
-      </body>
-    ```
+*Skip this if you already run ws-availability — the view and index already exist.*
 
-    Get request to the `/extent` method:
+For a brand-new WFCatalog database, build the materialized view once:
 
-    ```bash
-    $ curl "127.0.0.1:9001/extent?net=NA&start=2023-02-01"
-    #Network Station Location Channel Quality SampleRate Earliest                    Latest                      Updated              TimeSpans Restriction
-    NA       SABA             BHE     D       40.0       2023-02-01T00:00:00.000000Z 2023-02-14T00:00:00.000000Z 2023-02-14T07:41:14Z 1         OPEN       
-    NA       SABA             BHN     D       40.0       2023-02-01T00:00:00.000000Z 2023-02-14T00:00:00.000000Z 2023-02-14T07:42:07Z 1         OPEN       
-    NA       SABA             BHZ     D       40.0       2023-02-01T00:00:00.000000Z 2023-02-14T00:00:00.000000Z 2023-02-14T07:41:41Z 1         OPEN       
-    # ...
-    ```
+```bash
+# Build the availability view (adjust daysBack to how far back you want)
+mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=365" views/main.js
+```
 
-    Get request to the `/query` method:
+The compound index `{ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 }` is created automatically by the API at startup (built in the background). If queries feel slow right after a brand-new install, give it a moment to finish.
 
-    ```bash
-    $ curl "127.0.0.1:9001/query?net=NA&start=2023-02-01"
-    #Network Station Location Channel Quality SampleRate Earliest                    Latest                     
-    NA       SABA             BHE     D       40.0       2023-02-01T00:00:00.000000Z 2023-02-02T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-02T00:00:00.000000Z 2023-02-03T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-03T00:00:00.000000Z 2023-02-04T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-04T00:00:00.000000Z 2023-02-05T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-05T00:00:00.000000Z 2023-02-06T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-06T00:00:00.000000Z 2023-02-07T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-07T00:00:00.000000Z 2023-02-08T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-08T00:00:00.000000Z 2023-02-09T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-09T00:00:00.000000Z 2023-02-10T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-10T00:00:00.000000Z 2023-02-11T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-11T00:00:00.000000Z 2023-02-12T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-12T00:00:00.000000Z 2023-02-13T00:00:00.000000Z
-    NA       SABA             BHE     D       40.0       2023-02-13T00:00:00.000000Z 2023-02-14T00:00:00.000000Z
-    ```
+After the initial build, the cacher keeps the view current automatically (see [What runs daily](#what-runs-daily)) — **no host cron is needed** (earlier versions required one; it has been replaced by the built-in scheduler).
 
-1. Reverse proxy example config
+### Back-processing
 
-    An example of Apache reverse proxy config:
+The daily scheduler only refreshes a rolling recent window. To reprocess a specific historical range or a subset of streams — e.g. after a data correction or a backfill — run `views/main.js` manually with parameters (`networks`/`stations` accept regex):
 
-    ```bash
-    # FDSNWS-Availability (Docker)
-    <Location /fdsnws/availability/1>
-      # in order to omit CORS error
-      Header add Access-Control-Allow-Origin "*"
-    </Location>
-    ProxyPass /fdsnws/availability/1 <HOST>:9001 timeout=600
-    ProxyPassReverse /fdsnws/availability/1 <HOST>:9001 timeout=600
-    ```
+```bash
+# A specific month
+mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo \
+  --eval "start='2023-01-01'; end='2023-01-31'" views/main.js
+
+# One network/station over a range
+mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo \
+  --eval "networks='NL'; stations='HGN'; start='2022-12-01'; end='2023-01-31'" views/main.js
+```
 
 ## Troubleshooting
 
-If your webservice is not working (e.g., after upgrading to v1.0.5), it is likely due to a configuration problem. Follow these steps to diagnose the issue:
+If the service isn't working — often right after an upgrade — it's usually a configuration problem:
 
-1. **Check Docker Logs**
-   Inspect the API container logs for any runtime errors or connection failures:
+1. **Check the logs** for runtime errors or connection failures:
 
    ```bash
    docker logs fdsnws-availability-api
+   docker logs fdsnws-availability-cacher
    ```
 
-2. **Verify Configuration**
-   Ensure that your `config.py` includes all required fields. Compare your `config.py` with the provided `config.py.sample` to ensure no newly introduced configuration variables are missing.
+2. **Verify `config.py` has every field** the current version expects. New versions add keys; list what yours is missing versus the sample:
 
-3. **Check Database Access**
-   Verify that your MongoDB and Redis connection parameters in `config.py` are correct and that those services are fully operational.
+   ```bash
+   diff <(grep -oE '^[[:space:]]*[A-Z_]+ =' config.py      | tr -d ' =' | sort -u) \
+        <(grep -oE '^[[:space:]]*[A-Z_]+ =' config.py.sample | tr -d ' =' | sort -u)
+   ```
 
-## Running in development environment
+   Lines prefixed `>` are keys present in the sample but missing from your `config.py` — add them.
 
-1. Go to the root directory.
-1. Copy `config.py.sample` to `config.py` and adjust it as needed.
-1. Create the virtual environment:
-
-    ```bash
-    python3 -m venv env
-    ```
-
-1. Activate the virtual environment:
-
-    ```bash
-    source env/bin/activate
-    ```
-
-1. Install the dependencies:
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-1. Create Redis instance (mandatory for WFCatalog-based deployment):
-
-    ```bash
-    docker run -p 6379:6379 --name cache -d redis:7.0-alpine redis-server --save 20 1 --loglevel warning
-    ```
-
-1. Build the cache:
-
-    ```bash
-    python3 cache.py
-    ```
-
-1. Now you can either:
-    1. Run it:
-
-        ```bash
-        RUNMODE=test FLASK_APP=start.py flask run
-
-        # Or with gunicorn:
-        RUNMODE=test gunicorn --workers 2 --timeout 60 --bind 0.0.0.0:9001 start:app
-        ```
-
-    1. Debug it in VS Code (F5) after selecting "Launch (Flask)" config.
-
-## RUNMODE builtin values
-
-- `production`
-- `test`
-
-## Tests
-
-Tests can be executed from the respository root using following command:
-
-```bash
-PYTHONPATH=./apps/ python3 -m unittest discover tests/
-```
-
-## Ideas for improvements
-
-1. Move restriction information from Redis cache directly to the `db.availability` materialized view. This would imply modifying the `views/main.js` script with code harvesting this information directly from the FDSNWS-Station instance.
-1. Modify underlying RESIF code from logic based on list of arrays to list of objects/dicts which is native MongoDB response to prevent the object/dict to array casting.
+3. **Check database access** — confirm the MongoDB and Redis connection parameters in `config.py` are correct and that both services are reachable from the containers.
 
 ## References
 
-This repository has been forked from [gitlab.com/resif/ws-availability](https://gitlab.com/resif/ws-availability), special thanks to our colleagues at RESIF for sharing their implementation of the FDSNWS-Availability web service. 💐
+Forked from [gitlab.com/resif/ws-availability](https://gitlab.com/resif/ws-availability) — thanks to our colleagues at RESIF for sharing their FDSNWS-Availability implementation. 💐

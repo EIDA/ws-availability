@@ -9,9 +9,9 @@ from typing import Any
 from flask import make_response
 
 from apps.globals import Error
-from apps.globals import MAX_DATA_ROWS
 from apps.globals import SCHEMAVERSION
 from apps.globals import QUALITY, SAMPLERATE, START, END, UPDATED, STATUS, COUNT
+from apps.settings import settings
 from apps.utils import error_request
 from apps.utils import overflow_error
 from apps.utils import tictac
@@ -419,7 +419,7 @@ def get_output(param_dic_list: list[dict]) -> Any:
 
         nrows = len(data)
         logging.info(f"Number of collected rows: {nrows}")
-        if nrows > MAX_DATA_ROWS:
+        if nrows > settings.max_data_rows:
             return overflow_error(Error.TOO_MUCH_ROWS)
 
         indexes = get_indexes(params)
@@ -435,6 +435,9 @@ def get_output(param_dic_list: list[dict]) -> Any:
         response = get_response(params, data)
         logging.debug(f"Processing in {tictac(tic)} seconds.")
         return response
+    except ValueError as ex:
+        # Catch breadth/complexity errors from Redis guardrails and return 413
+        return overflow_error(str(ex))
     except Exception as ex:
         logging.exception(str(ex))
     finally:

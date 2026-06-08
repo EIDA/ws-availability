@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.13-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 WORKDIR /appli
@@ -10,5 +10,7 @@ COPY apps ./apps/
 
 # Place executables in the environment at the front of the path
 ENV PATH="/appli/.venv/bin:$PATH"
+# Set PYTHONPATH so 'from apps.sentry import ...' resolves correctly
+ENV PYTHONPATH="/appli"
 
-CMD ["python", "cache.py"]
+CMD ["python", "apps/scheduler.py"]

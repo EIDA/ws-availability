@@ -16,16 +16,16 @@ def before_send(event, hint):
     """
     # List of sensitive field names to scrub (case-insensitive)
     sensitive_keys = {
-        "password", "passwd", "pwd", "secret", "api_key", "apikey", 
+        "password", "passwd", "pwd", "secret", "api_key", "apikey",
         "token", "auth", "authorization", "credentials", "private_key",
         "access_token", "refresh_token", "session", "cookie"
     }
-    
+
     def scrub_dict(data):
         """Recursively scrub sensitive data from dictionaries."""
         if not isinstance(data, dict):
             return
-        
+
         for key in list(data.keys()):
             key_lower = str(key).lower()
             # Check if key contains any sensitive keyword
@@ -37,24 +37,41 @@ def before_send(event, hint):
                 for item in data[key]:
                     if isinstance(item, dict):
                         scrub_dict(item)
-    
-    # Scrub request data
+
+    # Scrub request data (including IP headers)
     if "request" in event:
         scrub_dict(event["request"])
-    
+        if "headers" in event["request"]:
+            headers = event["request"]["headers"]
+            # Remove common IP headers
+            for ip_header in ["X-Forwarded-For", "X-Real-Ip", "True-Client-Ip", "Cf-Connecting-Ip"]:
+                if ip_header in headers:
+                    headers[ip_header] = "[Filtered]"
+                # also check lowercase since headers are often lowercase
+                if ip_header.lower() in headers:
+                    headers[ip_header.lower()] = "[Filtered]"
+
+        # Sometimes IP is in env
+        if "env" in event["request"] and "REMOTE_ADDR" in event["request"]["env"]:
+             event["request"]["env"]["REMOTE_ADDR"] = "[Filtered]"
+
     # Scrub extra context
     if "extra" in event:
         scrub_dict(event["extra"])
-    
-    # Scrub user context
-    if "user" in event:
-        scrub_dict(event["user"])
-    
+
+    # Aggressively clear user IP
+    if "user" not in event or event["user"] is None:
+        event["user"] = {}
+
+    # Explicitly set IP to a generic value so Sentry doesn't try to auto-fill it
+    event["user"]["ip_address"] = "0.0.0.0"
+    scrub_dict(event["user"])
+
     # Scrub breadcrumbs
     if "breadcrumbs" in event:
         for breadcrumb in event["breadcrumbs"].get("values", []):
             scrub_dict(breadcrumb)
-    
+
     # Scrub local variables from stack traces
     if "exception" in event:
         for exception in event["exception"].get("values", []):
@@ -62,17 +79,26 @@ def before_send(event, hint):
                 for frame in exception["stacktrace"].get("frames", []):
                     if "vars" in frame:
                         scrub_dict(frame["vars"])
-    
+
     return event
 
 
-# Initialize Sentry before creating the Flask app
+# Initialize Sentry before creating the Flask app.
+# Defensive getattr() so a legacy config.py without these fields doesn't crash startup.
+# SENTRY_ENVIRONMENT resolution order: Config attribute (config.py) -> env var (docker-compose) -> default.
+# This lets operators tag a deployment without having to edit config.py on every node.
 if getattr(Config, "SENTRY_DSN", None):
+    sentry_environment = (
+        getattr(Config, "SENTRY_ENVIRONMENT", None)
+        or os.environ.get("SENTRY_ENVIRONMENT")
+        or "local_development"
+    )
     sentry_sdk.init(
         dsn=Config.SENTRY_DSN,
+        environment=sentry_environment,
         traces_sample_rate=getattr(Config, "SENTRY_TRACES_SAMPLE_RATE", 1.0),
-        # Add data like request headers and IP for users
-        send_default_pii=True,
+        # Disable default PII collection (IP, headers, cookies) for GDPR compliance
+        send_default_pii=False,
         # Scrub sensitive data before sending
         before_send=before_send,
     )
