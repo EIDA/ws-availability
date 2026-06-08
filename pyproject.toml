@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ws-availability"
-version = "1.1.0"
+version = "1.1.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -20,6 +20,12 @@ dependencies = [
     "sentry-sdk[flask]>=2.0.0",
     "apscheduler>=3.11.2",
 ]
+
+[project.scripts]
+# On-demand historical/scoped rebuild of the availability view (apps/cli.py).
+# Invoked inside the cacher, e.g.:
+#   docker exec fdsnws-availability-cacher avail-rebuild --net IV --start 2008-01-01 --end 2009-01-01
+avail-rebuild = "apps.cli:main"
 
 [dependency-groups]
 dev = [

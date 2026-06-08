@@ -93,7 +93,9 @@ The cacher runs a built-in scheduler — no host cron needed:
 
 - **03:00 UTC** — refresh the restriction inventory from FDSNWS-Station into Redis.
 - **06:00 UTC** — update the `availability` view from the last 4 days of WFCatalog data.
-- **On startup** — both run once, so a restart leaves data fresh.
+- **On startup** — both run once, so a restart leaves recent data fresh.
+
+This covers only the recent window. To repair an older date (e.g. after a backfill), see [Back-processing](#back-processing-historical--scoped-rebuild).
 
 ## Tuning (optional)
 
@@ -146,16 +148,33 @@ The compound index `{ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 }` is created
 
 After the initial build, the cacher keeps the view current automatically (see [What runs daily](#what-runs-daily)) — **no host cron is needed** (earlier versions required one; it has been replaced by the built-in scheduler).
 
-### Back-processing
+### Back-processing (historical / scoped rebuild)
 
-The daily scheduler only refreshes a rolling recent window. To reprocess a specific historical range or a subset of streams — e.g. after a data correction or a backfill — run `views/main.js` manually with parameters (`networks`/`stations` accept regex):
+The daily scheduler only refreshes a **rolling recent window** (the last 4 days). It therefore *cannot* repair a historical gap: if WFCatalog is (re)populated for an old date — e.g. after a backfill, or a data correction surfaced by an [EIDA consistency report](https://github.com/EIDA) — restarting the cacher does **not** rebuild that date, so `/query` and `/extent` keep reporting "no data" even though dataselect / the SDS archive serve it. You must reprocess that range explicitly.
+
+> **Prerequisite:** back-processing only re-derives the view *from* WFCatalog (`daily_streams`/`c_segments`). It does **not** scan the SDS archive. If WFCatalog itself is missing the range, refresh WFCatalog for those dates **first**, otherwise the rebuild completes cleanly but writes nothing.
+
+**Preferred — the `avail-rebuild` CLI** (runs inside the cacher, so it uses the container's own MongoDB credentials; supports full NSLC):
 
 ```bash
-# A specific month
-mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo \
-  --eval "start='2023-01-01'; end='2023-01-31'" views/main.js
+# A network/station over a range (all of 2008 -> end is the day boundary, 2009-01-01)
+docker exec fdsnws-availability-cacher \
+  avail-rebuild --net IV --sta ABC --start 2008-01-01 --end 2009-01-01
 
-# One network/station over a range
+# Channel-precise (e.g. just HHZ; --loc=-- means the empty location.
+# Use the attached '=' form: a bare '--' is read by the shell/argparse as end-of-options.)
+docker exec fdsnws-availability-cacher \
+  avail-rebuild --net IV --sta ABC --loc=-- --cha HHZ --start 2008-01-01 --end 2009-01-01
+
+# Whole range, all streams
+docker exec fdsnws-availability-cacher avail-rebuild --start 2023-01-01 --end 2023-02-01
+```
+
+`--net/--sta/--loc/--cha` are comma-separated exact-match lists; omit any to leave it unconstrained. The rebuild is idempotent (`$merge whenMatched:"replace"`) — safe to re-run. After it finishes, flush Redis or wait out `CACHE_RESP_PERIOD` before re-checking, in case an empty response for that query is still cached. (If the console script isn't on `PATH` for some reason, `docker exec fdsnws-availability-cacher python -m apps.cli …` is equivalent.)
+
+**Fallback — `views/main.js` via `mongosh`** (host-side; net+sta+date only, no loc/cha; needs a repo checkout and DB creds on the host):
+
+```bash
 mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo \
   --eval "networks='NL'; stations='HGN'; start='2022-12-01'; end='2023-01-31'" views/main.js
 ```

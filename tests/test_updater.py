@@ -60,6 +60,52 @@ class TestAvailabilityUpdater(unittest.TestCase):
         }
         self.assertEqual(pipeline[2], expected_merge)
 
+    def test_daily_match_omits_nslc_filters_by_default(self):
+        """With locations/channels=None the $match has no loc/cha keys (scheduler path)."""
+        self.updater.update_availability_daily(
+            "^.*$", "^.*$", datetime(2023, 1, 1), datetime(2023, 1, 2)
+        )
+        match = self.mock_db.daily_streams.aggregate.call_args[0][0][0]["$match"]
+        self.assertNotIn("loc", match)
+        self.assertNotIn("cha", match)
+
+    def test_daily_match_applies_nslc_filters_when_given(self):
+        """Provided loc/cha become exact-match $in clauses; '' is a valid (empty) loc."""
+        self.updater.update_availability_daily(
+            "^.*$", "^.*$", datetime(2023, 1, 1), datetime(2023, 1, 2),
+            locations=["", "00"], channels=["HHZ"],
+        )
+        match = self.mock_db.daily_streams.aggregate.call_args[0][0][0]["$match"]
+        self.assertEqual(match["loc"], {"$in": ["", "00"]})
+        self.assertEqual(match["cha"], {"$in": ["HHZ"]})
+
+    def test_continuous_match_applies_nslc_filters_when_given(self):
+        self.updater.update_availability_continuous(
+            "^.*$", "^.*$", datetime(2023, 1, 1), datetime(2023, 1, 2),
+            locations=["00"], channels=["BHZ", "BHN"],
+        )
+        match = self.mock_db.daily_streams.aggregate.call_args[0][0][0]["$match"]
+        self.assertEqual(match["loc"], {"$in": ["00"]})
+        self.assertEqual(match["cha"], {"$in": ["BHZ", "BHN"]})
+
+    def test_run_updates_threads_nslc_to_both_pipelines(self):
+        self.updater.update_availability_daily = MagicMock()
+        self.updater.update_availability_continuous = MagicMock()
+        self.updater.run_updates(
+            networks="^(IV)$", stations="^(ABC)$",
+            start_date=datetime(2008, 1, 1), end_date=datetime(2009, 1, 1),
+            locations=[""], channels=["HHZ"],
+        )
+        for mock in (
+            self.updater.update_availability_daily,
+            self.updater.update_availability_continuous,
+        ):
+            args = mock.call_args[0]
+            self.assertEqual(args[0], "^(IV)$")
+            self.assertEqual(args[1], "^(ABC)$")
+            self.assertEqual(args[4], [""])      # locations
+            self.assertEqual(args[5], ["HHZ"])   # channels
+
     def test_update_availability_continuous_pipeline(self):
         """
         Test that update_availability_continuous calls aggregate with the correct pipeline.
