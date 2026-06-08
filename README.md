@@ -4,7 +4,7 @@ A Flask implementation of the [FDSN Availability web service 1.0](http://www.fds
 
 It runs as three Docker containers: the **API** (Flask + gunicorn, port 9001), a **Redis** cache, and a **cacher** that keeps the restriction inventory and the `availability` view up to date on a built-in daily schedule.
 
-> **Installing or upgrading to v1.1.0-beta.1?** Follow [`BETA.md`](BETA.md) for the exact commands.
+> **Upgrading from v1.0.x?** Follow [`BETA.md`](BETA.md) for the exact upgrade steps (config.py changes, the in-app scheduler replacing host cron).
 
 ## Deployment
 
@@ -28,7 +28,7 @@ docker-compose up -d --build
 
 ### Option B — Pull pre-built images
 
-Each **tagged release** publishes images to GHCR, so you can skip the build. Replace `<version>` with a release tag (e.g. `1.1.0`):
+Each **tagged release** publishes images to GHCR, so you can skip the build. Replace `<version>` with a release tag (e.g. `1.1.0`, or `1.1` for the latest 1.1.x):
 
 ```yaml
 # docker-compose.override.yml
@@ -44,12 +44,12 @@ docker-compose pull
 docker-compose up -d
 ```
 
-> Pre-built images exist only for tagged releases. The current beta ships as a branch, so use Option A (build locally) for it — see [`BETA.md`](BETA.md).
+> Pre-built images exist only for tagged releases. To build from an untagged branch instead, use Option A (build locally).
 
 Either way, three containers come up. Check it:
 
 ```bash
-curl "127.0.0.1:9001/version"        # -> 1.1.0-beta.1
+curl "127.0.0.1:9001/version"        # -> 1.1.0
 curl "127.0.0.1:9001/extent?net=NA&start=2023-02-01"
 ```
 
