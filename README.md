@@ -4,7 +4,7 @@ A Flask implementation of the [FDSN Availability web service 1.0](http://www.fds
 
 It runs as three Docker containers: the **API** (Flask + gunicorn, port 9001), a **Redis** cache, and a **cacher** that keeps the restriction inventory and the `availability` view up to date on a built-in daily schedule.
 
-> **Upgrading from v1.0.x?** Follow [`BETA.md`](BETA.md) for the exact upgrade steps (config.py changes, the in-app scheduler replacing host cron).
+> **Upgrading from v1.0.x?** See [Upgrading from v1.0.x](#upgrading-from-v10x) for the exact `config.py` changes — it's a quick, self-contained checklist.
 
 ## Deployment
 
@@ -55,6 +55,50 @@ curl "127.0.0.1:9001/extent?net=NA&start=2023-02-01"
 
 For a node that already has a populated WFCatalog, that's the whole install. A brand-new database also needs the one-time [database setup](#first-time-database-setup). Requires MongoDB ≥ 4.2.
 
+## Upgrading from v1.0.x
+
+Upgrading reuses the same containers and the same `config.py`. The only manual step is making sure `config.py` has the keys the new version expects, then rebuilding.
+
+> **What changed for operators:** `config.py` is now the **only** place to set MongoDB, FDSNWS-Station and Sentry settings. `docker-compose.yml` no longer passes them to the container, so your edits in `config.py` actually take effect.
+
+1. **Get the new code.** Your `config.py` is gitignored, so this won't touch it:
+
+   ```bash
+   git fetch && git checkout v1.1.0
+   ```
+
+2. **Add any missing `config.py` keys.** `MONGODB_*`, `CACHE_*` and `FDSNWS_STATION_URL` are unchanged — keep your values. What to add depends on the version you're coming from (add the lines inside the `try:` block, next to the other `os.environ.get(...)` lines):
+
+   - **From v1.0.5 or v1.0.4** — add one line:
+
+     ```python
+     SENTRY_ENVIRONMENT = "yournode_production"
+     ```
+
+   - **From v1.0.3 or earlier** (predates Sentry) — add all three:
+
+     ```python
+     SENTRY_DSN = os.environ.get("SENTRY_DSN", "")          # your Sentry DSN, or "" to disable
+     SENTRY_TRACES_SAMPLE_RATE = float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "1.0"))
+     SENTRY_ENVIRONMENT = "yournode_production"
+     ```
+
+   **`SENTRY_ENVIRONMENT` is required and must be unique per node** (e.g. `noa_production`, `resif_production`) so your events are distinguishable in Sentry. Not sure what's missing? Diff against the sample — see [Troubleshooting](#troubleshooting).
+
+3. **Rebuild and restart:**
+
+   ```bash
+   docker-compose up -d --build          # or: docker-compose pull && docker-compose up -d
+   ```
+
+4. **Remove the old host cron**, if you had one triggering `views/main.js` — it's now redundant, replaced by the [built-in scheduler](#what-runs-daily):
+
+   ```bash
+   crontab -l | grep -v "ws-availability.*views.*main.js" | crontab -
+   ```
+
+Then re-run the `curl` checks above; `/version` should report `1.1.0`.
+
 ## Endpoints
 
 API on port `9001`. `/query` (time spans per channel) and `/extent` (one row per channel) accept GET and POST. Also `/version`, `/application.wadl`, and `/` (landing page).
@@ -93,7 +137,9 @@ The cacher runs a built-in scheduler — no host cron needed:
 
 - **03:00 UTC** — refresh the restriction inventory from FDSNWS-Station into Redis.
 - **06:00 UTC** — update the `availability` view from the last 4 days of WFCatalog data.
-- **On startup** — both run once, so a restart leaves data fresh.
+- **On startup** — both run once, so a restart leaves recent data fresh.
+
+This covers only the recent window. To repair an older date (e.g. after a backfill), see [Back-processing](#back-processing-historical--scoped-rebuild).
 
 ## Tuning (optional)
 
@@ -146,16 +192,33 @@ The compound index `{ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 }` is created
 
 After the initial build, the cacher keeps the view current automatically (see [What runs daily](#what-runs-daily)) — **no host cron is needed** (earlier versions required one; it has been replaced by the built-in scheduler).
 
-### Back-processing
+### Back-processing (historical / scoped rebuild)
 
-The daily scheduler only refreshes a rolling recent window. To reprocess a specific historical range or a subset of streams — e.g. after a data correction or a backfill — run `views/main.js` manually with parameters (`networks`/`stations` accept regex):
+The daily scheduler only refreshes a **rolling recent window** (the last 4 days). It therefore *cannot* repair a historical gap: if WFCatalog is (re)populated for an old date — e.g. after a backfill, or a data correction surfaced by an [EIDA consistency report](https://github.com/EIDA) — restarting the cacher does **not** rebuild that date, so `/query` and `/extent` keep reporting "no data" even though dataselect / the SDS archive serve it. You must reprocess that range explicitly.
+
+> **Prerequisite:** back-processing only re-derives the view *from* WFCatalog (`daily_streams`/`c_segments`). It does **not** scan the SDS archive. If WFCatalog itself is missing the range, refresh WFCatalog for those dates **first**, otherwise the rebuild completes cleanly but writes nothing.
+
+**Preferred — the `avail-rebuild` CLI** (runs inside the cacher, so it uses the container's own MongoDB credentials; supports full NSLC):
 
 ```bash
-# A specific month
-mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo \
-  --eval "start='2023-01-01'; end='2023-01-31'" views/main.js
+# A network/station over a range (all of 2008 -> end is the day boundary, 2009-01-01)
+docker exec fdsnws-availability-cacher \
+  avail-rebuild --net IV --sta ABC --start 2008-01-01 --end 2009-01-01
 
-# One network/station over a range
+# Channel-precise (e.g. just HHZ; --loc=-- means the empty location.
+# Use the attached '=' form: a bare '--' is read by the shell/argparse as end-of-options.)
+docker exec fdsnws-availability-cacher \
+  avail-rebuild --net IV --sta ABC --loc=-- --cha HHZ --start 2008-01-01 --end 2009-01-01
+
+# Whole range, all streams
+docker exec fdsnws-availability-cacher avail-rebuild --start 2023-01-01 --end 2023-02-01
+```
+
+`--net/--sta/--loc/--cha` are comma-separated exact-match lists; omit any to leave it unconstrained. The rebuild is idempotent (`$merge whenMatched:"replace"`) — safe to re-run. After it finishes, flush Redis or wait out `CACHE_RESP_PERIOD` before re-checking, in case an empty response for that query is still cached. (If the console script isn't on `PATH` for some reason, `docker exec fdsnws-availability-cacher python -m apps.cli …` is equivalent.)
+
+**Fallback — `views/main.js` via `mongosh`** (host-side; net+sta+date only, no loc/cha; needs a repo checkout and DB creds on the host):
+
+```bash
 mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo \
   --eval "networks='NL'; stations='HGN'; start='2022-12-01'; end='2023-01-31'" views/main.js
 ```

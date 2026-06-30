@@ -8,6 +8,35 @@ from pymongo.database import Database
 logger = logging.getLogger(__name__)
 
 
+def _nslc_match(
+    networks: str,
+    stations: str,
+    start_date: datetime,
+    end_date: datetime,
+    avail: dict,
+    locations: Optional[list[str]] = None,
+    channels: Optional[list[str]] = None,
+) -> dict:
+    """Build the stage-0 ``$match`` shared by the daily and continuous pipelines.
+
+    net/sta stay ``$regex`` (the scheduler/legacy default is ``^.*$``). loc/cha
+    are optional exact-match ``$in`` lists, added only when provided — so with
+    both None the match is byte-identical to the original net+sta+date filter.
+    """
+    match: dict = {
+        "net": {"$regex": networks},
+        "sta": {"$regex": stations},
+        "ts": {"$gte": start_date},
+        "te": {"$lte": end_date},
+        "avail": avail,
+    }
+    if locations is not None:
+        match["loc"] = {"$in": locations}
+    if channels is not None:
+        match["cha"] = {"$in": channels}
+    return match
+
+
 class AvailabilityUpdater:
     def __init__(self, db: Database):
         self.db = db
@@ -18,19 +47,23 @@ class AvailabilityUpdater:
         stations: str,
         start_date: datetime,
         end_date: datetime,
+        locations: Optional[list[str]] = None,
+        channels: Optional[list[str]] = None,
     ):
         """
-        Equivalent to `updateAvailabilityDaily` in views/main.js
+        Equivalent to `updateAvailabilityDaily` in views/main.js.
+
+        ``locations``/``channels`` are optional exact-match filters (lists of
+        codes). When None the dimension is unconstrained — preserving the
+        original net+sta+date behavior the daily scheduler relies on. An empty
+        location is the empty string "" (callers normalize "--" -> "").
         """
         pipeline = [
             {
-                "$match": {
-                    "net": {"$regex": networks},
-                    "sta": {"$regex": stations},
-                    "ts": {"$gte": start_date},
-                    "te": {"$lte": end_date},
-                    "avail": {"$gte": 100},
-                }
+                "$match": _nslc_match(
+                    networks, stations, start_date, end_date,
+                    avail={"$gte": 100}, locations=locations, channels=channels,
+                )
             },
             {
                 "$group": {
@@ -60,19 +93,23 @@ class AvailabilityUpdater:
         stations: str,
         start_date: datetime,
         end_date: datetime,
+        locations: Optional[list[str]] = None,
+        channels: Optional[list[str]] = None,
     ):
         """
-        Equivalent to `updateAvailabilityContinuous` in views/main.js
+        Equivalent to `updateAvailabilityContinuous` in views/main.js.
+
+        The optional ``locations``/``channels`` filters are applied at the
+        stage-0 ``$match`` against ``daily_streams`` (where net/sta/loc/cha
+        live), restricting which streams' continuous segments get rebuilt.
+        See ``update_availability_daily`` for the filter semantics.
         """
         pipeline = [
             {
-                "$match": {
-                    "net": {"$regex": networks},
-                    "sta": {"$regex": stations},
-                    "ts": {"$gte": start_date},
-                    "te": {"$lte": end_date},
-                    "avail": {"$lt": 100},
-                }
+                "$match": _nslc_match(
+                    networks, stations, start_date, end_date,
+                    avail={"$lt": 100}, locations=locations, channels=channels,
+                )
             },
             {
                 "$lookup": {
@@ -112,9 +149,15 @@ class AvailabilityUpdater:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         days_back: Optional[int] = None,
+        locations: Optional[list[str]] = None,
+        channels: Optional[list[str]] = None,
     ):
         """
         Main runner function replicating the logic at the bottom of main.js.
+
+        ``locations``/``channels`` are optional exact-match NSLC filters passed
+        through to both pipelines; None (the default, used by the scheduler)
+        leaves that dimension unconstrained.
         """
         now = datetime.utcnow()
         if days_back is not None:
@@ -135,8 +178,12 @@ class AvailabilityUpdater:
             f"Processing WFCatalog entries using networks: '{networks}', stations: '{stations}', start: '{start_date.isoformat()}', end: '{end_date.isoformat()}' started!"
         )
 
-        self.update_availability_daily(networks, stations, start_date, end_date)
-        self.update_availability_continuous(networks, stations, start_date, end_date)
+        self.update_availability_daily(
+            networks, stations, start_date, end_date, locations, channels
+        )
+        self.update_availability_continuous(
+            networks, stations, start_date, end_date, locations, channels
+        )
 
         logger.info(
             f"Processing WFCatalog entries using networks: '{networks}', stations: '{stations}', start: '{start_date.isoformat()}', end: '{end_date.isoformat()}' completed!"
