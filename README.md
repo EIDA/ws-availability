@@ -244,7 +244,3 @@ If the service isn't working — often right after an upgrade — it's usually a
    Lines prefixed `>` are keys present in the sample but missing from your `config.py` — add them.
 
 3. **Check database access** — confirm the MongoDB and Redis connection parameters in `config.py` are correct and that both services are reachable from the containers.
-
-## References
-
-Forked from [gitlab.com/resif/ws-availability](https://gitlab.com/resif/ws-availability) — thanks to our colleagues at RESIF for sharing their FDSNWS-Availability implementation. 💐
