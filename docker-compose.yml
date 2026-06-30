@@ -27,6 +27,11 @@ services:
       nproc: 65535
     security_opt:
       - seccomp:unconfined
+    volumes:
+      # Operator config lives on the host. Mounting it (rather than relying on
+      # it being baked into the image) is what makes the pre-built GHCR images
+      # usable: pull, set config.py, run — no rebuild. Read-only by design.
+      - ./config.py:/appli/config.py:ro
   api:
     build:
       context: ./
@@ -59,6 +64,8 @@ services:
         hard: 65535
     security_opt:
       - seccomp:unconfined
+    volumes:
+      - ./config.py:/appli/config.py:ro
     mem_limit: 2g
     memswap_limit: 2g
 

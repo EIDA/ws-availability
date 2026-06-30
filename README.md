@@ -4,7 +4,7 @@ A Flask implementation of the [FDSN Availability web service 1.0](http://www.fds
 
 It runs as three Docker containers: the **API** (Flask + gunicorn, port 9001), a **Redis** cache, and a **cacher** that keeps the restriction inventory and the `availability` view up to date on a built-in daily schedule.
 
-> **Upgrading from v1.0.x?** Follow [`BETA.md`](BETA.md) for the exact upgrade steps (config.py changes, the in-app scheduler replacing host cron).
+> **Upgrading from v1.0.x?** See [Upgrading from v1.0.x](#upgrading-from-v10x) for the exact `config.py` changes — it's a quick, self-contained checklist.
 
 ## Deployment
 
@@ -54,6 +54,50 @@ curl "127.0.0.1:9001/extent?net=NA&start=2023-02-01"
 ```
 
 For a node that already has a populated WFCatalog, that's the whole install. A brand-new database also needs the one-time [database setup](#first-time-database-setup). Requires MongoDB ≥ 4.2.
+
+## Upgrading from v1.0.x
+
+Upgrading reuses the same containers and the same `config.py`. The only manual step is making sure `config.py` has the keys the new version expects, then rebuilding.
+
+> **What changed for operators:** `config.py` is now the **only** place to set MongoDB, FDSNWS-Station and Sentry settings. `docker-compose.yml` no longer passes them to the container, so your edits in `config.py` actually take effect.
+
+1. **Get the new code.** Your `config.py` is gitignored, so this won't touch it:
+
+   ```bash
+   git fetch && git checkout v1.1.0
+   ```
+
+2. **Add any missing `config.py` keys.** `MONGODB_*`, `CACHE_*` and `FDSNWS_STATION_URL` are unchanged — keep your values. What to add depends on the version you're coming from (add the lines inside the `try:` block, next to the other `os.environ.get(...)` lines):
+
+   - **From v1.0.5 or v1.0.4** — add one line:
+
+     ```python
+     SENTRY_ENVIRONMENT = "yournode_production"
+     ```
+
+   - **From v1.0.3 or earlier** (predates Sentry) — add all three:
+
+     ```python
+     SENTRY_DSN = os.environ.get("SENTRY_DSN", "")          # your Sentry DSN, or "" to disable
+     SENTRY_TRACES_SAMPLE_RATE = float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "1.0"))
+     SENTRY_ENVIRONMENT = "yournode_production"
+     ```
+
+   **`SENTRY_ENVIRONMENT` is required and must be unique per node** (e.g. `noa_production`, `resif_production`) so your events are distinguishable in Sentry. Not sure what's missing? Diff against the sample — see [Troubleshooting](#troubleshooting).
+
+3. **Rebuild and restart:**
+
+   ```bash
+   docker-compose up -d --build          # or: docker-compose pull && docker-compose up -d
+   ```
+
+4. **Remove the old host cron**, if you had one triggering `views/main.js` — it's now redundant, replaced by the [built-in scheduler](#what-runs-daily):
+
+   ```bash
+   crontab -l | grep -v "ws-availability.*views.*main.js" | crontab -
+   ```
+
+Then re-run the `curl` checks above; `/version` should report `1.1.0`.
 
 ## Endpoints
 
