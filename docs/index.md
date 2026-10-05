@@ -4,7 +4,7 @@ tags:
   - node-operator
 ---
 
-# FDSNWS-Availability
+# ws-availability: Overview
 
 A Flask implementation of the [FDSN Availability web service 1.0](http://www.fdsn.org/webservices/fdsnws-availability-1.0.pdf). It reports the time spans for which time-series data exist, served from a WFCatalog MongoDB.
 

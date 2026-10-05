@@ -4,7 +4,7 @@ tags:
   - node-operator
 ---
 
-# Usage
+# ws-availability: Usage
 
 ## Endpoints
 

@@ -3,7 +3,7 @@ tags:
   - node-operator
 ---
 
-# Configuration
+# ws-availability: Configuration
 
 ## Configuration
 

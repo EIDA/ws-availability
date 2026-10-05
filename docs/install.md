@@ -3,7 +3,7 @@ tags:
   - node-operator
 ---
 
-# Install
+# ws-availability: Install
 
 ## Deployment
 
