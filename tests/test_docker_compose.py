@@ -23,12 +23,14 @@ COMPOSE_PATH = Path(__file__).resolve().parents[1] / "docker-compose.yml"
 # api/cacher service env block, the operator's config.py will be silently
 # overridden — the LMU/Tobias bug.
 CONFIG_PY_ONLY_KEYS = {
+    "MONGODB_ENGINE",
     "MONGODB_HOST",
     "MONGODB_PORT",
     "MONGODB_USR",
     "MONGODB_PWD",
     "MONGODB_NAME",
     "MONGODB_AUTH_SOURCE",
+    "DOCDB_CA_PATH",
     "FDSNWS_STATION_URL",
     "SENTRY_DSN",
     "SENTRY_TRACES_SAMPLE_RATE",
