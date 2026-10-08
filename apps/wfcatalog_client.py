@@ -63,6 +63,23 @@ from apps.settings import settings
 # Global DB Client to prevent thread exhaustion
 DB_CLIENT = None
 
+def _db_client_kwargs() -> dict:
+    """Engine-specific MongoClient arguments."""
+    if settings.mongodb_engine == "docdb":
+        return {
+            "authSource": settings.mongodb_auth_source or "admin",
+            "tls": True,
+            "tlsCAFile": settings.docdb_ca_path,
+            "replicaSet": "rs0",
+            "readPreference": "secondaryPreferred",
+            "directConnection": False,
+        }
+    return {
+        "authSource": settings.mongodb_auth_source or settings.mongodb_name,
+        "directConnection": True,
+    }
+
+
 def get_db_client():
     global DB_CLIENT
     if DB_CLIENT is None:
@@ -76,12 +93,11 @@ def get_db_client():
             settings.mongodb_port,
             username=settings.mongodb_usr,
             password=settings.mongodb_pwd,
-            authSource=settings.mongodb_auth_source or settings.mongodb_name,
             maxPoolSize=pool_size,
             connect=False,
-            directConnection=True,
             retryReads=False,
-            retryWrites=False
+            retryWrites=False,
+            **_db_client_kwargs(),
         )
         try:
             db = DB_CLIENT.get_database(settings.mongodb_name)
