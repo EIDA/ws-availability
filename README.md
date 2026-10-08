@@ -115,11 +115,13 @@ Everything lives in `config.py` (copied from `config.py.sample`, gitignored so u
 
 | Key | Default | Description |
 |-----|---------|-------------|
+| `MONGODB_ENGINE` | `mongodb` | Database engine: `mongodb`, or `docdb` for [Amazon DocumentDB](#amazon-documentdb). |
 | `MONGODB_HOST` | `host.docker.internal` | WFCatalog MongoDB host. |
 | `MONGODB_PORT` | `27017` | MongoDB port. |
 | `MONGODB_USR` / `MONGODB_PWD` | empty | MongoDB credentials (leave empty if no auth). |
 | `MONGODB_NAME` | `wfrepo` | Database name; also used as `authSource` unless `MONGODB_AUTH_SOURCE` is set. |
 | `MONGODB_AUTH_SOURCE` | `None` | Optional. Mongo auth database when it differs from `MONGODB_NAME` (e.g. `admin`). Falls back to `MONGODB_NAME` when unset. |
+| `DOCDB_CA_PATH` | `None` | Path to the Amazon CA bundle. Required when `MONGODB_ENGINE = "docdb"`, ignored otherwise. |
 | `FDSNWS_STATION_URL` | `https://orfeus-eu.org/fdsnws/station/1/query` | FDSNWS-Station endpoint to harvest restriction info from. |
 | `CACHE_HOST` | `cache` | Redis host. |
 | `CACHE_PORT` | `6379` | Redis port. |
