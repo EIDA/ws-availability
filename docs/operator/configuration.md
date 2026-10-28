@@ -1,9 +1,9 @@
 ---
 tags:
-  - node-operator
+  - operator
 ---
 
-# ws-availability: Configuration
+# Configuration
 
 ## Configuration
 

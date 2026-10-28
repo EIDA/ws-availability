@@ -1,10 +1,10 @@
 ---
 tags:
-  - data-user
-  - node-operator
+  - user
+  - operator
 ---
 
-# ws-availability: Usage
+# Usage
 
 ## Endpoints
 
@@ -24,4 +24,4 @@ The cacher runs a built-in scheduler — no host cron needed:
 - **06:00 UTC** — update the `availability` view from the last 4 days of WFCatalog data.
 - **On startup** — both run once, so a restart leaves recent data fresh.
 
-This covers only the recent window. To repair an older date (e.g. after a backfill), see [Back-processing](install.md#back-processing-historical-scoped-rebuild).
+This covers only the recent window. To repair an older date (e.g. after a backfill), see [Back-processing](../operator/install.md#back-processing-historical-scoped-rebuild).

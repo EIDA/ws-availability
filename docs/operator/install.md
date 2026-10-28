@@ -1,9 +1,9 @@
 ---
 tags:
-  - node-operator
+  - operator
 ---
 
-# ws-availability: Install
+# Install
 
 ## Deployment
 
@@ -90,7 +90,7 @@ Upgrading reuses the same containers and the same `config.py`. The only manual s
    docker-compose up -d --build          # or: docker-compose pull && docker-compose up -d
    ```
 
-4. **Remove the old host cron**, if you had one triggering `views/main.js` — it's now redundant, replaced by the [built-in scheduler](usage.md#what-runs-daily):
+4. **Remove the old host cron**, if you had one triggering `views/main.js` — it's now redundant, replaced by the [built-in scheduler](../user/usage.md#what-runs-daily):
 
    ```bash
    crontab -l | grep -v "ws-availability.*views.*main.js" | crontab -
@@ -111,7 +111,7 @@ mongosh -u USER -p PASSWORD --authenticationDatabase wfrepo --eval "daysBack=365
 
 The compound index `{ net: 1, sta: 1, loc: 1, cha: 1, ts: 1, te: 1 }` is created automatically by the API at startup (built in the background). If queries feel slow right after a brand-new install, give it a moment to finish.
 
-After the initial build, the cacher keeps the view current automatically (see [What runs daily](usage.md#what-runs-daily)) — **no host cron is needed** (earlier versions required one; it has been replaced by the built-in scheduler).
+After the initial build, the cacher keeps the view current automatically (see [What runs daily](../user/usage.md#what-runs-daily)) — **no host cron is needed** (earlier versions required one; it has been replaced by the built-in scheduler).
 
 ### Back-processing (historical / scoped rebuild)
 
