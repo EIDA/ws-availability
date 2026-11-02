@@ -44,7 +44,15 @@ class Settings(BaseSettings):
     fanout_min_days: int = Field(7, alias="FANOUT_MIN_DAYS")
     fanout_window_days: int = Field(30, alias="FANOUT_WINDOW_DAYS")
 
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
+    # env_ignore_empty: an env var set to "" (e.g. MONGODB_ENGINE=) means "unset", not an invalid value
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore', env_ignore_empty=True)
+
+    @model_validator(mode='after')
+    def require_docdb_ca_path(self):
+        """DocumentDB requires TLS with the Amazon CA bundle; fail at startup, not at first query."""
+        if self.mongodb_engine == "docdb" and not self.docdb_ca_path:
+            raise ValueError('DOCDB_CA_PATH must be set when MONGODB_ENGINE = "docdb"')
+        return self
 
     @model_validator(mode='after')
     def set_production_defaults(self):
@@ -104,7 +112,8 @@ def build_settings(legacy: dict, env: dict | None = None) -> "Settings":
     env = os.environ if env is None else env
     overrides: dict = {}
     for k, v in legacy.items():
-        if v is None:
+        # None = key absent from config.py; "" = config.py copied an empty env var
+        if v is None or v == "":
             continue
         if env.get(k):  # truthy: present AND non-empty
             continue

@@ -115,7 +115,7 @@ Everything lives in `config.py` (copied from `config.py.sample`, gitignored so u
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `MONGODB_ENGINE` | `mongodb` | Database engine: `mongodb`, or `docdb` for [Amazon DocumentDB](#amazon-documentdb). |
+| `MONGODB_ENGINE` | `mongodb` | Database engine: `mongodb`, or `docdb` for Amazon DocumentDB. |
 | `MONGODB_HOST` | `host.docker.internal` | WFCatalog MongoDB host. |
 | `MONGODB_PORT` | `27017` | MongoDB port. |
 | `MONGODB_USR` / `MONGODB_PWD` | empty | MongoDB credentials (leave empty if no auth). |
