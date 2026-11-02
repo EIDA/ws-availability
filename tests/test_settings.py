@@ -68,6 +68,51 @@ class TestSettings:
         del os.environ["MONGODB_AUTH_SOURCE"]
         del os.environ["MONGODB_NAME"]
 
+    def test_engine_defaults_to_mongodb(self):
+        """Existing config.py files have no MONGODB_ENGINE — must keep working as before"""
+        os.environ.pop("MONGODB_ENGINE", None)
+        settings = build_settings({"MONGODB_HOST": "db"})
+        assert settings.mongodb_engine == "mongodb"
+        assert settings.docdb_ca_path is None
+
+    def test_docdb_requires_ca_path(self):
+        """MONGODB_ENGINE=docdb without DOCDB_CA_PATH must fail at startup"""
+        with pytest.raises(ValueError, match="DOCDB_CA_PATH"):
+            Settings(MONGODB_ENGINE="docdb")
+
+    def test_docdb_with_ca_path(self):
+        settings = Settings(MONGODB_ENGINE="docdb", DOCDB_CA_PATH="/appli/global-bundle.pem")
+        assert settings.mongodb_engine == "docdb"
+
+
+class TestDbClientKwargs:
+    """Engine-specific MongoClient arguments in wfcatalog_client."""
+
+    def test_mongodb_engine_keeps_previous_behaviour(self):
+        from unittest.mock import patch
+        from apps import wfcatalog_client
+
+        with patch.object(wfcatalog_client.settings, "mongodb_engine", "mongodb"), \
+             patch.object(wfcatalog_client.settings, "mongodb_auth_source", None), \
+             patch.object(wfcatalog_client.settings, "mongodb_name", "wfrepo"):
+            assert wfcatalog_client._db_client_kwargs() == {
+                "authSource": "wfrepo",
+                "directConnection": True,
+            }
+
+    def test_docdb_engine(self):
+        from unittest.mock import patch
+        from apps import wfcatalog_client
+
+        with patch.object(wfcatalog_client.settings, "mongodb_engine", "docdb"), \
+             patch.object(wfcatalog_client.settings, "mongodb_auth_source", None), \
+             patch.object(wfcatalog_client.settings, "docdb_ca_path", "/appli/global-bundle.pem"):
+            kwargs = wfcatalog_client._db_client_kwargs()
+        assert kwargs["authSource"] == "admin"
+        assert kwargs["tls"] is True
+        assert kwargs["tlsCAFile"] == "/appli/global-bundle.pem"
+        assert kwargs["directConnection"] is False
+
 
 class TestConfigPyVsEnvPrecedence:
     """Guard rails for the docker-compose ↔ config.py precedence bug.
@@ -86,7 +131,7 @@ class TestConfigPyVsEnvPrecedence:
 
     @staticmethod
     def _clear():
-        for k in ("MONGODB_HOST", "MONGODB_NAME"):
+        for k in ("MONGODB_HOST", "MONGODB_NAME", "MONGODB_ENGINE", "MONGODB_PORT"):
             os.environ.pop(k, None)
 
     def setup_method(self, method):
@@ -120,6 +165,22 @@ class TestConfigPyVsEnvPrecedence:
         Pydantic default alone."""
         s = build_settings({"MONGODB_HOST": None})
         assert s.mongodb_host == "localhost"  # Pydantic Field default
+
+    def test_empty_env_var_without_config_value_uses_default(self):
+        """MONGODB_ENGINE= / MONGODB_PORT= in the env (and absent from
+        config.py) must fall back to the default, not fail validation."""
+        os.environ["MONGODB_ENGINE"] = ""
+        os.environ["MONGODB_PORT"] = ""
+        s = build_settings({"MONGODB_HOST": "db"})
+        assert s.mongodb_engine == "mongodb"
+        assert s.mongodb_port == 27017
+
+    def test_empty_legacy_value_uses_default(self):
+        """config.py.sample does os.environ.get("MONGODB_ENGINE", "mongodb"),
+        which yields "" when the env var is set but empty."""
+        s = build_settings({"MONGODB_ENGINE": "", "MONGODB_PORT": ""})
+        assert s.mongodb_engine == "mongodb"
+        assert s.mongodb_port == 27017
 
 
 class TestConfigSampleHasSaferGetters:

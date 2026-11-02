@@ -13,12 +13,16 @@ class Config:
 
     if RUNMODE == "production":
         # WFCatalog MongoDB
+        # "mongodb" (default) or "docdb" for Amazon DocumentDB
+        MONGODB_ENGINE = "mongodb"
         MONGODB_HOST = "host.docker.internal"
         MONGODB_PORT = 27017
         MONGODB_USR = ""
         MONGODB_PWD = ""
         MONGODB_NAME = "wfrepo"
         MONGODB_AUTH_SOURCE = None
+        # Only used when MONGODB_ENGINE = "docdb"
+        DOCDB_CA_PATH = None
         # FDSNWS-Station cache source
         FDSNWS_STATION_URL = "https://orfeus-eu.org/fdsnws/station/1/query"
         # Cache host (localhost or container name)
@@ -32,12 +36,16 @@ class Config:
         GUNICORN_WORKERS = 1
     elif RUNMODE == "test":
         # WFCatalog MongoDB
+        # "mongodb" (default) or "docdb" for Amazon DocumentDB
+        MONGODB_ENGINE = "mongodb"
         MONGODB_HOST = "localhost"
         MONGODB_PORT = 27017
         MONGODB_USR = ""
         MONGODB_PWD = ""
         MONGODB_NAME = "wfrepo"
         MONGODB_AUTH_SOURCE = None
+        # Only used when MONGODB_ENGINE = "docdb"
+        DOCDB_CA_PATH = None
         # FDSNWS-Station cache source
         FDSNWS_STATION_URL = "https://orfeus-eu.org/fdsnws/station/1/query"
         # Cache host (localhost or container name)
@@ -49,12 +57,14 @@ class Config:
         GUNICORN_WORKERS = 1
 
     try:
+        MONGODB_ENGINE = os.environ.get("MONGODB_ENGINE", MONGODB_ENGINE)
         MONGODB_HOST = os.environ.get("MONGODB_HOST", MONGODB_HOST)
         MONGODB_PORT = os.environ.get("MONGODB_PORT", MONGODB_PORT)
         MONGODB_USR = os.environ.get("MONGODB_USR", MONGODB_USR)
         MONGODB_PWD = os.environ.get("MONGODB_PWD", MONGODB_PWD)
         MONGODB_NAME = os.environ.get("MONGODB_NAME", MONGODB_NAME)
         MONGODB_AUTH_SOURCE = os.environ.get("MONGODB_AUTH_SOURCE", MONGODB_AUTH_SOURCE)
+        DOCDB_CA_PATH = os.environ.get("DOCDB_CA_PATH", DOCDB_CA_PATH)
         FDSNWS_STATION_URL = os.environ.get("FDSNWS_STATION_URL", FDSNWS_STATION_URL)
         CACHE_HOST = os.environ.get("CACHE_HOST", CACHE_HOST)
         CACHE_PORT = os.environ.get("CACHE_PORT", CACHE_PORT)
